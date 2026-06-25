@@ -1,0 +1,3 @@
+[submodule "dependency/pokerogue"]
+	path = dependency/pokerogue
+	url = https://github.com/pagefaultgames/pokerogue.git
