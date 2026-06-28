@@ -1,0 +1,36 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=4
+
+_global_script_classes=[ {
+"base": "Reference",
+"class": "MoveData",
+"language": "GDScript",
+"path": "res://data/MoveData.gd"
+}, {
+"base": "Reference",
+"class": "PokemonData",
+"language": "GDScript",
+"path": "res://data/PokemonData.gd"
+} ]
+_global_script_class_icons={
+"MoveData": "",
+"PokemonData": ""
+}
+
+[application]
+
+config/name="PokeRogue Godot Port"
+run/main_scene="res://scenes/Main.tscn"
+config/version="0.1.0"
+
+[display]
+
+window/size/width=640
+window/size/height=480
