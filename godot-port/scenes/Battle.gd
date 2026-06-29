@@ -33,16 +33,14 @@ var battle_data = null
 var hp_overlay_frames := {}
 var battle_ended := false
 var turn_in_progress := false
+var turn_token := 0
 
 func _ready():
-	battle_data = pokemon_data_script.create_battle_02_test_data()
 	apply_fonts()
 	load_battle_sprites()
 	build_hp_overlay_frames()
 	load_audio_assets()
-	bind_battle_data()
-	set_action_lock(false)
-	set_battle_text("Battle ready.")
+	reset_battle_state("Battle ready.")
 
 	if not InputMap.has_action("ui_select"):
 		InputMap.add_action("ui_select")
@@ -193,6 +191,7 @@ func _on_MoveButton_pressed():
 
 	turn_in_progress = true
 	set_action_lock(true)
+	var active_turn_token = turn_token
 
 	var attacker = battle_data["player"]
 	var defender = battle_data["enemy"]
@@ -215,11 +214,11 @@ func _on_MoveButton_pressed():
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return
 
 	if defender.is_fainted():
-		battle_ended = true
-		set_action_lock(true)
-		set_battle_text("%s fainted!" % defender.species_id)
+		end_battle(true, defender.species_id)
 		_finish_turn()
 		return
 
@@ -237,23 +236,18 @@ func _on_MoveButton_pressed():
 	set_battle_text(enemy_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return
 
 	if attacker.is_fainted():
-		battle_ended = true
-		set_action_lock(true)
-		set_battle_text("%s fainted!" % attacker.species_id)
+		end_battle(false, attacker.species_id)
 		_finish_turn()
 		return
 
 	_finish_turn()
 
 func _on_RestartButton_pressed():
-	battle_data = pokemon_data_script.create_battle_02_test_data()
-	battle_ended = false
-	turn_in_progress = false
-	set_action_lock(false)
-	bind_battle_data()
-	set_battle_text("Battle reset.")
+	reset_battle_state("Battle reset.")
 
 func set_action_lock(locked: bool):
 	move_button.disabled = locked
@@ -263,6 +257,21 @@ func _finish_turn():
 	turn_in_progress = false
 	if not battle_ended:
 		set_action_lock(false)
+
+func end_battle(player_won: bool, fainted_species_id: String):
+	battle_ended = true
+	set_action_lock(true)
+	var result_text = "You win!" if player_won else "You lose!"
+	set_battle_text("%s fainted! %s Press Ball or Run to restart." % [fainted_species_id, result_text])
+
+func reset_battle_state(message: String):
+	turn_token += 1
+	battle_data = pokemon_data_script.create_battle_02_test_data()
+	battle_ended = false
+	turn_in_progress = false
+	set_action_lock(false)
+	bind_battle_data()
+	set_battle_text(message)
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
