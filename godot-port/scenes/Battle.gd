@@ -30,6 +30,7 @@ var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.
 
 var battle_data = null
 var hp_overlay_frames := {}
+var battle_ended := false
 
 func _ready():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
@@ -38,6 +39,7 @@ func _ready():
 	build_hp_overlay_frames()
 	load_audio_assets()
 	bind_battle_data()
+	set_action_lock(false)
 	set_battle_text("Battle ready.")
 
 	if not InputMap.has_action("ui_select"):
@@ -180,6 +182,10 @@ func _process(_delta):
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
 func _on_MoveButton_pressed():
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball or Run to restart.")
+		return
+
 	var attacker = battle_data["player"]
 	var defender = battle_data["enemy"]
 	if attacker == null or defender == null:
@@ -195,12 +201,24 @@ func _on_MoveButton_pressed():
 	defender.current_hp = max(0, defender.current_hp - damage)
 
 	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
+	if defender.is_fainted():
+		battle_ended = true
+		set_action_lock(true)
+		set_battle_text("%s used %s! %d damage. %s fainted!" % [attacker.species_id, move.move_id, damage, defender.species_id])
+		return
+
 	set_battle_text("%s used %s! %d damage." % [attacker.species_id, move.move_id, damage])
 
 func _on_RestartButton_pressed():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
+	battle_ended = false
+	set_action_lock(false)
 	bind_battle_data()
 	set_battle_text("Battle reset.")
+
+func set_action_lock(locked: bool):
+	move_button.disabled = locked
+	pokemon_button.disabled = locked
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
