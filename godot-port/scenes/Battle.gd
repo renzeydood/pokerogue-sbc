@@ -2,6 +2,7 @@ extends Control
 
 export(int) var ui_font_size := 12
 export(int) var control_button_font_size := 16
+export(float) var turn_step_delay_sec := 0.6
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -31,6 +32,7 @@ var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.
 var battle_data = null
 var hp_overlay_frames := {}
 var battle_ended := false
+var turn_in_progress := false
 
 func _ready():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
@@ -178,7 +180,7 @@ func load_audio_assets():
 		$UIAudioStreamPlayer.stream = load(select_path)
 
 func _process(_delta):
-	if Input.is_action_just_pressed("ui_accept"):
+	if Input.is_action_just_pressed("ui_accept") and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
 func _on_MoveButton_pressed():
@@ -186,14 +188,22 @@ func _on_MoveButton_pressed():
 		set_battle_text("Battle has ended. Press Ball or Run to restart.")
 		return
 
+	if turn_in_progress:
+		return
+
+	turn_in_progress = true
+	set_action_lock(true)
+
 	var attacker = battle_data["player"]
 	var defender = battle_data["enemy"]
 	if attacker == null or defender == null:
 		set_battle_text("Battle data missing.")
+		_finish_turn()
 		return
 
 	if attacker.moves.empty():
 		set_battle_text("No move available.")
+		_finish_turn()
 		return
 
 	var move = attacker.moves[0]
@@ -201,17 +211,46 @@ func _on_MoveButton_pressed():
 	defender.current_hp = max(0, defender.current_hp - damage)
 
 	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
+	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move.move_id, damage]
+	set_battle_text(battle_message)
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+
 	if defender.is_fainted():
 		battle_ended = true
 		set_action_lock(true)
-		set_battle_text("%s used %s! %d damage. %s fainted!" % [attacker.species_id, move.move_id, damage, defender.species_id])
+		set_battle_text("%s fainted!" % defender.species_id)
+		_finish_turn()
 		return
 
-	set_battle_text("%s used %s! %d damage." % [attacker.species_id, move.move_id, damage])
+	if defender.moves.empty():
+		set_battle_text("%s has no move." % defender.species_id)
+		_finish_turn()
+		return
+
+	var enemy_move = defender.moves[0]
+	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker))
+	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
+	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+
+	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
+	set_battle_text(enemy_message)
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+
+	if attacker.is_fainted():
+		battle_ended = true
+		set_action_lock(true)
+		set_battle_text("%s fainted!" % attacker.species_id)
+		_finish_turn()
+		return
+
+	_finish_turn()
 
 func _on_RestartButton_pressed():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
 	battle_ended = false
+	turn_in_progress = false
 	set_action_lock(false)
 	bind_battle_data()
 	set_battle_text("Battle reset.")
@@ -219,6 +258,11 @@ func _on_RestartButton_pressed():
 func set_action_lock(locked: bool):
 	move_button.disabled = locked
 	pokemon_button.disabled = locked
+
+func _finish_turn():
+	turn_in_progress = false
+	if not battle_ended:
+		set_action_lock(false)
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
