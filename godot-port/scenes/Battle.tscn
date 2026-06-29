@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://scenes/Battle.gd" type="Script" id=1]
 [ext_resource path="res://godot-minimal-assets/assets/images/arenas/abyss_bg.png" type="Texture" id=2]
@@ -13,6 +13,7 @@
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/text_images/en/battle_ui/overlay_exp_label.png" type="Texture" id=11]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/text_images/en/battle_ui/overlay_hp_label.png" type="Texture" id=12]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/windows/window_1.png" type="Texture" id=13]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/overlay_hp.png" type="Texture" id=14]
 
 [node name="Battle" type="Control"]
 anchor_right = 1.0
@@ -110,6 +111,21 @@ margin_right = 187.0
 margin_bottom = 41.0
 text = "Lv. 5"
 
+[node name="EnemyHpBar" type="Sprite" parent="UILayer/EnemyPanel"]
+position = Vector2( 133, 43 )
+scale = Vector2( 0.958333, 0.499998 )
+texture = ExtResource( 14 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 0, 0, 48, 2 )
+
+[node name="EnemyHpValueLabel" type="Label" parent="UILayer/EnemyPanel"]
+margin_left = 124.0
+margin_top = 49.0
+margin_right = 188.0
+margin_bottom = 63.0
+text = "100 / 100"
+
 [node name="PlayerPanel" type="Control" parent="UILayer"]
 anchor_left = 1.0
 anchor_top = 1.0
@@ -152,6 +168,14 @@ margin_top = 43.0
 margin_right = 214.5
 margin_bottom = 57.0
 text = "100 / 100"
+
+[node name="PlayerHpBar" type="Sprite" parent="UILayer/PlayerPanel"]
+position = Vector2( 143, 37.5 )
+scale = Vector2( 0.958333, 0.5 )
+texture = ExtResource( 14 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 0, 0, 48, 2 )
 
 [node name="MessagePanel" type="Control" parent="UILayer"]
 anchor_top = 1.0
@@ -200,7 +224,6 @@ patch_margin_right = 8
 patch_margin_bottom = 8
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UILayer/ControlsContainer"]
-margin_left = 5.0
 margin_top = 10.0
 margin_right = 134.0
 margin_bottom = 54.0

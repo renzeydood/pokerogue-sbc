@@ -23,7 +23,10 @@ static func calc_damage(attacker, move, defender) -> int:
 
 static func _to_damage_value(value: float) -> int:
 	# Match core rounding policy: floor once at end, min 1.
-	return max(1, int(floor(value)))
+	var floored_damage: int = int(floor(value))
+	if floored_damage < 1:
+		return 1
+	return floored_damage
 
 static func get_fixed_test_vectors() -> Array:
 	# Deterministic vectors for BATTLE-03B verification.
