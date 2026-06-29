@@ -4,6 +4,7 @@ export(int) var ui_font_size := 12
 export(int) var control_button_font_size := 16
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
+var battle_calc_script = load("res://logic/BattleCalc.gd")
 
 onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
 onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
@@ -24,14 +25,17 @@ onready var run_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2
 var minimal_assets_path = "res://godot-minimal-assets/"
 var sprite_atlas_json = "assets/images/pokemon/1.json"
 var sprite_frame_name = "0001.png"
+var hp_overlay_json = "assets/images/ui/overlay_hp.json"
 var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
 
 var battle_data = null
+var hp_overlay_frames := {}
 
 func _ready():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
 	apply_fonts()
 	load_battle_sprites()
+	build_hp_overlay_frames()
 	load_audio_assets()
 	bind_battle_data()
 	set_battle_text("Battle ready.")
@@ -85,12 +89,45 @@ func bind_battle_data():
 
 func refresh_hp_ui(pokemon_data, hp_bar, hp_label):
 	var max_hp = pokemon_data.get_base_stat("hp")
-	if hp_bar != null:
-		hp_bar.min_value = 0
-		hp_bar.max_value = max_hp
-		hp_bar.value = pokemon_data.current_hp
+	var hp_ratio := 0.0
+	if max_hp > 0:
+		hp_ratio = clamp(float(pokemon_data.current_hp) / float(max_hp), 0.0, 1.0)
+	update_hp_bar_sprite(hp_bar, hp_ratio)
 	if hp_label != null:
 		hp_label.text = "%d / %d" % [pokemon_data.current_hp, max_hp]
+
+func build_hp_overlay_frames():
+	hp_overlay_frames.clear()
+	var json_path = minimal_assets_path + hp_overlay_json
+	for frame_name in ["high", "medium", "low"]:
+		var sprite_info = parse_sprite_frame(json_path, frame_name)
+		if sprite_info == null:
+			continue
+		var frame = sprite_info["frame"]
+		hp_overlay_frames[frame_name] = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+
+func get_hp_frame_name(hp_ratio: float) -> String:
+	if hp_ratio > 0.5:
+		return "high"
+	if hp_ratio > 0.2:
+		return "medium"
+	return "low"
+
+func update_hp_bar_sprite(hp_bar, hp_ratio: float):
+	if hp_bar == null or not (hp_bar is Sprite):
+		return
+
+	var frame_name = get_hp_frame_name(hp_ratio)
+	if not hp_overlay_frames.has(frame_name):
+		return
+
+	var frame_rect: Rect2 = hp_overlay_frames[frame_name]
+	var visible_width = int(round(frame_rect.size.x * hp_ratio))
+	if hp_ratio > 0.0 and visible_width < 1:
+		visible_width = 1
+
+	hp_bar.region_enabled = true
+	hp_bar.region_rect = Rect2(frame_rect.position.x, frame_rect.position.y, visible_width, frame_rect.size.y)
 
 func load_battle_sprites():
 	load_sprite_for_node(enemy_pokemon_sprite, "assets/images/pokemon/1.png", "assets/images/pokemon/1.json")
@@ -143,7 +180,22 @@ func _process(_delta):
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
 func _on_MoveButton_pressed():
-	set_battle_text("Tackle is ready for BATTLE-03.")
+	var attacker = battle_data["player"]
+	var defender = battle_data["enemy"]
+	if attacker == null or defender == null:
+		set_battle_text("Battle data missing.")
+		return
+
+	if attacker.moves.empty():
+		set_battle_text("No move available.")
+		return
+
+	var move = attacker.moves[0]
+	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
+	defender.current_hp = max(0, defender.current_hp - damage)
+
+	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
+	set_battle_text("%s used %s! %d damage." % [attacker.species_id, move.move_id, damage])
 
 func _on_RestartButton_pressed():
 	battle_data = pokemon_data_script.create_battle_02_test_data()
