@@ -10,18 +10,18 @@ config_version=4
 
 _global_script_classes=[ {
 "base": "Reference",
+"class": "BattleCalc",
+"language": "GDScript",
+"path": "res://logic/BattleCalc.gd"
+}, {
+"base": "Reference",
 "class": "MoveData",
 "language": "GDScript",
 "path": "res://data/MoveData.gd"
-}, {
-"base": "Reference",
-"class": "PokemonData",
-"language": "GDScript",
-"path": "res://data/PokemonData.gd"
 } ]
 _global_script_class_icons={
-"MoveData": "",
-"PokemonData": ""
+"BattleCalc": "",
+"MoveData": ""
 }
 
 [application]
