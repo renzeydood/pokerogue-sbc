@@ -5,6 +5,10 @@ export(int) var control_button_font_size := 16
 export(float) var turn_step_delay_sec := 0.6
 export(bool) var battle_fx_enabled := true
 export(float) var pokemon_anim_frame_sec := 0.1
+export(float) var impact_shake_step_sec := 0.03
+export(float) var impact_flash_mul := 1.6
+export(float) var impact_shake_px := 2.0
+export(float) var move_anim_step_sec := 0.05
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -14,6 +18,7 @@ onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
 onready var enemy_hp_bar = get_node_or_null("UILayer/EnemyPanel/EnemyHpBar")
 onready var enemy_hp_value_label = get_node_or_null("UILayer/EnemyPanel/EnemyHpValueLabel")
 onready var enemy_pokemon_sprite = $BattlefieldLayer/EnemyLayer/EnemyPokemonSpriteBattle
+onready var effects_layer = $BattlefieldLayer/EffectsLayer
 onready var player_name_label = $UILayer/PlayerPanel/PlayerNameLabel
 onready var player_level_label = $UILayer/PlayerPanel/PlayerLevelLabel
 onready var player_hp_bar = get_node_or_null("UILayer/PlayerPanel/PlayerHpBar")
@@ -31,6 +36,29 @@ var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.
 
 var battle_data = null
 var hp_overlay_frames := {}
+var move_sfx_paths := {
+	"EMBER": "assets/audio/battle_anims/PRSFX- Ember.wav",
+	"TACKLE": "assets/audio/battle_anims/PRSFX- Tackle.wav",
+}
+var move_anim_texture_paths := {
+	"EMBER": "assets/images/battle_anims/PRAS- Fire.png",
+	"TACKLE": "assets/images/battle_anims/PRAS- Strike.png",
+}
+var move_anim_config_paths := {
+	"EMBER": "assets/battle-anims/ember.json",
+	"TACKLE": "assets/battle-anims/tackle.json",
+}
+var move_anim_textures := {}
+var move_anim_configs := {}
+var add_blend_material: CanvasItemMaterial = null
+const ANIM_FOCUS_TARGET = 1
+const ANIM_FOCUS_USER = 2
+const ANIM_FOCUS_USER_TARGET = 3
+const USER_FOCUS_X = 106.0
+const USER_FOCUS_Y = 116.0
+const TARGET_FOCUS_X = 234.0
+const TARGET_FOCUS_Y = 52.0
+const MOVE_SHEET_FRAME_SIZE = 96
 var battle_ended := false
 var turn_in_progress := false
 var turn_token := 0
@@ -47,7 +75,12 @@ func _ready():
 	load_battle_sprites()
 	build_hp_overlay_frames()
 	load_audio_assets()
+	load_move_anim_textures()
+	load_move_anim_configs()
 	reset_battle_state("Battle ready.")
+
+	add_blend_material = CanvasItemMaterial.new()
+	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 
 	if not InputMap.has_action("ui_select"):
 		InputMap.add_action("ui_select")
@@ -179,10 +212,22 @@ func _on_MoveButton_pressed():
 		return
 
 	var move = attacker.moves[0]
+	var player_move_anim = play_move_animation(move.move_id, player_pokemon_sprite, enemy_pokemon_sprite, active_turn_token)
+	if player_move_anim is GDScriptFunctionState:
+		yield(player_move_anim, "completed")
+		if active_turn_token != turn_token:
+			return
+
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
 	defender.current_hp = max(0, defender.current_hp - damage)
 
 	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
+	var player_hit_feedback = play_hit_feedback(enemy_pokemon_sprite, active_turn_token)
+	if player_hit_feedback is GDScriptFunctionState:
+		yield(player_hit_feedback, "completed")
+		if active_turn_token != turn_token:
+			return
+
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move.move_id, damage]
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
@@ -201,9 +246,20 @@ func _on_MoveButton_pressed():
 		return
 
 	var enemy_move = defender.moves[0]
+	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
+	if enemy_move_anim is GDScriptFunctionState:
+		yield(enemy_move_anim, "completed")
+		if active_turn_token != turn_token:
+			return
+
 	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
 	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
+	if enemy_hit_feedback is GDScriptFunctionState:
+		yield(enemy_hit_feedback, "completed")
+		if active_turn_token != turn_token:
+			return
 
 	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
 	set_battle_text(enemy_message)
@@ -278,6 +334,283 @@ func update_run_button_label():
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
+
+func load_move_anim_textures():
+	move_anim_textures.clear()
+	var f = File.new()
+	for move_id in move_anim_texture_paths.keys():
+		var rel_path = String(move_anim_texture_paths[move_id])
+		var abs_path = minimal_assets_path + rel_path
+		if f.file_exists(abs_path):
+			move_anim_textures[move_id] = load(abs_path)
+
+func load_move_anim_configs():
+	move_anim_configs.clear()
+	var f = File.new()
+	for move_id in move_anim_config_paths.keys():
+		var rel_path = String(move_anim_config_paths[move_id])
+		var abs_path = minimal_assets_path + rel_path
+		if not f.file_exists(abs_path):
+			continue
+
+		f.open(abs_path, File.READ)
+		var json_text = f.get_as_text()
+		f.close()
+
+		var parsed = JSON.parse(json_text)
+		if parsed.error != OK:
+			continue
+		if parsed.result == null:
+			continue
+
+		move_anim_configs[move_id] = parsed.result
+
+func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_sprite: Sprite, active_turn_token: int):
+	if not battle_fx_enabled:
+		return null
+	if attacker_sprite == null or defender_sprite == null:
+		return null
+	if effects_layer == null:
+		return null
+	if not move_anim_textures.has(move_id):
+		return null
+	if not move_anim_configs.has(move_id):
+		play_move_sfx(move_id)
+		return null
+
+	var anim_config = move_anim_configs[move_id]
+	var anim_frames = anim_config.get("frames", [])
+	if anim_frames.empty():
+		play_move_sfx(move_id)
+		return null
+
+	var effect = Sprite.new()
+	effect.texture = move_anim_textures[move_id]
+	effect.region_enabled = true
+	effect.centered = true
+	effect.z_index = 10
+	effects_layer.add_child(effect)
+
+	var user_x = attacker_sprite.position.x
+	var user_y = attacker_sprite.position.y
+	var target_x = defender_sprite.position.x
+	var target_y = defender_sprite.position.y
+	var user_half_h = get_sprite_half_height(attacker_sprite)
+	var target_half_h = get_sprite_half_height(defender_sprite)
+	var timed_events = anim_config.get("frameTimedEvents", {})
+	var played_timed_sound = false
+
+	for frame_idx in range(anim_frames.size()):
+		if active_turn_token != turn_token:
+			effect.queue_free()
+			return null
+
+		var frame_entries = anim_frames[frame_idx]
+		var graphic_entry = null
+		for frame_entry in frame_entries:
+			if int(frame_entry.get("target", 0)) == 2:
+				graphic_entry = frame_entry
+				break
+
+		if graphic_entry != null:
+			apply_move_graphic_frame(
+				effect,
+				graphic_entry,
+				user_x,
+				user_y,
+				target_x,
+				target_y,
+				user_half_h,
+				target_half_h
+			)
+
+		var frame_events = timed_events.get(str(frame_idx), [])
+		for evt in frame_events:
+			if String(evt.get("eventType", "")) == "AnimTimedSoundEvent":
+				play_anim_event_sound(String(evt.get("resourceName", "")))
+				played_timed_sound = true
+
+		yield(get_tree().create_timer(move_anim_step_sec), "timeout")
+
+	if not played_timed_sound:
+		play_move_sfx(move_id)
+
+	effect.queue_free()
+	return null
+
+func apply_move_graphic_frame(
+	effect: Sprite,
+	frame_entry: Dictionary,
+	user_x: float,
+	user_y: float,
+	target_x: float,
+	target_y: float,
+	user_half_h: float,
+	target_half_h: float
+):
+	if effect == null:
+		return
+
+	var frame_x = float(frame_entry.get("x", 0.0)) + USER_FOCUS_X
+	var frame_y = float(frame_entry.get("y", 0.0)) + USER_FOCUS_Y
+	var focus = int(frame_entry.get("focus", ANIM_FOCUS_TARGET))
+
+	if focus == ANIM_FOCUS_TARGET:
+		frame_x += target_x - TARGET_FOCUS_X
+		frame_y += target_y - target_half_h - TARGET_FOCUS_Y
+	elif focus == ANIM_FOCUS_USER:
+		frame_x += user_x - USER_FOCUS_X
+		frame_y += user_y - user_half_h - USER_FOCUS_Y
+	elif focus == ANIM_FOCUS_USER_TARGET:
+		var mapped = transform_anim_point(
+			USER_FOCUS_X,
+			USER_FOCUS_Y,
+			TARGET_FOCUS_X,
+			TARGET_FOCUS_Y,
+			user_x,
+			user_y - user_half_h,
+			target_x,
+			target_y - target_half_h,
+			frame_x,
+			frame_y
+		)
+		frame_x = mapped.x
+		frame_y = mapped.y
+
+	var zoom_x = float(frame_entry.get("zoomX", 100.0)) / 100.0
+	var zoom_y = float(frame_entry.get("zoomY", 100.0)) / 100.0
+	if bool(frame_entry.get("mirror", false)):
+		zoom_x *= -1.0
+
+	var frame_idx = int(frame_entry.get("graphicFrame", 0))
+	set_effect_frame_region(effect, frame_idx)
+	effect.position = Vector2(frame_x, frame_y)
+	effect.rotation_degrees = -float(frame_entry.get("angle", 0.0))
+	effect.scale = Vector2(zoom_x, zoom_y)
+	effect.visible = bool(frame_entry.get("visible", true))
+	effect.modulate = Color(1, 1, 1, float(frame_entry.get("opacity", 255)) / 255.0)
+
+	if int(frame_entry.get("blendType", 0)) == 1 and add_blend_material != null:
+		effect.material = add_blend_material
+	else:
+		effect.material = null
+
+func set_effect_frame_region(effect: Sprite, frame_idx: int):
+	if effect == null or effect.texture == null:
+		return
+
+	var tex_w = int(effect.texture.get_size().x)
+	if tex_w <= 0:
+		return
+
+	var cols = max(1, tex_w / MOVE_SHEET_FRAME_SIZE)
+	var col = frame_idx % cols
+	var row = frame_idx / cols
+	effect.region_rect = Rect2(
+		float(col * MOVE_SHEET_FRAME_SIZE),
+		float(row * MOVE_SHEET_FRAME_SIZE),
+		MOVE_SHEET_FRAME_SIZE,
+		MOVE_SHEET_FRAME_SIZE
+	)
+
+func get_sprite_half_height(sprite_node: Sprite) -> float:
+	if sprite_node == null:
+		return 0.0
+
+	if sprite_node.region_enabled:
+		return float(sprite_node.region_rect.size.y) * abs(sprite_node.scale.y) * 0.5
+	if sprite_node.texture == null:
+		return 0.0
+	return float(sprite_node.texture.get_size().y) * abs(sprite_node.scale.y) * 0.5
+
+func transform_anim_point(
+	src_x1: float,
+	src_y1: float,
+	src_x2: float,
+	src_y2: float,
+	dst_x1: float,
+	dst_y1: float,
+	dst_x2: float,
+	dst_y2: float,
+	px: float,
+	py: float
+) -> Vector2:
+	var t = y_axis_intersect(src_x1, src_y1, src_x2, src_y2, px, py)
+	return reposition_y(dst_x1, dst_y1, dst_x2, dst_y2, t.x, t.y)
+
+func y_axis_intersect(x1: float, y1: float, x2: float, y2: float, px: float, py: float) -> Vector2:
+	var dx = x2 - x1
+	var dy = y2 - y1
+	var tx = 0.0 if dx == 0.0 else (px - x1) / dx
+	var ty = 0.0 if dy == 0.0 else (py - y1) / dy
+	return Vector2(tx, ty)
+
+func reposition_y(x1: float, y1: float, x2: float, y2: float, tx: float, ty: float) -> Vector2:
+	var dx = x2 - x1
+	var dy = y2 - y1
+	return Vector2(x1 + tx * dx, y1 + ty * dy)
+
+func play_anim_event_sound(resource_name: String):
+	if not battle_fx_enabled:
+		return
+
+	var file_name = resource_name.strip_edges()
+	if file_name.empty():
+		return
+
+	var sfx_path = minimal_assets_path + "assets/audio/battle_anims/" + file_name
+	var f = File.new()
+	if not f.file_exists(sfx_path):
+		play_move_sfx("")
+		return
+
+	$UIAudioStreamPlayer.stream = load(sfx_path)
+	$UIAudioStreamPlayer.play()
+
+func play_move_sfx(move_id: String):
+	if not battle_fx_enabled:
+		return
+
+	var sfx_relative_path = String(move_sfx_paths.get(move_id, "assets/audio/ui/select.wav"))
+	var sfx_path = minimal_assets_path + sfx_relative_path
+	var f = File.new()
+	if not f.file_exists(sfx_path):
+		sfx_path = minimal_assets_path + "assets/audio/ui/select.wav"
+		if not f.file_exists(sfx_path):
+			return
+
+	$UIAudioStreamPlayer.stream = load(sfx_path)
+	$UIAudioStreamPlayer.play()
+
+func play_hit_feedback(target_sprite: Sprite, active_turn_token: int):
+	if not battle_fx_enabled:
+		return null
+	if target_sprite == null:
+		return null
+
+	var original_pos = target_sprite.position
+	var original_modulate = target_sprite.modulate
+	var flash_color = Color(impact_flash_mul, impact_flash_mul, impact_flash_mul, original_modulate.a)
+	target_sprite.modulate = flash_color
+
+	var shake_offsets = [
+		Vector2(impact_shake_px, 0),
+		Vector2(-impact_shake_px, 0),
+		Vector2(impact_shake_px * 0.5, 0),
+		Vector2.ZERO,
+	]
+
+	for offset in shake_offsets:
+		target_sprite.position = original_pos + offset
+		yield(get_tree().create_timer(impact_shake_step_sec), "timeout")
+		if active_turn_token != turn_token:
+			target_sprite.position = original_pos
+			target_sprite.modulate = original_modulate
+			return null
+
+	target_sprite.position = original_pos
+	target_sprite.modulate = original_modulate
+	return null
 
 func parse_sprite_frame(json_path: String, frame_name: String):
 	var frames = parse_all_sprite_frames(json_path)
