@@ -35,6 +35,7 @@ onready var run_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
 var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
+var debug_log_path = "user://battle_debug.log"
 
 var battle_data = null
 var hp_overlay_frames := {}
@@ -76,6 +77,8 @@ var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
 
 func _ready():
+	log_debug("Battle scene ready")
+	log_debug("Using minimal assets path: %s" % minimal_assets_path)
 	apply_fonts()
 	update_run_button_label()
 	load_battle_sprites()
@@ -89,12 +92,23 @@ func _ready():
 
 	add_blend_material = CanvasItemMaterial.new()
 	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	setup_keyboard_controls()
 
-	if not InputMap.has_action("ui_select"):
-		InputMap.add_action("ui_select")
-		var ev = InputEventKey.new()
-		ev.scancode = KEY_S
-		InputMap.action_add_event("ui_select", ev)
+func log_debug(message: String):
+	var f = File.new()
+	var open_error = f.open(debug_log_path, File.READ_WRITE)
+	if open_error != OK:
+		return
+	f.seek_end()
+	f.store_line("[%s] %s" % [str(OS.get_unix_time()), message])
+	f.close()
+
+func resource_exists(path: String) -> bool:
+	# In exported builds, imported resources may not be visible to File.file_exists.
+	if ResourceLoader.exists(path):
+		return true
+	var f = File.new()
+	return f.file_exists(path)
 
 func make_font(path: String, size: int) -> DynamicFont:
 	var font = DynamicFont.new()
@@ -105,8 +119,8 @@ func make_font(path: String, size: int) -> DynamicFont:
 	return font
 
 func apply_fonts():
-	var f = File.new()
-	if not f.file_exists(ui_font_path):
+	if not resource_exists(ui_font_path):
+		log_debug("Missing UI font resource: %s" % ui_font_path)
 		return
 
 	var ui_font = make_font(ui_font_path, ui_font_size)
@@ -181,19 +195,49 @@ func update_hp_bar_sprite(hp_bar, hp_ratio: float):
 
 func load_audio_assets():
 	var bgm_path = minimal_assets_path + "assets/audio/bgm/title.mp3"
-	var f = File.new()
-	if f.file_exists(bgm_path):
+	if resource_exists(bgm_path):
 		$AudioStreamPlayer.stream = load(bgm_path)
+	else:
+		log_debug("Missing BGM resource: %s" % bgm_path)
 
 	var select_path = minimal_assets_path + "assets/audio/ui/select.wav"
-	if f.file_exists(select_path):
+	if resource_exists(select_path):
 		$UIAudioStreamPlayer.stream = load(select_path)
+	else:
+		log_debug("Missing UI SFX resource: %s" % select_path)
 
 func _process(_delta):
 	update_pokemon_animations(_delta)
 
-	if Input.is_action_just_pressed("ui_accept") and not turn_in_progress and not battle_ended:
+	if Input.is_action_just_pressed("ui_accept") and get_focus_owner() == null and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
+
+func _unhandled_input(event):
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+
+	if event.is_action_pressed("ui_left"):
+		move_button_focus("ui_left")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_right"):
+		move_button_focus("ui_right")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_up"):
+		move_button_focus("ui_up")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_down"):
+		move_button_focus("ui_down")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_accept"):
+		press_focused_button()
+		accept_event()
+		return
 
 func _on_MoveButton_pressed():
 	if battle_ended:
@@ -320,6 +364,9 @@ func set_action_lock(locked: bool):
 	move_button.disabled = locked
 	pokemon_button.disabled = locked
 	run_button.disabled = locked
+	ball_button.disabled = locked and battle_ended == false
+	if not locked and not battle_ended:
+		ensure_button_focus()
 
 func _finish_turn():
 	turn_in_progress = false
@@ -329,6 +376,8 @@ func _finish_turn():
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
 	set_action_lock(true)
+	ball_button.disabled = false
+	ball_button.grab_focus()
 	var result_text = "You win!" if player_won else "You lose!"
 	set_battle_text("%s fainted! %s Press Ball to restart." % [fainted_species_id, result_text])
 
@@ -340,12 +389,89 @@ func reset_battle_state(message: String):
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
 	set_action_lock(false)
+	ball_button.disabled = false
 	update_run_button_label()
 	bind_battle_data()
 	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
+	ensure_button_focus()
 	set_battle_text(message)
+
+func setup_keyboard_controls():
+	ensure_input_action_key("ui_left", KEY_LEFT)
+	ensure_input_action_key("ui_right", KEY_RIGHT)
+	ensure_input_action_key("ui_up", KEY_UP)
+	ensure_input_action_key("ui_down", KEY_DOWN)
+	ensure_input_action_key("ui_accept", KEY_SPACE)
+
+	move_button.focus_mode = Control.FOCUS_ALL
+	ball_button.focus_mode = Control.FOCUS_ALL
+	pokemon_button.focus_mode = Control.FOCUS_ALL
+	run_button.focus_mode = Control.FOCUS_ALL
+
+func ensure_input_action_key(action_name: String, key_code: int):
+	if not InputMap.has_action(action_name):
+		InputMap.add_action(action_name)
+
+	for ev in InputMap.get_action_list(action_name):
+		if ev is InputEventKey and ev.scancode == key_code:
+			return
+
+	var new_event = InputEventKey.new()
+	new_event.scancode = key_code
+	InputMap.action_add_event(action_name, new_event)
+
+func ensure_button_focus():
+	var focus_owner = get_focus_owner()
+	if focus_owner == move_button or focus_owner == ball_button or focus_owner == pokemon_button or focus_owner == run_button:
+		return
+	if battle_ended:
+		ball_button.grab_focus()
+	else:
+		move_button.grab_focus()
+
+func move_button_focus(action_name: String):
+	ensure_button_focus()
+	var focus_owner = get_focus_owner()
+	if focus_owner == null:
+		return
+
+	if action_name == "ui_left":
+		if focus_owner == ball_button:
+			move_button.grab_focus()
+		elif focus_owner == run_button:
+			pokemon_button.grab_focus()
+		return
+
+	if action_name == "ui_right":
+		if focus_owner == move_button:
+			ball_button.grab_focus()
+		elif focus_owner == pokemon_button:
+			run_button.grab_focus()
+		return
+
+	if action_name == "ui_up":
+		if focus_owner == pokemon_button:
+			move_button.grab_focus()
+		elif focus_owner == run_button:
+			ball_button.grab_focus()
+		return
+
+	if action_name == "ui_down":
+		if focus_owner == move_button:
+			pokemon_button.grab_focus()
+		elif focus_owner == ball_button:
+			run_button.grab_focus()
+		return
+
+func press_focused_button():
+	ensure_button_focus()
+	var focus_owner = get_focus_owner()
+	if focus_owner == null:
+		return
+	if focus_owner is Button and not focus_owner.disabled:
+		focus_owner.emit_signal("pressed")
 
 func update_run_button_label():
 	if run_button == null:
@@ -359,12 +485,13 @@ func set_battle_text(message: String):
 
 func load_move_anim_textures():
 	move_anim_textures.clear()
-	var f = File.new()
 	for move_id in move_anim_texture_paths.keys():
 		var rel_path = String(move_anim_texture_paths[move_id])
 		var abs_path = minimal_assets_path + rel_path
-		if f.file_exists(abs_path):
+		if resource_exists(abs_path):
 			move_anim_textures[move_id] = load(abs_path)
+		else:
+			log_debug("Missing move anim texture: %s" % abs_path)
 
 func load_move_anim_configs():
 	move_anim_configs.clear()
@@ -581,8 +708,8 @@ func play_anim_event_sound(resource_name: String):
 		return
 
 	var sfx_path = minimal_assets_path + "assets/audio/battle_anims/" + file_name
-	var f = File.new()
-	if not f.file_exists(sfx_path):
+	if not resource_exists(sfx_path):
+		log_debug("Missing timed anim SFX: %s" % sfx_path)
 		play_move_sfx("")
 		return
 
@@ -595,10 +722,11 @@ func play_move_sfx(move_id: String):
 
 	var sfx_relative_path = String(move_sfx_paths.get(move_id, "assets/audio/ui/select.wav"))
 	var sfx_path = minimal_assets_path + sfx_relative_path
-	var f = File.new()
-	if not f.file_exists(sfx_path):
+	if not resource_exists(sfx_path):
+		log_debug("Missing move SFX resource: %s" % sfx_path)
 		sfx_path = minimal_assets_path + "assets/audio/ui/select.wav"
-		if not f.file_exists(sfx_path):
+		if not resource_exists(sfx_path):
+			log_debug("Missing fallback select SFX: %s" % sfx_path)
 			return
 
 	$UIAudioStreamPlayer.stream = load(sfx_path)
@@ -692,6 +820,7 @@ func parse_sprite_frame(json_path: String, frame_name: String):
 func parse_all_sprite_frames(json_path: String) -> Array:
 	var f = File.new()
 	if not f.file_exists(json_path):
+		log_debug("Missing atlas json: %s" % json_path)
 		return []
 
 	f.open(json_path, File.READ)
@@ -700,18 +829,22 @@ func parse_all_sprite_frames(json_path: String) -> Array:
 
 	var result = JSON.parse(json_text)
 	if result.error != OK:
+		log_debug("JSON parse failed: %s" % json_path)
 		return []
 
 	var data = result.result
 	if not data.has("textures"):
+		log_debug("Atlas missing textures key: %s" % json_path)
 		return []
 
 	var textures = data["textures"]
 	if textures.size() == 0:
+		log_debug("Atlas textures list empty: %s" % json_path)
 		return []
 
 	var frames = textures[0].get("frames", null)
 	if frames == null:
+		log_debug("Atlas has no frames: %s" % json_path)
 		return []
 
 	return frames
@@ -761,8 +894,9 @@ func load_battle_sprites():
 func load_sprite_for_node(sprite_node: Sprite, sprite_relative_path: String, atlas_json: String) -> Array:
 	var sprite_path = minimal_assets_path + sprite_relative_path
 	var json_path = minimal_assets_path + atlas_json
-	var f = File.new()
-	if not f.file_exists(sprite_path):
+	if not resource_exists(sprite_path):
+		push_warning("Missing sprite texture: %s" % sprite_path)
+		log_debug("Missing sprite texture: %s" % sprite_path)
 		return []
 
 	sprite_node.texture = load(sprite_path)
@@ -778,8 +912,13 @@ func load_sprite_for_node(sprite_node: Sprite, sprite_relative_path: String, atl
 
 	if not loaded_frames.empty():
 		apply_sprite_frame(sprite_node, loaded_frames[0])
+		log_debug("Loaded sprite atlas: %s frames=%d" % [json_path, loaded_frames.size()])
 	else:
-		sprite_node.region_rect = Rect2(0, 0, 64, 64)
+		# If atlas metadata is unavailable in export, render full texture so battlers stay visible.
+		sprite_node.region_enabled = false
+		sprite_node.offset = Vector2.ZERO
+		push_warning("Missing atlas JSON or frames: %s" % json_path)
+		log_debug("Missing atlas JSON or frames, full-texture fallback: %s" % json_path)
 
 	return loaded_frames
 
