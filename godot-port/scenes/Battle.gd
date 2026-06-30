@@ -4,6 +4,7 @@ export(int) var ui_font_size := 12
 export(int) var control_button_font_size := 16
 export(float) var turn_step_delay_sec := 0.6
 export(bool) var battle_fx_enabled := true
+export(float) var pokemon_anim_frame_sec := 0.1
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -25,8 +26,6 @@ onready var pokemon_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPa
 onready var run_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton
 
 var minimal_assets_path = "res://godot-minimal-assets/"
-var sprite_atlas_json = "assets/images/pokemon/1.json"
-var sprite_frame_name = "0001.png"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
 var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
 
@@ -35,6 +34,12 @@ var hp_overlay_frames := {}
 var battle_ended := false
 var turn_in_progress := false
 var turn_token := 0
+var player_sprite_frames := []
+var enemy_sprite_frames := []
+var player_anim_index := 0
+var enemy_anim_index := 0
+var player_anim_elapsed := 0.0
+var enemy_anim_elapsed := 0.0
 
 func _ready():
 	apply_fonts()
@@ -133,42 +138,6 @@ func update_hp_bar_sprite(hp_bar, hp_ratio: float):
 	hp_bar.region_enabled = true
 	hp_bar.region_rect = Rect2(frame_rect.position.x, frame_rect.position.y, visible_width, frame_rect.size.y)
 
-func load_battle_sprites():
-	load_sprite_for_node(enemy_pokemon_sprite, "assets/images/pokemon/1.png", "assets/images/pokemon/1.json")
-	load_sprite_for_node(player_pokemon_sprite, "assets/images/pokemon/back/4.png", "assets/images/pokemon/back/4.json")
-
-func load_sprite_for_node(sprite_node: Sprite, sprite_relative_path: String, atlas_json: String):
-	var sprite_path = minimal_assets_path + sprite_relative_path
-	var json_path = minimal_assets_path + atlas_json
-	var f = File.new()
-	if not f.file_exists(sprite_path):
-		return
-
-	sprite_node.texture = load(sprite_path)
-	sprite_node.centered = true
-	sprite_node.region_enabled = true
-	sprite_node.offset = Vector2.ZERO
-
-	var frame_rect = Rect2(0, 0, 64, 64)
-	var sprite_info = parse_sprite_frame(json_path, sprite_frame_name)
-	if sprite_info != null:
-		var frame = sprite_info["frame"]
-		frame_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
-		sprite_node.region_rect = frame_rect
-
-		var sprite_source_size = sprite_info.get("spriteSourceSize", null)
-		var source_size = sprite_info.get("sourceSize", null)
-		if sprite_source_size != null and source_size != null:
-			var trimmed_cx = sprite_source_size["x"] + frame["w"] / 2.0
-			var trimmed_cy = sprite_source_size["y"] + frame["h"] / 2.0
-			var orig_cx = source_size["w"] / 2.0
-			var orig_cy = source_size["h"] / 2.0
-			sprite_node.offset = Vector2(orig_cx - trimmed_cx, orig_cy - trimmed_cy)
-		elif sprite_source_size != null:
-			sprite_node.offset = Vector2(sprite_source_size["x"], sprite_source_size["y"])
-	else:
-		sprite_node.region_rect = frame_rect
-
 func load_audio_assets():
 	var bgm_path = minimal_assets_path + "assets/audio/bgm/title.mp3"
 	var f = File.new()
@@ -180,12 +149,14 @@ func load_audio_assets():
 		$UIAudioStreamPlayer.stream = load(select_path)
 
 func _process(_delta):
+	update_pokemon_animations(_delta)
+
 	if Input.is_action_just_pressed("ui_accept") and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
 func _on_MoveButton_pressed():
 	if battle_ended:
-		set_battle_text("Battle has ended. Press Ball or Run to restart.")
+		set_battle_text("Battle has ended. Press Ball to restart.")
 		return
 
 	if turn_in_progress:
@@ -266,6 +237,7 @@ func _on_RunButton_pressed():
 		return
 
 	battle_fx_enabled = not battle_fx_enabled
+	reset_pokemon_animation_state()
 	update_run_button_label()
 	var state_text = "ON" if battle_fx_enabled else "OFF"
 	set_battle_text("Battle FX toggled %s." % state_text)
@@ -294,6 +266,7 @@ func reset_battle_state(message: String):
 	set_action_lock(false)
 	update_run_button_label()
 	bind_battle_data()
+	reset_pokemon_animation_state()
 	set_battle_text(message)
 
 func update_run_button_label():
@@ -307,28 +280,8 @@ func set_battle_text(message: String):
 	battle_text_label.text = message
 
 func parse_sprite_frame(json_path: String, frame_name: String):
-	var f = File.new()
-	if not f.file_exists(json_path):
-		return null
-
-	f.open(json_path, File.READ)
-	var json_text = f.get_as_text()
-	f.close()
-
-	var result = JSON.parse(json_text)
-	if result.error != OK:
-		return null
-
-	var data = result.result
-	if not data.has("textures"):
-		return null
-
-	var textures = data["textures"]
-	if textures.size() == 0:
-		return null
-
-	var frames = textures[0].get("frames", null)
-	if frames == null:
+	var frames = parse_all_sprite_frames(json_path)
+	if frames.empty():
 		return null
 
 	for frame in frames:
@@ -336,3 +289,151 @@ func parse_sprite_frame(json_path: String, frame_name: String):
 			return frame
 
 	return null
+
+func parse_all_sprite_frames(json_path: String) -> Array:
+	var f = File.new()
+	if not f.file_exists(json_path):
+		return []
+
+	f.open(json_path, File.READ)
+	var json_text = f.get_as_text()
+	f.close()
+
+	var result = JSON.parse(json_text)
+	if result.error != OK:
+		return []
+
+	var data = result.result
+	if not data.has("textures"):
+		return []
+
+	var textures = data["textures"]
+	if textures.size() == 0:
+		return []
+
+	var frames = textures[0].get("frames", null)
+	if frames == null:
+		return []
+
+	return frames
+
+func get_all_numeric_frames(json_path: String) -> Array:
+	var frames = parse_all_sprite_frames(json_path)
+	if frames.empty():
+		return []
+
+	var indexed := []
+	for frame in frames:
+		if frame == null or not frame.has("filename"):
+			continue
+		var filename = String(frame["filename"])
+		if filename.length() != 8:
+			continue
+		if not filename.ends_with(".png"):
+			continue
+		var frame_num_text = filename.substr(0, 4)
+		if not frame_num_text.is_valid_integer():
+			continue
+		indexed.append({
+			"index": int(frame_num_text),
+			"frame": frame,
+		})
+
+	indexed.sort_custom(self, "_sort_frame_dicts")
+
+	var result := []
+	for item in indexed:
+		result.append(item["frame"])
+
+	return result
+
+func _sort_frame_dicts(a: Dictionary, b: Dictionary) -> bool:
+	return int(a["index"]) < int(b["index"])
+
+func load_battle_sprites():
+	var enemy_texture_path = "assets/images/pokemon/1.png"
+	var enemy_json_path = "assets/images/pokemon/1.json"
+	var player_texture_path = "assets/images/pokemon/back/4.png"
+	var player_json_path = "assets/images/pokemon/back/4.json"
+
+	enemy_sprite_frames = load_sprite_for_node(enemy_pokemon_sprite, enemy_texture_path, enemy_json_path)
+	player_sprite_frames = load_sprite_for_node(player_pokemon_sprite, player_texture_path, player_json_path)
+
+func load_sprite_for_node(sprite_node: Sprite, sprite_relative_path: String, atlas_json: String) -> Array:
+	var sprite_path = minimal_assets_path + sprite_relative_path
+	var json_path = minimal_assets_path + atlas_json
+	var f = File.new()
+	if not f.file_exists(sprite_path):
+		return []
+
+	sprite_node.texture = load(sprite_path)
+	sprite_node.centered = true
+	sprite_node.region_enabled = true
+	sprite_node.offset = Vector2.ZERO
+
+	var loaded_frames = get_all_numeric_frames(json_path)
+	if loaded_frames.empty():
+		var fallback_frame = parse_sprite_frame(json_path, "0001.png")
+		if fallback_frame != null:
+			loaded_frames.append(fallback_frame)
+
+	if not loaded_frames.empty():
+		apply_sprite_frame(sprite_node, loaded_frames[0])
+	else:
+		sprite_node.region_rect = Rect2(0, 0, 64, 64)
+
+	return loaded_frames
+
+func apply_sprite_frame(sprite_node: Sprite, sprite_info: Dictionary):
+	if sprite_node == null or sprite_info == null:
+		return
+
+	var frame = sprite_info["frame"]
+	sprite_node.region_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+
+	var sprite_source_size = sprite_info.get("spriteSourceSize", null)
+	var source_size = sprite_info.get("sourceSize", null)
+	if sprite_source_size != null and source_size != null:
+		var trimmed_cx = sprite_source_size["x"] + frame["w"] / 2.0
+		var trimmed_cy = sprite_source_size["y"] + frame["h"] / 2.0
+		var orig_cx = source_size["w"] / 2.0
+		var orig_cy = source_size["h"] / 2.0
+		sprite_node.offset = Vector2(orig_cx - trimmed_cx, orig_cy - trimmed_cy)
+	elif sprite_source_size != null:
+		sprite_node.offset = Vector2(sprite_source_size["x"], sprite_source_size["y"])
+	else:
+		sprite_node.offset = Vector2.ZERO
+
+func reset_pokemon_animation_state():
+	player_anim_index = 0
+	enemy_anim_index = 0
+	player_anim_elapsed = 0.0
+	enemy_anim_elapsed = 0.0
+
+	if not player_sprite_frames.empty():
+		apply_sprite_frame(player_pokemon_sprite, player_sprite_frames[0])
+	if not enemy_sprite_frames.empty():
+		apply_sprite_frame(enemy_pokemon_sprite, enemy_sprite_frames[0])
+
+func update_pokemon_animations(delta: float):
+	if not battle_fx_enabled:
+		return
+
+	if pokemon_anim_frame_sec <= 0.0:
+		return
+
+	# Player: loop sequence continuously.
+	if player_sprite_frames.size() > 1:
+		player_anim_elapsed += delta
+		while player_anim_elapsed >= pokemon_anim_frame_sec:
+			player_anim_elapsed -= pokemon_anim_frame_sec
+			player_anim_index = (player_anim_index + 1) % player_sprite_frames.size()
+			apply_sprite_frame(player_pokemon_sprite, player_sprite_frames[player_anim_index])
+
+	# Enemy: loop sequence continuously.
+	if enemy_sprite_frames.size() > 1:
+		enemy_anim_elapsed += delta
+		while enemy_anim_elapsed >= pokemon_anim_frame_sec:
+			enemy_anim_elapsed -= pokemon_anim_frame_sec
+			enemy_anim_index = (enemy_anim_index + 1) % enemy_sprite_frames.size()
+			apply_sprite_frame(enemy_pokemon_sprite, enemy_sprite_frames[enemy_anim_index])
