@@ -14,8 +14,9 @@ var base_stats := {
 }
 var current_hp: int
 var moves: Array = []
+var types: Array = []
 
-func _init(p_species_id: String, p_base_stats: Dictionary, p_level: int = 5, p_current_hp: int = -1, p_moves: Array = []) -> void:
+func _init(p_species_id: String, p_base_stats: Dictionary, p_level: int = 5, p_current_hp: int = -1, p_moves: Array = [], p_types: Array = []) -> void:
 	species_id = p_species_id
 	base_stats = p_base_stats.duplicate(true)
 	level = p_level
@@ -23,6 +24,10 @@ func _init(p_species_id: String, p_base_stats: Dictionary, p_level: int = 5, p_c
 	if current_hp < 0:
 		current_hp = get_base_stat("hp")
 	moves = p_moves.duplicate(true)
+	types = p_types.duplicate(true)
+
+func get_types() -> Array:
+	return types.duplicate(true)
 
 func get_base_stat(stat_name: String) -> int:
 	return int(base_stats.get(stat_name, 0))
@@ -54,8 +59,8 @@ static func create_battle_02_test_data() -> Dictionary:
 	var bulbasaur_move = MoveData.new("TACKLE", 40, "NORMAL", MoveData.CATEGORY_PHYSICAL)
 	var charmander_move = MoveData.new("EMBER", 40, "FIRE", MoveData.CATEGORY_SPECIAL)
 
-	var bulbasaur = pokemon_data_script.new("BULBASAUR", bulbasaur_stats, 5, -1, [bulbasaur_move])
-	var charmander = pokemon_data_script.new("CHARMANDER", charmander_stats, 5, -1, [charmander_move])
+	var bulbasaur = pokemon_data_script.new("BULBASAUR", bulbasaur_stats, 5, -1, [bulbasaur_move], ["GRASS", "POISON"])
+	var charmander = pokemon_data_script.new("CHARMANDER", charmander_stats, 5, -1, [charmander_move], ["FIRE"])
 
 	return {
 		"player": bulbasaur,
