@@ -126,6 +126,16 @@ margin_right = 188.0
 margin_bottom = 63.0
 text = "100 / 100"
 
+[node name="EnemyType1Sprite" type="Sprite" parent="UILayer/EnemyPanel"]
+position = Vector2( 189, 24.5 )
+centered = false
+region_enabled = true
+
+[node name="EnemyType2Sprite" type="Sprite" parent="UILayer/EnemyPanel"]
+position = Vector2( 189, 36.5 )
+centered = false
+region_enabled = true
+
 [node name="PlayerPanel" type="Control" parent="UILayer"]
 anchor_left = 1.0
 anchor_top = 1.0
@@ -177,6 +187,16 @@ centered = false
 region_enabled = true
 region_rect = Rect2( 0, 0, 48, 2 )
 
+[node name="PlayerType1Sprite" type="Sprite" parent="UILayer/PlayerPanel"]
+position = Vector2( 64, 26 )
+centered = false
+region_enabled = true
+
+[node name="PlayerType2Sprite" type="Sprite" parent="UILayer/PlayerPanel"]
+position = Vector2( 64, 38 )
+centered = false
+region_enabled = true
+
 [node name="MessagePanel" type="Control" parent="UILayer"]
 anchor_top = 1.0
 anchor_right = 1.0
@@ -202,6 +222,7 @@ margin_top = 19.0
 margin_right = 176.0
 margin_bottom = 33.0
 text = "Battle ready."
+autowrap = true
 
 [node name="ControlsContainer" type="CenterContainer" parent="UILayer"]
 anchor_top = 1.0

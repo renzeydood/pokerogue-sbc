@@ -19,12 +19,16 @@ onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
 onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
 onready var enemy_hp_bar = get_node_or_null("UILayer/EnemyPanel/EnemyHpBar")
 onready var enemy_hp_value_label = get_node_or_null("UILayer/EnemyPanel/EnemyHpValueLabel")
+onready var enemy_type1_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType1Sprite")
+onready var enemy_type2_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType2Sprite")
 onready var enemy_pokemon_sprite = $BattlefieldLayer/EnemyLayer/EnemyPokemonSpriteBattle
 onready var effects_layer = $BattlefieldLayer/EffectsLayer
 onready var player_name_label = $UILayer/PlayerPanel/PlayerNameLabel
 onready var player_level_label = $UILayer/PlayerPanel/PlayerLevelLabel
 onready var player_hp_bar = get_node_or_null("UILayer/PlayerPanel/PlayerHpBar")
 onready var player_hp_value_label = $UILayer/PlayerPanel/PlayerHpValueLabel
+onready var player_type1_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType1Sprite")
+onready var player_type2_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType2Sprite")
 onready var player_pokemon_sprite = $BattlefieldLayer/PlayerLayer/PlayerPokemonSprite
 onready var battle_text_label = $UILayer/MessagePanel/MessageMargin/BattleTextLabel
 onready var move_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/MoveButton
@@ -36,6 +40,24 @@ var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
 var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
 var debug_log_path = "user://battle_debug.log"
+var type_ui_assets := {
+	"enemy": {
+		"single_texture": "assets/images/ui/pbinfo_enemy_type.png",
+		"single_json": "assets/images/ui/pbinfo_enemy_type.json",
+		"type1_texture": "assets/images/ui/pbinfo_enemy_type1.png",
+		"type1_json": "assets/images/ui/pbinfo_enemy_type1.json",
+		"type2_texture": "assets/images/ui/pbinfo_enemy_type2.png",
+		"type2_json": "assets/images/ui/pbinfo_enemy_type2.json",
+	},
+	"player": {
+		"single_texture": "assets/images/ui/pbinfo_player_type.png",
+		"single_json": "assets/images/ui/pbinfo_player_type.json",
+		"type1_texture": "assets/images/ui/pbinfo_player_type1.png",
+		"type1_json": "assets/images/ui/pbinfo_player_type1.json",
+		"type2_texture": "assets/images/ui/pbinfo_player_type2.png",
+		"type2_json": "assets/images/ui/pbinfo_player_type2.json",
+	},
+}
 
 var battle_data = null
 var hp_overlay_frames := {}
@@ -88,6 +110,7 @@ func _ready():
 	load_audio_assets()
 	load_move_anim_textures()
 	load_move_anim_configs()
+	setup_type_sprite_placeholders()
 	reset_battle_state("Battle ready.")
 
 	add_blend_material = CanvasItemMaterial.new()
@@ -150,6 +173,8 @@ func bind_battle_data():
 
 	refresh_hp_ui(enemy_data, enemy_hp_bar, enemy_hp_value_label)
 	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	refresh_type_ui(enemy_data, "enemy", enemy_type1_sprite, enemy_type2_sprite)
+	refresh_type_ui(player_data, "player", player_type1_sprite, player_type2_sprite)
 
 func refresh_hp_ui(pokemon_data, hp_bar, hp_label):
 	var max_hp = pokemon_data.get_base_stat("hp")
@@ -159,6 +184,80 @@ func refresh_hp_ui(pokemon_data, hp_bar, hp_label):
 	update_hp_bar_sprite(hp_bar, hp_ratio)
 	if hp_label != null:
 		hp_label.text = "%d / %d" % [pokemon_data.current_hp, max_hp]
+
+func setup_type_sprite_placeholders():
+	configure_type_sprite(enemy_type1_sprite, Vector2(89, 49))
+	configure_type_sprite(enemy_type2_sprite, Vector2(89, 61))
+	configure_type_sprite(player_type1_sprite, Vector2(89, 43))
+	configure_type_sprite(player_type2_sprite, Vector2(89, 55))
+
+func configure_type_sprite(type_sprite, fallback_position: Vector2):
+	if type_sprite == null:
+		return
+	type_sprite.centered = false
+	type_sprite.region_enabled = true
+	type_sprite.visible = false
+	if type_sprite.position == Vector2.ZERO:
+		type_sprite.position = fallback_position
+
+func refresh_type_ui(pokemon_data, panel_key: String, type1_sprite, type2_sprite):
+	if type1_sprite == null or type2_sprite == null:
+		return
+
+	var types = []
+	if pokemon_data != null:
+		types = pokemon_data.get_types()
+
+	if types.empty():
+		types = ["UNKNOWN"]
+
+	if types.size() == 1:
+		apply_type_badge(type1_sprite, panel_key, "single", str(types[0]))
+		type2_sprite.visible = false
+		return
+
+	apply_type_badge(type1_sprite, panel_key, "type1", str(types[0]))
+	apply_type_badge(type2_sprite, panel_key, "type2", str(types[1]))
+
+func apply_type_badge(type_sprite, panel_key: String, badge_variant: String, type_name: String):
+	if type_sprite == null:
+		return
+	if not type_ui_assets.has(panel_key):
+		type_sprite.visible = false
+		return
+
+	var panel_assets = type_ui_assets[panel_key]
+	var texture_key = "single_texture" if badge_variant == "single" else badge_variant + "_texture"
+	var json_key = "single_json" if badge_variant == "single" else badge_variant + "_json"
+
+	if not panel_assets.has(texture_key) or not panel_assets.has(json_key):
+		type_sprite.visible = false
+		return
+
+	var texture_path = minimal_assets_path + String(panel_assets[texture_key])
+	var atlas_json_path = minimal_assets_path + String(panel_assets[json_key])
+	if not resource_exists(texture_path):
+		type_sprite.visible = false
+		return
+
+	type_sprite.texture = load(texture_path)
+	type_sprite.region_enabled = true
+	type_sprite.centered = false
+
+	var frame_name = type_name.strip_edges().to_lower()
+	if frame_name.empty():
+		frame_name = "unknown"
+
+	var frame_data = parse_sprite_frame(atlas_json_path, frame_name)
+	if frame_data == null:
+		frame_data = parse_sprite_frame(atlas_json_path, "unknown")
+	if frame_data == null:
+		type_sprite.visible = false
+		return
+
+	var frame = frame_data["frame"]
+	type_sprite.region_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+	type_sprite.visible = true
 
 func build_hp_overlay_frames():
 	hp_overlay_frames.clear()
@@ -272,6 +371,7 @@ func _on_MoveButton_pressed():
 
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
 	defender.current_hp = max(0, defender.current_hp - damage)
+	var player_type_multiplier = battle_calc_script.get_type_multiplier(move.move_type, defender)
 
 	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
 	var player_hit_feedback = play_hit_feedback(enemy_pokemon_sprite, active_turn_token)
@@ -281,6 +381,7 @@ func _on_MoveButton_pressed():
 			return
 
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move.move_id, damage]
+	battle_message += build_type_effectiveness_text(player_type_multiplier)
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -311,6 +412,7 @@ func _on_MoveButton_pressed():
 
 	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
+	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
 	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
 	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
 	if enemy_hit_feedback is GDScriptFunctionState:
@@ -319,6 +421,7 @@ func _on_MoveButton_pressed():
 			return
 
 	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
+	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
 	set_battle_text(enemy_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -482,6 +585,14 @@ func update_run_button_label():
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
+
+func build_type_effectiveness_text(type_multiplier: float) -> String:
+	# Pokerogue-style thresholds: >=2 super effective, <=0.5 not very effective.
+	if type_multiplier >= 2.0:
+		return " It's super effective!"
+	if type_multiplier <= 0.5 and type_multiplier > 0.0:
+		return " It's not very effective..."
+	return ""
 
 func load_move_anim_textures():
 	move_anim_textures.clear()
