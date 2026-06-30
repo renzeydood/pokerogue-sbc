@@ -9,6 +9,8 @@ export(float) var impact_shake_step_sec := 0.03
 export(float) var impact_flash_mul := 1.6
 export(float) var impact_shake_px := 2.0
 export(float) var move_anim_step_sec := 0.05
+export(float) var faint_step_sec := 0.05
+export(float) var faint_drop_px := 20.0
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -68,11 +70,17 @@ var player_anim_index := 0
 var enemy_anim_index := 0
 var player_anim_elapsed := 0.0
 var enemy_anim_elapsed := 0.0
+var player_sprite_home_position := Vector2.ZERO
+var enemy_sprite_home_position := Vector2.ZERO
+var player_sprite_anim_enabled := true
+var enemy_sprite_anim_enabled := true
 
 func _ready():
 	apply_fonts()
 	update_run_button_label()
 	load_battle_sprites()
+	player_sprite_home_position = player_pokemon_sprite.position
+	enemy_sprite_home_position = enemy_pokemon_sprite.position
 	build_hp_overlay_frames()
 	load_audio_assets()
 	load_move_anim_textures()
@@ -236,6 +244,11 @@ func _on_MoveButton_pressed():
 			return
 
 	if defender.is_fainted():
+		var enemy_faint_anim = play_faint_animation(enemy_pokemon_sprite, false, active_turn_token)
+		if enemy_faint_anim is GDScriptFunctionState:
+			yield(enemy_faint_anim, "completed")
+			if active_turn_token != turn_token:
+				return
 		end_battle(true, defender.species_id)
 		_finish_turn()
 		return
@@ -269,6 +282,11 @@ func _on_MoveButton_pressed():
 			return
 
 	if attacker.is_fainted():
+		var player_faint_anim = play_faint_animation(player_pokemon_sprite, true, active_turn_token)
+		if player_faint_anim is GDScriptFunctionState:
+			yield(player_faint_anim, "completed")
+			if active_turn_token != turn_token:
+				return
 		end_battle(false, attacker.species_id)
 		_finish_turn()
 		return
@@ -319,9 +337,13 @@ func reset_battle_state(message: String):
 	battle_data = pokemon_data_script.create_battle_02_test_data()
 	battle_ended = false
 	turn_in_progress = false
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
 	set_action_lock(false)
 	update_run_button_label()
 	bind_battle_data()
+	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
 	set_battle_text(message)
 
@@ -612,6 +634,50 @@ func play_hit_feedback(target_sprite: Sprite, active_turn_token: int):
 	target_sprite.modulate = original_modulate
 	return null
 
+func play_faint_animation(target_sprite: Sprite, is_player_sprite: bool, active_turn_token: int):
+	if target_sprite == null:
+		return null
+
+	if is_player_sprite:
+		player_sprite_anim_enabled = false
+	else:
+		enemy_sprite_anim_enabled = false
+
+	if not battle_fx_enabled:
+		target_sprite.modulate.a = 0.0
+		target_sprite.visible = false
+		return null
+
+	var home_pos = player_sprite_home_position if is_player_sprite else enemy_sprite_home_position
+	var original_modulate = target_sprite.modulate
+	var step_count = 5
+	for step in range(step_count):
+		var t = float(step + 1) / float(step_count)
+		target_sprite.position = home_pos + Vector2(0, faint_drop_px * t)
+		target_sprite.modulate = Color(
+			original_modulate.r,
+			original_modulate.g,
+			original_modulate.b,
+			1.0 - t
+		)
+		yield(get_tree().create_timer(faint_step_sec), "timeout")
+		if active_turn_token != turn_token:
+			restore_battler_sprite_state(target_sprite, home_pos)
+			return null
+
+	target_sprite.position = home_pos + Vector2(0, faint_drop_px)
+	target_sprite.modulate = Color(original_modulate.r, original_modulate.g, original_modulate.b, 0.0)
+	target_sprite.visible = false
+	return null
+
+func restore_battler_sprite_state(target_sprite: Sprite, home_pos: Vector2):
+	if target_sprite == null:
+		return
+
+	target_sprite.visible = true
+	target_sprite.position = home_pos
+	target_sprite.modulate = Color(1, 1, 1, 1)
+
 func parse_sprite_frame(json_path: String, frame_name: String):
 	var frames = parse_all_sprite_frames(json_path)
 	if frames.empty():
@@ -756,7 +822,7 @@ func update_pokemon_animations(delta: float):
 		return
 
 	# Player: loop sequence continuously.
-	if player_sprite_frames.size() > 1:
+	if player_sprite_anim_enabled and player_sprite_frames.size() > 1:
 		player_anim_elapsed += delta
 		while player_anim_elapsed >= pokemon_anim_frame_sec:
 			player_anim_elapsed -= pokemon_anim_frame_sec
@@ -764,7 +830,7 @@ func update_pokemon_animations(delta: float):
 			apply_sprite_frame(player_pokemon_sprite, player_sprite_frames[player_anim_index])
 
 	# Enemy: loop sequence continuously.
-	if enemy_sprite_frames.size() > 1:
+	if enemy_sprite_anim_enabled and enemy_sprite_frames.size() > 1:
 		enemy_anim_elapsed += delta
 		while enemy_anim_elapsed >= pokemon_anim_frame_sec:
 			enemy_anim_elapsed -= pokemon_anim_frame_sec
