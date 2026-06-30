@@ -283,5 +283,5 @@ align = 0
 
 [connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/MoveButton" to="." method="_on_MoveButton_pressed"]
 [connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/RestartButton" to="." method="_on_RestartButton_pressed"]
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/MoveButton" to="." method="_on_MoveButton_pressed"]
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton" to="." method="_on_RestartButton_pressed"]
+[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/MoveButton" to="." method="_on_PokemonButton_pressed"]
+[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton" to="." method="_on_RunButton_pressed"]

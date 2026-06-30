@@ -3,6 +3,7 @@ extends Control
 export(int) var ui_font_size := 12
 export(int) var control_button_font_size := 16
 export(float) var turn_step_delay_sec := 0.6
+export(bool) var battle_fx_enabled := true
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -19,7 +20,7 @@ onready var player_hp_value_label = $UILayer/PlayerPanel/PlayerHpValueLabel
 onready var player_pokemon_sprite = $BattlefieldLayer/PlayerLayer/PlayerPokemonSprite
 onready var battle_text_label = $UILayer/MessagePanel/MessageMargin/BattleTextLabel
 onready var move_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/MoveButton
-onready var restart_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/RestartButton
+onready var ball_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/RestartButton
 onready var pokemon_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/MoveButton
 onready var run_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton
 
@@ -37,6 +38,7 @@ var turn_token := 0
 
 func _ready():
 	apply_fonts()
+	update_run_button_label()
 	load_battle_sprites()
 	build_hp_overlay_frames()
 	load_audio_assets()
@@ -73,7 +75,7 @@ func apply_fonts():
 	var button_font = make_font(ui_font_path, control_button_font_size)
 	battle_text_label.add_font_override("font", button_font)
 	move_button.add_font_override("font", button_font)
-	restart_button.add_font_override("font", button_font)
+	ball_button.add_font_override("font", button_font)
 	pokemon_button.add_font_override("font", button_font)
 	run_button.add_font_override("font", button_font)
 
@@ -249,9 +251,29 @@ func _on_MoveButton_pressed():
 func _on_RestartButton_pressed():
 	reset_battle_state("Battle reset.")
 
+func _on_PokemonButton_pressed():
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball to restart.")
+		return
+
+	if turn_in_progress:
+		return
+
+	set_battle_text("Pokemon menu not implemented yet.")
+
+func _on_RunButton_pressed():
+	if turn_in_progress:
+		return
+
+	battle_fx_enabled = not battle_fx_enabled
+	update_run_button_label()
+	var state_text = "ON" if battle_fx_enabled else "OFF"
+	set_battle_text("Battle FX toggled %s." % state_text)
+
 func set_action_lock(locked: bool):
 	move_button.disabled = locked
 	pokemon_button.disabled = locked
+	run_button.disabled = locked
 
 func _finish_turn():
 	turn_in_progress = false
@@ -262,7 +284,7 @@ func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
 	set_action_lock(true)
 	var result_text = "You win!" if player_won else "You lose!"
-	set_battle_text("%s fainted! %s Press Ball or Run to restart." % [fainted_species_id, result_text])
+	set_battle_text("%s fainted! %s Press Ball to restart." % [fainted_species_id, result_text])
 
 func reset_battle_state(message: String):
 	turn_token += 1
@@ -270,8 +292,16 @@ func reset_battle_state(message: String):
 	battle_ended = false
 	turn_in_progress = false
 	set_action_lock(false)
+	update_run_button_label()
 	bind_battle_data()
 	set_battle_text(message)
+
+func update_run_button_label():
+	if run_button == null:
+		return
+
+	var state_text = "ON" if battle_fx_enabled else "OFF"
+	run_button.text = "Run FX: %s" % state_text
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
