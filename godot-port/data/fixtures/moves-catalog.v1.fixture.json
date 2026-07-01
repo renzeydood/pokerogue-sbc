@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "generated_from": "dependency/pokerogue",
+  "generated_at": "2026-07-01T03:56:12.946432+00:00",
+  "items": [
+    {
+      "schema_version": 1,
+      "move_id": "TACKLE",
+      "name": "Tackle",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TACKLE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "EMBER",
+      "name": "Ember",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "EMBER",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WATER_GUN",
+      "name": "Water Gun",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WATER_GUN",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    }
+  ]
+}
