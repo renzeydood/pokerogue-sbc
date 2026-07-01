@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokerogue-sbc.local/schema/species-catalog.schema.v1.json",
+  "title": "Species Catalog Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_from",
+    "generated_at",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_from": {
+      "type": "string",
+      "const": "dependency/pokerogue"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "species.schema.v1.json"
+      }
+    }
+  }
+}

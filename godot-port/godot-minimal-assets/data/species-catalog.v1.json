@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "generated_from": "dependency/pokerogue",
+  "generated_at": "2026-06-30T18:41:27.096898+00:00",
+  "items": [
+    {
+      "schema_version": 1,
+      "species_id": "BULBASAUR",
+      "pokedex_number": 1,
+      "name": "Bulbasaur",
+      "types": [
+        "GRASS",
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 45,
+        "atk": 49,
+        "def": 49,
+        "sp_atk": 65,
+        "sp_def": 65,
+        "spd": 45
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "BULBASAUR",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 64,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "CHARMANDER",
+      "pokedex_number": 4,
+      "name": "Charmander",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 39,
+        "atk": 52,
+        "def": 43,
+        "sp_atk": 60,
+        "sp_def": 50,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARMANDER",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 62,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "SQUIRTLE",
+      "pokedex_number": 7,
+      "name": "Squirtle",
+      "types": [
+        "WATER"
+      ],
+      "base_stats": {
+        "hp": 44,
+        "atk": 48,
+        "def": 65,
+        "sp_atk": 50,
+        "sp_def": 64,
+        "spd": 43
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SQUIRTLE",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 63,
+      "growth_rate": "MEDIUM_SLOW"
+    }
+  ]
+}

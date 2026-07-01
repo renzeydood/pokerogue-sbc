@@ -42,6 +42,8 @@ def main():
     parser.add_argument("--pokerogue-root", type=Path, default=default_pokerogue_root, help="Path to the pokerogue repo root (defaults to dependency/pokerogue)")
     parser.add_argument("--preprocess", action="store_true", help="Run sprite preprocessing scripts in the submodule before export (only needed if you have raw sprite sources)")
     parser.add_argument("--export", action="store_true", help="Run the Python exporter to copy minimal assets")
+    parser.add_argument("--export-data", action="store_true", help="Run the Python exporter to generate minimal species/move data catalogs")
+    parser.add_argument("--export-all", action="store_true", help="Run both minimal asset and minimal data exporters")
     parser.add_argument("--skip-missing-scripts", action="store_true", default=True, help="Skip preprocessing scripts if source files don't exist (default: True)")
     parser.add_argument("--dry-run", action="store_true", help="Print the preprocessing/export steps without executing them")
     parser.add_argument("--scripts", nargs="*", help="Specific preprocessing script names to run (relative to asset-tooling). Example: sprites/convert.ps1")
@@ -51,7 +53,11 @@ def main():
     pokerogue_root = args.pokerogue_root
     asset_tooling_root = repo_root / "asset-tooling"
 
-    if not args.preprocess and not args.export:
+    if args.export_all:
+        args.export = True
+        args.export_data = True
+
+    if not args.preprocess and not args.export and not args.export_data:
         # Default to export if neither flag specified
         args.export = True
     
@@ -87,7 +93,13 @@ def main():
             raise SystemExit(f"Exporter not found: {exporter}")
         run_exporter(exporter, pokerogue_root=pokerogue_root, dry_run=args.dry_run)
 
-    if not args.preprocess and not args.export:
+    if args.export_data:
+        exporter = asset_tooling_root / "export_minimal_data.py"
+        if not exporter.exists():
+            raise SystemExit(f"Exporter not found: {exporter}")
+        run_exporter(exporter, pokerogue_root=pokerogue_root, dry_run=args.dry_run)
+
+    if not args.preprocess and not args.export and not args.export_data:
         parser.print_help()
 
 

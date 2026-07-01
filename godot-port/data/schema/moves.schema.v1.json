@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokerogue-sbc.local/schema/moves.schema.v1.json",
+  "title": "Move Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "move_id",
+    "name",
+    "type",
+    "category",
+    "power"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "move_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]+$",
+      "description": "Stable enum-like ID aligned to Pokerogue MoveId naming."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "$ref": "#/$defs/pokemon_type"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "PHYSICAL",
+        "SPECIAL",
+        "STATUS"
+      ]
+    },
+    "power": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999
+    },
+    "accuracy": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 100,
+      "description": "-1 is reserved for guaranteed-hit style moves in source data."
+    },
+    "pp": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": -10,
+      "maximum": 10
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    }
+  },
+  "$defs": {
+    "pokemon_type": {
+      "type": "string",
+      "enum": [
+        "NORMAL",
+        "FIRE",
+        "WATER",
+        "ELECTRIC",
+        "GRASS",
+        "ICE",
+        "FIGHTING",
+        "POISON",
+        "GROUND",
+        "FLYING",
+        "PSYCHIC",
+        "BUG",
+        "ROCK",
+        "GHOST",
+        "DRAGON",
+        "DARK",
+        "STEEL",
+        "FAIRY",
+        "UNKNOWN"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "move_enum_name"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "const": "dependency/pokerogue"
+        },
+        "move_enum_name": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]+$"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        }
+      }
+    }
+  }
+}
