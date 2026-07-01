@@ -15,12 +15,18 @@ _global_script_classes=[ {
 "path": "res://logic/BattleCalc.gd"
 }, {
 "base": "Reference",
+"class": "CatalogDataLoader",
+"language": "GDScript",
+"path": "res://logic/CatalogDataLoader.gd"
+}, {
+"base": "Reference",
 "class": "MoveData",
 "language": "GDScript",
 "path": "res://data/MoveData.gd"
 } ]
 _global_script_class_icons={
 "BattleCalc": "",
+"CatalogDataLoader": "",
 "MoveData": ""
 }
 
