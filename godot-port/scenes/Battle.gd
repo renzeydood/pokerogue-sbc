@@ -14,6 +14,7 @@ export(float) var faint_drop_px := 20.0
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
+var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 
 onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
 onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
@@ -97,13 +98,13 @@ var player_sprite_home_position := Vector2.ZERO
 var enemy_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
+var catalog_loader = null
 
 func _ready():
 	log_debug("Battle scene ready")
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
 	apply_fonts()
 	update_run_button_label()
-	load_battle_sprites()
 	player_sprite_home_position = player_pokemon_sprite.position
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
 	build_hp_overlay_frames()
@@ -487,6 +488,7 @@ func end_battle(player_won: bool, fainted_species_id: String):
 func reset_battle_state(message: String):
 	turn_token += 1
 	battle_data = pokemon_data_script.create_battle_02_test_data()
+	load_battle_sprites()
 	battle_ended = false
 	turn_in_progress = false
 	player_sprite_anim_enabled = true
@@ -994,13 +996,40 @@ func _sort_frame_dicts(a: Dictionary, b: Dictionary) -> bool:
 	return int(a["index"]) < int(b["index"])
 
 func load_battle_sprites():
-	var enemy_texture_path = "assets/images/pokemon/1.png"
-	var enemy_json_path = "assets/images/pokemon/1.json"
-	var player_texture_path = "assets/images/pokemon/back/4.png"
-	var player_json_path = "assets/images/pokemon/back/4.json"
+	var enemy_species_id = "BULBASAUR"
+	var player_species_id = "CHARMANDER"
+	if battle_data != null:
+		if battle_data.has("enemy") and battle_data["enemy"] != null:
+			enemy_species_id = String(battle_data["enemy"].species_id)
+		if battle_data.has("player") and battle_data["player"] != null:
+			player_species_id = String(battle_data["player"].species_id)
 
-	enemy_sprite_frames = load_sprite_for_node(enemy_pokemon_sprite, enemy_texture_path, enemy_json_path)
-	player_sprite_frames = load_sprite_for_node(player_pokemon_sprite, player_texture_path, player_json_path)
+	var enemy_paths = get_species_sprite_paths(enemy_species_id, false)
+	var player_paths = get_species_sprite_paths(player_species_id, true)
+
+	if enemy_paths.empty():
+		enemy_paths = {
+			"texture_rel": "assets/images/pokemon/1.png",
+			"atlas_rel": "assets/images/pokemon/1.json",
+		}
+	if player_paths.empty():
+		player_paths = {
+			"texture_rel": "assets/images/pokemon/back/4.png",
+			"atlas_rel": "assets/images/pokemon/back/4.json",
+		}
+
+	enemy_sprite_frames = load_sprite_for_node(enemy_pokemon_sprite, String(enemy_paths["texture_rel"]), String(enemy_paths["atlas_rel"]))
+	player_sprite_frames = load_sprite_for_node(player_pokemon_sprite, String(player_paths["texture_rel"]), String(player_paths["atlas_rel"]))
+
+func get_species_sprite_paths(species_id: String, is_back: bool) -> Dictionary:
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+
+	if not catalog_loader.load_catalogs():
+		log_debug("Catalog loader unavailable for sprite mapping: %s" % catalog_loader.get_last_error())
+		return {}
+
+	return catalog_loader.build_sprite_resource_paths(species_id, is_back)
 
 func load_sprite_for_node(sprite_node: Sprite, sprite_relative_path: String, atlas_json: String) -> Array:
 	var sprite_path = minimal_assets_path + sprite_relative_path
