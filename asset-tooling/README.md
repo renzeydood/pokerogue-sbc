@@ -7,7 +7,7 @@ This folder contains the minimal Python asset pipeline for extracting a small su
 Run from the repository root:
 
 ```powershell
-python .\godot-port\asset-tooling\export_minimal_assets.py
+python .\asset-tooling\export_minimal_assets.py
 ```
 
 This will:
@@ -36,7 +36,7 @@ A small wrapper script is provided to optionally run upstream preprocessing scri
 Usage (from the future `godot-port` root you mentioned):
 
 ```powershell
-py asset-tooling\asset_pipeline.py --pokerogue-root "..\pokerogue" --preprocess --export
+py asset-tooling\asset_pipeline.py --preprocess --export
 ```
 
 Useful export modes:
@@ -45,9 +45,11 @@ Useful export modes:
 py asset-tooling\asset_pipeline.py --export
 py asset-tooling\asset_pipeline.py --export-data
 py asset-tooling\asset_pipeline.py --export-all
+py asset-tooling\asset_pipeline.py --validate-data
+py asset-tooling\asset_pipeline.py --validate-data --refresh-fixtures
 ```
 
-Use `--pokerogue-root` to point to the original repo when `godot-port` becomes the new root and `pokerogue` is a submodule.
+The tooling is now pinned to `dependency/pokerogue` inside this workspace.
 
 A dry run is available to print the planned pipeline steps without executing them:
 
@@ -85,4 +87,30 @@ Expansion rules used by the exporter:
 - `general_assets`: copied as-is
 
 This keeps minimal export focused while allowing a single reference list to drive both selected entities and shared assets.
+
+## Data validation and fixtures
+
+`validate_minimal_data.py` validates generated catalog files for:
+
+- required fields and unknown fields
+- enum/range constraints (types, categories, stats, PP, priority, etc.)
+- selector alignment with `minimal-asset-list.json` (`pokemon` and `attacks`)
+- regression drift against checked-in fixtures
+
+Fixture files:
+
+- `godot-port/data/fixtures/species-catalog.v1.fixture.json`
+- `godot-port/data/fixtures/moves-catalog.v1.fixture.json`
+
+Typical workflow:
+
+```powershell
+py asset-tooling\asset_pipeline.py --export-data --validate-data
+```
+
+When changes are intentional, refresh fixtures:
+
+```powershell
+py asset-tooling\asset_pipeline.py --export-data --validate-data --refresh-fixtures
+```
 

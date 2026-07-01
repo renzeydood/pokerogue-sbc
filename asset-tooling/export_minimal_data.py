@@ -9,6 +9,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
+POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
 
 
 def _coerce_str_list(values: Any, field_name: str) -> list[str]:
@@ -248,16 +249,10 @@ def _build_moves_catalog(attacks: list[str], move_enum: dict[str, int], move_ts:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export minimal Pokemon/move data catalogs from pokerogue selectors")
-    parser.add_argument(
-        "--pokerogue-root",
-        type=Path,
-        default=REPO_ROOT / "dependency" / "pokerogue",
-        help="Path to the pokerogue repo root",
-    )
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Export minimal Pokemon/move data catalogs from pokerogue dependency selectors")
+    parser.parse_args()
 
-    pokerogue_root = args.pokerogue_root
+    pokerogue_root = POKEROGUE_ROOT
     config = json.loads(ASSET_LIST_FILE.read_text(encoding="utf-8"))
     if not isinstance(config, dict):
         raise ValueError("minimal data export requires object-style minimal-asset-list.json with pokemon/attacks fields")

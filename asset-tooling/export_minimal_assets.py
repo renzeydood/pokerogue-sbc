@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets"
+POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
 
 
 def _normalize_attack_slug(value: str) -> str:
@@ -165,12 +166,10 @@ def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Copy minimal assets from pokerogue to godot-minimal-assets")
-    parser.add_argument("--pokerogue-root", type=Path, default=REPO_ROOT / "dependency" / "pokerogue",
-                        help="Path to the pokerogue repo root")
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Copy minimal assets from pokerogue dependency to godot-minimal-assets")
+    parser.parse_args()
 
-    POKEROGUE_ASSETS_DIR = args.pokerogue_root
+    POKEROGUE_ASSETS_DIR = POKEROGUE_ROOT
     asset_list_raw = json.loads(ASSET_LIST_FILE.read_text(encoding="utf-8"))
     asset_paths = load_asset_paths(asset_list_raw, pokerogue_root=POKEROGUE_ASSETS_DIR)
     copied = []
