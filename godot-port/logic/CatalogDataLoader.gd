@@ -5,6 +5,7 @@ const MoveData = preload("res://data/MoveData.gd")
 
 const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v1.json"
 const MOVES_CATALOG_PATH := "res://godot-minimal-assets/data/moves-catalog.v1.json"
+const POKEMON_SPRITE_ROOT := "assets/images/pokemon/"
 
 var _loaded := false
 var _species_by_id := {}
@@ -77,15 +78,24 @@ func build_move_data(move_id: String):
 func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []):
 	var pokemon_data_script = load("res://data/PokemonData.gd")
 	var species_entry = get_species(species_id)
+	var requested_move_ids := []
+	for move_id in move_ids:
+		requested_move_ids.append(String(move_id).strip_edges().to_upper())
+	if requested_move_ids.empty():
+		requested_move_ids.append("TACKLE")
+
+	var moves := []
+	for requested_move_id in requested_move_ids:
+		moves.append(build_move_data(requested_move_id))
+
 	if species_entry.empty():
 		push_warning("Missing species entry for %s. Using fallback species data." % species_id)
-		var fallback_move = MoveData.new("TACKLE", 40, "NORMAL", MoveData.CATEGORY_PHYSICAL)
 		return pokemon_data_script.new(
 			species_id.strip_edges().to_upper(),
 			{"hp": 1, "atk": 1, "def": 1, "sp_atk": 1, "sp_def": 1, "spd": 1},
 			level,
 			-1,
-			[fallback_move],
+			moves,
 			["UNKNOWN"]
 		)
 
@@ -93,12 +103,6 @@ func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []
 	var types = species_entry.get("types", []).duplicate(true)
 	if types.empty():
 		types = ["UNKNOWN"]
-
-	var moves = []
-	for move_id in move_ids:
-		moves.append(build_move_data(String(move_id)))
-	if moves.empty():
-		moves.append(MoveData.new("TACKLE", 40, "NORMAL", MoveData.CATEGORY_PHYSICAL))
 
 	return pokemon_data_script.new(
 		String(species_entry.get("species_id", species_id)).to_upper(),
@@ -116,6 +120,45 @@ func build_battle_seed() -> Dictionary:
 		"player": player,
 		"enemy": enemy,
 	}
+
+func get_species_dex_number(species_id: String) -> int:
+	var species_entry = get_species(species_id)
+	if species_entry.empty():
+		return -1
+	if not species_entry.has("pokedex_number"):
+		return -1
+	return int(species_entry["pokedex_number"])
+
+func build_sprite_resource_paths(species_id: String, is_back: bool = false, form_tag: String = "", is_shiny: bool = false) -> Dictionary:
+	var dex_num = get_species_dex_number(species_id)
+	if dex_num <= 0:
+		push_warning("Cannot build sprite paths: unknown species %s" % species_id)
+		return {}
+
+	var root = POKEMON_SPRITE_ROOT
+	if is_back:
+		root += "back/"
+	elif is_shiny:
+		# Placeholder convention for future expansion (front shiny sprites only for now).
+		root += "shiny/"
+
+	var base_key = str(dex_num)
+	var form_key = _normalize_form_tag(form_tag)
+	var sprite_key = base_key if form_key.empty() else "%s-%s" % [base_key, form_key]
+
+	var sprite_paths = {
+		"sprite_key": sprite_key,
+		"texture_rel": "%s%s.png" % [root, sprite_key],
+		"atlas_rel": "%s%s.json" % [root, sprite_key],
+	}
+
+	# Graceful fallback: if a specific form sprite is missing, use base species art.
+	if not _resource_file_exists(sprite_paths["texture_rel"]) and not form_key.empty():
+		sprite_paths["sprite_key"] = base_key
+		sprite_paths["texture_rel"] = "%s%s.png" % [root, base_key]
+		sprite_paths["atlas_rel"] = "%s%s.json" % [root, base_key]
+
+	return sprite_paths
 
 func _index_catalog_entries(payload, index_map: Dictionary, id_key: String) -> bool:
 	index_map.clear()
@@ -163,3 +206,13 @@ func _read_json_file(path: String):
 		return null
 
 	return parse_result.result
+
+func _normalize_form_tag(form_tag: String) -> String:
+	return form_tag.strip_edges().to_lower().replace("_", "-").replace(" ", "-")
+
+func _resource_file_exists(relative_path: String) -> bool:
+	var absolute_path = "res://godot-minimal-assets/" + relative_path
+	if ResourceLoader.exists(absolute_path):
+		return true
+	var file = File.new()
+	return file.file_exists(absolute_path)
