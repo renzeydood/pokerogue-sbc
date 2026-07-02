@@ -36,33 +36,8 @@ func is_fainted() -> bool:
 	return current_hp <= 0
 
 static func create_battle_02_test_data() -> Dictionary:
-	var pokemon_data_script = load("res://data/PokemonData.gd")
-	# Base stats sourced from dependency/pokerogue/src/data/balance/species/generation-01.ts.
-	var bulbasaur_stats := {
-		"hp": 45,
-		"atk": 49,
-		"def": 49,
-		"sp_atk": 65,
-		"sp_def": 65,
-		"spd": 45,
-	}
-	var charmander_stats := {
-		"hp": 39,
-		"atk": 52,
-		"def": 43,
-		"sp_atk": 60,
-		"sp_def": 50,
-		"spd": 65,
-	}
-
-	# Move values sourced from dependency/pokerogue/src/data/moves/move.ts.
-	var bulbasaur_move = MoveData.new("TACKLE", 40, "NORMAL", MoveData.CATEGORY_PHYSICAL)
-	var charmander_move = MoveData.new("EMBER", 40, "FIRE", MoveData.CATEGORY_SPECIAL)
-
-	var bulbasaur = pokemon_data_script.new("BULBASAUR", bulbasaur_stats, 5, -1, [bulbasaur_move], ["GRASS", "POISON"])
-	var charmander = pokemon_data_script.new("CHARMANDER", charmander_stats, 5, -1, [charmander_move], ["FIRE"])
-
-	return {
-		"player": bulbasaur,
-		"enemy": charmander,
-	}
+	var loader_script = load("res://logic/CatalogDataLoader.gd")
+	var loader = loader_script.new()
+	if not loader.load_catalogs():
+		push_warning("CatalogDataLoader failed (%s). Using loader fallback battle seed." % loader.get_last_error())
+	return loader.build_battle_seed()

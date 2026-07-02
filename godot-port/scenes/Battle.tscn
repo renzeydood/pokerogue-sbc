@@ -65,11 +65,12 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="PlayerArenaSprite" type="Sprite" parent="BattlefieldLayer/PlayerLayer"]
-position = Vector2( 139, 110 )
+position = Vector2( 179.5, 78.5 )
+scale = Vector2( 1.5, 1.5 )
 texture = ExtResource( 4 )
 
 [node name="PlayerPokemonSprite" type="Sprite" parent="BattlefieldLayer/PlayerLayer"]
-position = Vector2( 84.5, 155.5 )
+position = Vector2( 84.5, 169.5 )
 scale = Vector2( 1.5, 1.5 )
 
 [node name="EffectsLayer" type="Control" parent="BattlefieldLayer"]
