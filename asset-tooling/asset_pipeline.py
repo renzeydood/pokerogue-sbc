@@ -44,6 +44,8 @@ def main():
     parser.add_argument("--export-data", action="store_true", help="Run the Python exporter to generate minimal species/move data catalogs")
     parser.add_argument("--validate-data", action="store_true", help="Run validation checks on generated minimal species/move catalogs")
     parser.add_argument("--refresh-fixtures", action="store_true", help="Update checked-in data fixtures from current generated catalogs (requires --validate-data)")
+    parser.add_argument("--validate-regression", action="store_true", help="Run focused prototype snapshot regression checks on generated catalogs")
+    parser.add_argument("--refresh-regression-fixtures", action="store_true", help="Update the focused regression snapshot fixture from current catalogs (requires --validate-regression)")
     parser.add_argument("--export-all", action="store_true", help="Run both minimal asset and minimal data exporters")
     parser.add_argument("--skip-missing-scripts", action="store_true", default=True, help="Skip preprocessing scripts if source files don't exist (default: True)")
     parser.add_argument("--dry-run", action="store_true", help="Print the preprocessing/export steps without executing them")
@@ -57,11 +59,15 @@ def main():
         args.export = True
         args.export_data = True
         args.validate_data = True
+        args.validate_regression = True
 
     if args.refresh_fixtures:
         args.validate_data = True
 
-    if not args.preprocess and not args.export and not args.export_data and not args.validate_data:
+    if args.refresh_regression_fixtures:
+        args.validate_regression = True
+
+    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression:
         # Default to export if neither flag specified
         args.export = True
     
@@ -113,7 +119,17 @@ def main():
         else:
             run_exporter(validator, dry_run=args.dry_run)
 
-    if not args.preprocess and not args.export and not args.export_data and not args.validate_data:
+    if args.validate_regression:
+        regression_validator = asset_tooling_root / "validate_data_regression.py"
+        if not regression_validator.exists():
+            raise SystemExit(f"Regression validator not found: {regression_validator}")
+        if args.refresh_regression_fixtures:
+            cmd = [sys.executable, str(regression_validator), "--refresh-fixtures"]
+            run_command(cmd, dry_run=args.dry_run)
+        else:
+            run_exporter(regression_validator, dry_run=args.dry_run)
+
+    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression:
         parser.print_help()
 
 

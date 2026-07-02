@@ -1073,14 +1073,13 @@ func apply_sprite_frame(sprite_node: Sprite, sprite_info: Dictionary):
 	var sprite_source_size = sprite_info.get("spriteSourceSize", null)
 	var source_size = sprite_info.get("sourceSize", null)
 	if sprite_source_size != null and source_size != null:
-		# Offset maps trimmed atlas regions into a stable anchor in original source space.
 		var trimmed_cx = float(sprite_source_size["x"]) + float(frame["w"]) / 2.0
 		var trimmed_cy = float(sprite_source_size["y"]) + float(frame["h"]) / 2.0
-		var orig_cx = float(source_size["w"]) / 2.0
+		var anchor_x = float(source_size["w"]) / 2.0
 		var anchor_y = float(source_size["h"]) / 2.0
 		if pokemon_sprite_anchor_mode == "bottom":
 			anchor_y = float(source_size["h"])
-		sprite_node.offset = Vector2(trimmed_cx - orig_cx, trimmed_cy - anchor_y)
+		sprite_node.offset = Vector2(trimmed_cx - anchor_x, trimmed_cy - anchor_y)
 	elif sprite_source_size != null:
 		sprite_node.offset = Vector2(float(sprite_source_size["x"]), float(sprite_source_size["y"]))
 	else:

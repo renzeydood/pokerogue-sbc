@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "generated_from": "dependency/pokerogue",
+  "species": [
+    {
+      "schema_version": 1,
+      "species_id": "BULBASAUR",
+      "pokedex_number": 1,
+      "name": "Bulbasaur",
+      "types": [
+        "GRASS",
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 45,
+        "atk": 49,
+        "def": 49,
+        "sp_atk": 65,
+        "sp_def": 65,
+        "spd": 45
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "BULBASAUR",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 64,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "IVYSAUR",
+      "pokedex_number": 2,
+      "name": "Ivysaur",
+      "types": [
+        "GRASS",
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 62,
+        "def": 63,
+        "sp_atk": 80,
+        "sp_def": 80,
+        "spd": 60
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "IVYSAUR",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 142,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "CHARMANDER",
+      "pokedex_number": 4,
+      "name": "Charmander",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 39,
+        "atk": 52,
+        "def": 43,
+        "sp_atk": 60,
+        "sp_def": 50,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARMANDER",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 62,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "CHARMELEON",
+      "pokedex_number": 5,
+      "name": "Charmeleon",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 58,
+        "atk": 64,
+        "def": 58,
+        "sp_atk": 80,
+        "sp_def": 65,
+        "spd": 80
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARMELEON",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 142,
+      "growth_rate": "MEDIUM_SLOW"
+    },
+    {
+      "schema_version": 1,
+      "species_id": "CHARIZARD",
+      "pokedex_number": 6,
+      "name": "Charizard",
+      "types": [
+        "FIRE",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 78,
+        "atk": 84,
+        "def": 78,
+        "sp_atk": 109,
+        "sp_def": 85,
+        "spd": 100
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARIZARD",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 267,
+      "growth_rate": "MEDIUM_SLOW"
+    }
+  ],
+  "moves": [
+    {
+      "schema_version": 1,
+      "move_id": "TACKLE",
+      "name": "Tackle",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TACKLE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "EMBER",
+      "name": "Ember",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "EMBER",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WATER_GUN",
+      "name": "Water Gun",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WATER_GUN",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    }
+  ]
+}
