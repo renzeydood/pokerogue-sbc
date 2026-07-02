@@ -114,8 +114,8 @@ func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []
 	)
 
 func build_battle_seed() -> Dictionary:
-	var player = build_pokemon_data("BULBASAUR", 5, ["TACKLE"])
-	var enemy = build_pokemon_data("CHARMANDER", 5, ["EMBER"])
+	var player = build_pokemon_data("VENUSAUR", 5, ["TACKLE"])
+	var enemy = build_pokemon_data("CHARIZARD", 5, ["EMBER"])
 	return {
 		"player": player,
 		"enemy": enemy,
