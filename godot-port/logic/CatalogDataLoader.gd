@@ -113,9 +113,17 @@ func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []
 		types
 	)
 
-func build_battle_seed() -> Dictionary:
-	var player = build_pokemon_data("BLASTOISE", 5, ["TACKLE"])
-	var enemy = build_pokemon_data("CHARMANDER", 5, ["EMBER"])
+func build_battle_seed(player_species_id: String = "BLASTOISE", enemy_species_id: String = "CHARMANDER") -> Dictionary:
+	var normalized_player_species_id = player_species_id.strip_edges().to_upper()
+	if normalized_player_species_id.empty():
+		normalized_player_species_id = "BLASTOISE"
+
+	var normalized_enemy_species_id = enemy_species_id.strip_edges().to_upper()
+	if normalized_enemy_species_id.empty():
+		normalized_enemy_species_id = "CHARMANDER"
+
+	var player = build_pokemon_data(normalized_player_species_id, 5, ["TACKLE"])
+	var enemy = build_pokemon_data(normalized_enemy_species_id, 5, ["EMBER"])
 	return {
 		"player": player,
 		"enemy": enemy,

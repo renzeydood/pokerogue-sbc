@@ -12,6 +12,7 @@ export(float) var impact_shake_px := 2.0
 export(float) var move_anim_step_sec := 0.05
 export(float) var faint_step_sec := 0.05
 export(float) var faint_drop_px := 20.0
+const SELECTED_SPECIES_META_KEY := "selected_species_id"
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -100,6 +101,7 @@ var enemy_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
 var catalog_loader = null
+var selected_player_species_id := ""
 
 func _ready():
 	log_debug("Battle scene ready")
@@ -488,7 +490,10 @@ func end_battle(player_won: bool, fainted_species_id: String):
 
 func reset_battle_state(message: String):
 	turn_token += 1
-	battle_data = pokemon_data_script.create_battle_02_test_data()
+	var handoff_species_id = consume_selected_species_id()
+	if not handoff_species_id.empty():
+		selected_player_species_id = handoff_species_id
+	battle_data = pokemon_data_script.create_battle_02_test_data(selected_player_species_id)
 	load_battle_sprites()
 	battle_ended = false
 	turn_in_progress = false
@@ -503,6 +508,15 @@ func reset_battle_state(message: String):
 	reset_pokemon_animation_state()
 	ensure_button_focus()
 	set_battle_text(message)
+
+func consume_selected_species_id() -> String:
+	var tree = get_tree()
+	if tree == null or not tree.has_meta(SELECTED_SPECIES_META_KEY):
+		return ""
+
+	var raw_species_id = String(tree.get_meta(SELECTED_SPECIES_META_KEY, "")).strip_edges().to_upper()
+	tree.remove_meta(SELECTED_SPECIES_META_KEY)
+	return raw_species_id
 
 func setup_keyboard_controls():
 	ensure_input_action_key("ui_left", KEY_LEFT)
