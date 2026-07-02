@@ -35,9 +35,12 @@ func get_base_stat(stat_name: String) -> int:
 func is_fainted() -> bool:
 	return current_hp <= 0
 
-static func create_battle_02_test_data() -> Dictionary:
+static func create_battle_02_test_data(selected_player_species_id: String = "") -> Dictionary:
 	var loader_script = load("res://logic/CatalogDataLoader.gd")
 	var loader = loader_script.new()
 	if not loader.load_catalogs():
 		push_warning("CatalogDataLoader failed (%s). Using loader fallback battle seed." % loader.get_last_error())
-	return loader.build_battle_seed()
+	var normalized_species_id = selected_player_species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return loader.build_battle_seed()
+	return loader.build_battle_seed(normalized_species_id)
