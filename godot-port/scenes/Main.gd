@@ -1,8 +1,8 @@
 extends Control
 
-var battle_scene_path := "res://scenes/Battle.tscn"
+var selection_scene_path := "res://scenes/PokemonSelect.tscn"
 
 func _ready():
-	var result = get_tree().change_scene(battle_scene_path)
+	var result = get_tree().change_scene(selection_scene_path)
 	if result != OK:
-		push_error("Failed to open battle scene: %s" % battle_scene_path)
+		push_error("Failed to open selection scene: %s" % selection_scene_path)
