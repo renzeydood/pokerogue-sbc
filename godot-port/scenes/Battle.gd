@@ -5,6 +5,7 @@ export(int) var control_button_font_size := 16
 export(float) var turn_step_delay_sec := 0.6
 export(bool) var battle_fx_enabled := true
 export(float) var pokemon_anim_frame_sec := 0.1
+export(String, "center", "bottom") var pokemon_sprite_anchor_mode := "bottom"
 export(float) var impact_shake_step_sec := 0.03
 export(float) var impact_flash_mul := 1.6
 export(float) var impact_shake_px := 2.0
@@ -1072,13 +1073,15 @@ func apply_sprite_frame(sprite_node: Sprite, sprite_info: Dictionary):
 	var sprite_source_size = sprite_info.get("spriteSourceSize", null)
 	var source_size = sprite_info.get("sourceSize", null)
 	if sprite_source_size != null and source_size != null:
-		var trimmed_cx = sprite_source_size["x"] + frame["w"] / 2.0
-		var trimmed_cy = sprite_source_size["y"] + frame["h"] / 2.0
-		var orig_cx = source_size["w"] / 2.0
-		var orig_cy = source_size["h"] / 2.0
-		sprite_node.offset = Vector2(orig_cx - trimmed_cx, orig_cy - trimmed_cy)
+		var trimmed_cx = float(sprite_source_size["x"]) + float(frame["w"]) / 2.0
+		var trimmed_cy = float(sprite_source_size["y"]) + float(frame["h"]) / 2.0
+		var anchor_x = float(source_size["w"]) / 2.0
+		var anchor_y = float(source_size["h"]) / 2.0
+		if pokemon_sprite_anchor_mode == "bottom":
+			anchor_y = float(source_size["h"])
+		sprite_node.offset = Vector2(trimmed_cx - anchor_x, trimmed_cy - anchor_y)
 	elif sprite_source_size != null:
-		sprite_node.offset = Vector2(sprite_source_size["x"], sprite_source_size["y"])
+		sprite_node.offset = Vector2(float(sprite_source_size["x"]), float(sprite_source_size["y"]))
 	else:
 		sprite_node.offset = Vector2.ZERO
 
