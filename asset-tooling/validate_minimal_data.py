@@ -42,6 +42,40 @@ def _coerce_str_list(values: Any, field_name: str, errors: list[str]) -> list[st
     return out
 
 
+def _try_parse_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+    return None
+
+
+def _parse_attack_selector(values: Any, errors: list[str]) -> tuple[list[str], int | None]:
+    if values is None:
+        return [], None
+
+    single_numeric = _try_parse_int(values)
+    if single_numeric is not None:
+        return [], max(0, single_numeric)
+
+    if isinstance(values, list) and len(values) == 1:
+        list_numeric = _try_parse_int(values[0])
+        if list_numeric is not None:
+            return [], max(0, list_numeric)
+
+    if not isinstance(values, list):
+        errors.append("attacks: must be an array, number, or null")
+        return [], None
+
+    return _coerce_str_list(values, "attacks", errors), None
+
+
 def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -89,7 +123,7 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
 
     required = {"schema_version", "species_id", "name", "types", "base_stats"}
     allowed = required | {
-        "pokedex_number", "catch_rate", "base_friendship", "base_exp", "growth_rate", "source",
+        "pokedex_number", "catch_rate", "base_friendship", "base_exp", "growth_rate", "source", "starter_moves",
     }
     _require_keys(item, required, context, errors)
     _reject_unknown_keys(item, allowed, context, errors)
@@ -157,6 +191,18 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
 
             if "generation" in source:
                 _validate_int_range(source["generation"], 1, 9, f"{source_context}.generation", errors)
+
+    if "starter_moves" in item:
+        starter_moves = item["starter_moves"]
+        starter_moves_context = f"{context}.starter_moves"
+        if not isinstance(starter_moves, list):
+            errors.append(f"{starter_moves_context}: expected array")
+        else:
+            if len(starter_moves) > 4:
+                errors.append(f"{starter_moves_context}: expected at most 4 entries")
+            for move_index, move_id in enumerate(starter_moves):
+                if not isinstance(move_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", move_id):
+                    errors.append(f"{starter_moves_context}[{move_index}]: expected uppercase move id string")
 
 
 def _validate_move_item(item: Any, index: int, errors: list[str]) -> None:
@@ -251,7 +297,7 @@ def _validate_selector_alignment(species_items: list[Any], move_items: list[Any]
 
     selector_errors: list[str] = []
     pokemon_selectors = _coerce_str_list(config.get("pokemon", []), "pokemon", selector_errors)
-    attack_selectors = _coerce_str_list(config.get("attacks", []), "attacks", selector_errors)
+    attack_selectors, attack_count_selector = _parse_attack_selector(config.get("attacks", []), selector_errors)
     errors.extend([f"selector.{msg}" for msg in selector_errors])
 
     selected_pokedex_numbers: set[int] = set()
@@ -286,6 +332,18 @@ def _validate_selector_alignment(species_items: list[Any], move_items: list[Any]
         if isinstance(item, dict) and isinstance(item.get("move_id"), str):
             move_id = item["move_id"]
             move_by_id[move_id] = move_by_id.get(move_id, 0) + 1
+
+    if attack_count_selector is not None and attack_count_selector > 0:
+        selected_move_ids.clear()
+        for item in species_items:
+            if not isinstance(item, dict):
+                continue
+            starter_moves = item.get("starter_moves", [])
+            if not isinstance(starter_moves, list):
+                continue
+            for move_id in starter_moves:
+                if isinstance(move_id, str) and move_id.strip():
+                    selected_move_ids.add(move_id.strip().upper())
 
     for move_id in sorted(selected_move_ids):
         count = move_by_id.get(move_id, 0)
