@@ -2,13 +2,29 @@ extends Reference
 class_name BattleCalc
 
 const TYPE_CHART := {
-	"NORMAL": {},
+	"NORMAL": {
+		"ROCK": 0.5,
+		"STEEL": 0.5,
+		"GHOST": 0.0,
+	},
 	"FIRE": {
 		"GRASS": 2.0,
+		"ICE": 2.0,
+		"BUG": 2.0,
+		"STEEL": 2.0,
 		"POISON": 1.0,
 		"FIRE": 0.5,
 		"WATER": 0.5,
 		"ROCK": 0.5,
+		"DRAGON": 0.5,
+	},
+	"WATER": {
+		"FIRE": 2.0,
+		"GROUND": 2.0,
+		"ROCK": 2.0,
+		"WATER": 0.5,
+		"GRASS": 0.5,
+		"DRAGON": 0.5,
 	},
 	"GRASS": {
 		"FIRE": 0.5,
@@ -17,6 +33,33 @@ const TYPE_CHART := {
 		"ROCK": 2.0,
 		"GROUND": 2.0,
 		"POISON": 0.5,
+		"FLYING": 0.5,
+		"BUG": 0.5,
+		"DRAGON": 0.5,
+		"STEEL": 0.5,
+	},
+	"FLYING": {
+		"GRASS": 2.0,
+		"FIGHTING": 2.0,
+		"BUG": 2.0,
+		"ELECTRIC": 0.5,
+		"ROCK": 0.5,
+		"STEEL": 0.5,
+	},
+	"GHOST": {
+		"NORMAL": 0.0,
+		"PSYCHIC": 2.0,
+		"GHOST": 2.0,
+		"DARK": 0.5,
+	},
+	"STEEL": {
+		"ROCK": 2.0,
+		"ICE": 2.0,
+		"FAIRY": 2.0,
+		"FIRE": 0.5,
+		"WATER": 0.5,
+		"ELECTRIC": 0.5,
+		"STEEL": 0.5,
 	},
 }
 
@@ -96,6 +139,16 @@ static func get_fixed_test_vectors() -> Array:
 			"defender_def": 49,
 			"defender_types": ["GRASS", "POISON"],
 			"move_type": "FIRE",
+			"expected": 10,
+		},
+		{
+			"name": "Squirtle Water Gun (type-effective) vs Charmander",
+			"attacker_level": 5,
+			"attacker_atk": 48,
+			"move_power": 40,
+			"defender_def": 43,
+			"defender_types": ["FIRE"],
+			"move_type": "WATER",
 			"expected": 10,
 		},
 		{

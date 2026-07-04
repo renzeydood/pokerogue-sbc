@@ -6,6 +6,8 @@ const MoveData = preload("res://data/MoveData.gd")
 const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v1.json"
 const MOVES_CATALOG_PATH := "res://godot-minimal-assets/data/moves-catalog.v1.json"
 const POKEMON_SPRITE_ROOT := "assets/images/pokemon/"
+const DEFAULT_MOVE_ID := "TACKLE"
+const MAX_BATTLE_MOVE_SLOTS := 4
 
 var _loaded := false
 var _species_by_id := {}
@@ -78,11 +80,11 @@ func build_move_data(move_id: String):
 func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []):
 	var pokemon_data_script = load("res://data/PokemonData.gd")
 	var species_entry = get_species(species_id)
-	var requested_move_ids := []
-	for move_id in move_ids:
-		requested_move_ids.append(String(move_id).strip_edges().to_upper())
+	var requested_move_ids := _normalize_move_ids(move_ids)
+	if requested_move_ids.empty() and not species_entry.empty():
+		requested_move_ids = _extract_species_starter_moves(species_entry, MAX_BATTLE_MOVE_SLOTS)
 	if requested_move_ids.empty():
-		requested_move_ids.append("TACKLE")
+		requested_move_ids.append(DEFAULT_MOVE_ID)
 
 	var moves := []
 	for requested_move_id in requested_move_ids:
@@ -122,12 +124,43 @@ func build_battle_seed(player_species_id: String = "BLASTOISE", enemy_species_id
 	if normalized_enemy_species_id.empty():
 		normalized_enemy_species_id = "CHARMANDER"
 
-	var player = build_pokemon_data(normalized_player_species_id, 5, ["TACKLE"])
-	var enemy = build_pokemon_data(normalized_enemy_species_id, 5, ["EMBER"])
+	var player = build_pokemon_data(normalized_player_species_id, 5)
+	var enemy = build_pokemon_data(normalized_enemy_species_id, 5)
 	return {
 		"player": player,
 		"enemy": enemy,
 	}
+
+func _normalize_move_ids(move_ids: Array) -> Array:
+	var normalized: Array = []
+	for move_id in move_ids:
+		var key = String(move_id).strip_edges().to_upper()
+		if key.empty():
+			continue
+		if normalized.has(key):
+			continue
+		normalized.append(key)
+		if normalized.size() >= MAX_BATTLE_MOVE_SLOTS:
+			break
+	return normalized
+
+func _extract_species_starter_moves(species_entry: Dictionary, max_count: int) -> Array:
+	var starter_moves = species_entry.get("starter_moves", [])
+	if typeof(starter_moves) != TYPE_ARRAY:
+		return []
+
+	var normalized: Array = []
+	for move_id in starter_moves:
+		var key = String(move_id).strip_edges().to_upper()
+		if key.empty():
+			continue
+		if normalized.has(key):
+			continue
+		normalized.append(key)
+		if normalized.size() >= max_count:
+			break
+
+	return normalized
 
 func get_species_dex_number(species_id: String) -> int:
 	var species_entry = get_species(species_id)

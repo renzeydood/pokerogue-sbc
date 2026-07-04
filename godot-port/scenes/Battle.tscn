@@ -415,17 +415,6 @@ margin_right = 75.5
 margin_bottom = 37.5
 text = "PP: -/-"
 
-[node name="AttackCancelButton" type="Button" parent="UILayer/AttackMenuContainer"]
-margin_left = 133.0
-margin_top = 21.0
-margin_right = 187.0
-margin_bottom = 43.0
-rect_min_size = Vector2( 54, 22 )
-size_flags_horizontal = 3
-text = "Cancel"
-flat = true
-align = 0
-
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 
 [node name="UIAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
@@ -438,4 +427,3 @@ align = 0
 [connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3" to="." method="_on_AttackMoveButton_pressed" binds= [ 2 ]]
 [connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 3 ]]
 [connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_pressed" binds= [ 3 ]]
-[connection signal="pressed" from="UILayer/AttackMenuContainer/AttackCancelButton" to="." method="_on_AttackCancelButton_pressed"]
