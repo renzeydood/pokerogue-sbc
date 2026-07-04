@@ -12,7 +12,12 @@ export(float) var impact_shake_px := 2.0
 export(float) var move_anim_step_sec := 0.05
 export(float) var faint_step_sec := 0.05
 export(float) var faint_drop_px := 20.0
+export(float) var enemy_switch_delay_sec := 0.9
+export(float) var defeat_return_delay_sec := 1.3
+export(float) var enemy_switch_slide_distance_px := 220.0
+export(float) var enemy_switch_slide_duration_sec := 0.55
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
+const SELECTION_SCENE_PATH := "res://scenes/PokemonSelect.tscn"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
 const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
@@ -28,6 +33,7 @@ onready var enemy_hp_bar = get_node_or_null("UILayer/EnemyPanel/EnemyHpBar")
 onready var enemy_hp_value_label = get_node_or_null("UILayer/EnemyPanel/EnemyHpValueLabel")
 onready var enemy_type1_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType1Sprite")
 onready var enemy_type2_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType2Sprite")
+onready var enemy_layer = $BattlefieldLayer/EnemyLayer
 onready var enemy_pokemon_sprite = $BattlefieldLayer/EnemyLayer/EnemyPokemonSpriteBattle
 onready var effects_layer = $BattlefieldLayer/EffectsLayer
 onready var player_name_label = $UILayer/PlayerPanel/PlayerNameLabel
@@ -99,6 +105,7 @@ var player_anim_index := 0
 var enemy_anim_index := 0
 var player_anim_elapsed := 0.0
 var enemy_anim_elapsed := 0.0
+var enemy_layer_home_position := Vector2.ZERO
 var player_sprite_home_position := Vector2.ZERO
 var enemy_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
@@ -106,13 +113,16 @@ var enemy_sprite_anim_enabled := true
 var catalog_loader = null
 var selected_player_species_id := ""
 var attack_menu_visible := false
+var enemy_species_pool := []
 
 func _ready():
+	randomize()
 	log_debug("Battle scene ready")
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
 	ensure_ui_signal_connections()
 	apply_fonts()
 	update_run_button_label()
+	enemy_layer_home_position = enemy_layer.rect_position
 	player_sprite_home_position = player_pokemon_sprite.position
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
 	build_hp_overlay_frames()
@@ -461,7 +471,11 @@ func execute_player_move(move):
 			yield(enemy_faint_anim, "completed")
 			if active_turn_token != turn_token:
 				return
-		end_battle(true, defender.species_id)
+		var enemy_advance = advance_to_next_enemy(defender.species_id, active_turn_token)
+		if enemy_advance is GDScriptFunctionState:
+			yield(enemy_advance, "completed")
+			if active_turn_token != turn_token:
+				return
 		_finish_turn()
 		return
 
@@ -508,7 +522,17 @@ func execute_player_move(move):
 	_finish_turn()
 
 func _on_RestartButton_pressed():
-	reset_battle_state("Battle reset.")
+	if battle_ended:
+		reset_battle_state("Battle reset.")
+		return
+
+	if turn_in_progress:
+		return
+
+	if attack_menu_visible:
+		hide_attack_menu()
+
+	set_battle_text("Ball menu not implemented yet.")
 
 func _on_PokemonButton_pressed():
 	if battle_ended:
@@ -550,19 +574,41 @@ func _finish_turn():
 
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
-	show_main_controls()
+	if player_won:
+		show_main_controls()
+		set_action_lock(true)
+		ball_button.disabled = false
+		ball_button.grab_focus()
+		set_battle_text("%s fainted! You win! Press Ball to restart." % fainted_species_id)
+		return
+
+	# Defeat recovery path: return to starter selection.
+	hide_all_command_menus()
 	set_action_lock(true)
-	ball_button.disabled = false
-	ball_button.grab_focus()
-	var result_text = "You win!" if player_won else "You lose!"
-	set_battle_text("%s fainted! %s Press Ball to restart." % [fainted_species_id, result_text])
+	set_battle_text("%s fainted! You lose! Returning to selection..." % fainted_species_id)
+	var timer = get_tree().create_timer(max(0.0, defeat_return_delay_sec))
+	timer.connect("timeout", self, "_return_to_selection_scene")
+
+func _return_to_selection_scene():
+	var tree = get_tree()
+	if tree == null:
+		return
+
+	var result = tree.change_scene(SELECTION_SCENE_PATH)
+	if result != OK:
+		set_battle_text("Failed to open selection scene.")
+		show_main_controls()
+		ball_button.disabled = false
+		ball_button.grab_focus()
 
 func reset_battle_state(message: String):
 	turn_token += 1
 	var handoff_species_id = consume_selected_species_id()
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
-	battle_data = pokemon_data_script.create_battle_02_test_data(selected_player_species_id)
+	var next_enemy_species_id = pick_random_enemy_species_id("")
+	battle_data = build_battle_seed(selected_player_species_id, next_enemy_species_id)
+	enemy_layer.rect_position = enemy_layer_home_position
 	load_battle_sprites()
 	battle_ended = false
 	turn_in_progress = false
@@ -579,6 +625,130 @@ func reset_battle_state(message: String):
 	reset_pokemon_animation_state()
 	ensure_button_focus()
 	set_battle_text(message)
+
+func build_battle_seed(player_species_id: String, enemy_species_id: String) -> Dictionary:
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+
+	if catalog_loader != null and catalog_loader.load_catalogs():
+		return catalog_loader.build_battle_seed(player_species_id, enemy_species_id)
+
+	return pokemon_data_script.create_battle_02_test_data(player_species_id)
+
+func get_enemy_species_pool() -> Array:
+	if not enemy_species_pool.empty():
+		return enemy_species_pool.duplicate()
+
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return []
+
+	enemy_species_pool = catalog_loader.get_all_species_ids()
+	return enemy_species_pool.duplicate()
+
+func pick_random_enemy_species_id(current_enemy_species_id: String) -> String:
+	var pool = get_enemy_species_pool()
+	if pool.empty():
+		return "CHARMANDER"
+
+	var normalized_current = current_enemy_species_id.strip_edges().to_upper()
+	var normalized_player = selected_player_species_id.strip_edges().to_upper()
+	var candidates := []
+	for species_id in pool:
+		var normalized_species_id = String(species_id).strip_edges().to_upper()
+		if normalized_species_id.empty():
+			continue
+		if normalized_species_id == normalized_current:
+			continue
+		if normalized_species_id == normalized_player and pool.size() > 1:
+			continue
+		candidates.append(normalized_species_id)
+
+	if candidates.empty():
+		candidates = pool.duplicate()
+
+	return String(candidates[randi() % candidates.size()])
+
+func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = -1):
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		end_battle(true, fainted_species_id)
+		return
+
+	set_battle_text("%s fainted!" % fainted_species_id)
+	if enemy_switch_delay_sec > 0.0:
+		yield(get_tree().create_timer(enemy_switch_delay_sec), "timeout")
+		if active_turn_token != -1 and active_turn_token != turn_token:
+			return
+
+	var enemy_slide_out = animate_enemy_layer_to(
+		enemy_layer_home_position + Vector2(enemy_switch_slide_distance_px, 0),
+		enemy_switch_slide_duration_sec,
+		active_turn_token
+	)
+	if enemy_slide_out is GDScriptFunctionState:
+		yield(enemy_slide_out, "completed")
+		if active_turn_token != -1 and active_turn_token != turn_token:
+			return
+
+	var next_enemy_species_id = pick_random_enemy_species_id(fainted_species_id)
+	var next_enemy = null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader != null and catalog_loader.load_catalogs():
+		next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, 5)
+
+	if next_enemy == null:
+		enemy_layer.rect_position = enemy_layer_home_position
+		end_battle(true, fainted_species_id)
+		return
+
+	battle_data["enemy"] = next_enemy
+	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+	var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
+	if enemy_slide_in is GDScriptFunctionState:
+		yield(enemy_slide_in, "completed")
+		if active_turn_token != -1 and active_turn_token != turn_token:
+			return
+	show_main_controls()
+	set_battle_text("%s fainted! %s appeared!" % [fainted_species_id, next_enemy.species_id])
+
+func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
+	if enemy_layer == null:
+		return null
+
+	if duration_sec <= 0.0:
+		enemy_layer.rect_position = target_position
+		return null
+
+	var tween = Tween.new()
+	add_child(tween)
+	tween.interpolate_property(
+		enemy_layer,
+		"rect_position",
+		enemy_layer.rect_position,
+		target_position,
+		duration_sec,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	tween.start()
+	yield(tween, "tween_all_completed")
+	tween.queue_free()
+
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
+
+	enemy_layer.rect_position = target_position
+	return null
 
 func consume_selected_species_id() -> String:
 	var tree = get_tree()

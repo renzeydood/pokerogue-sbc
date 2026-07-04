@@ -57,6 +57,17 @@ func get_move(move_id: String) -> Dictionary:
 		return {}
 	return _moves_by_id[key].duplicate(true)
 
+func get_all_species_ids() -> Array:
+	if not _loaded and not load_catalogs():
+		return []
+
+	var species_ids := []
+	for species_id in _species_by_id.keys():
+		species_ids.append(String(species_id).strip_edges().to_upper())
+
+	species_ids.sort()
+	return species_ids
+
 func build_move_data(move_id: String):
 	var move_entry = get_move(move_id)
 	if move_entry.empty():
