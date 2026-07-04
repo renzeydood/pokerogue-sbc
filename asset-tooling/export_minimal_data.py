@@ -28,6 +28,44 @@ def _coerce_str_list(values: Any, field_name: str) -> list[str]:
     return out
 
 
+def _try_parse_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+    return None
+
+
+def _parse_attack_selector(values: Any) -> tuple[list[str], int | None]:
+    """
+    Backward compatible selector modes:
+    - attacks: ["tackle", "ember"] => explicit move selectors
+    - attacks: [4] or attacks: 4 => derive first 4 level-up moves for each selected species
+    """
+    if values is None:
+        return [], None
+
+    single_numeric = _try_parse_int(values)
+    if single_numeric is not None:
+        return [], max(0, single_numeric)
+
+    if not isinstance(values, list):
+        raise ValueError("'attacks' must be a JSON array, number, or null")
+
+    if len(values) == 1:
+        list_numeric = _try_parse_int(values[0])
+        if list_numeric is not None:
+            return [], max(0, list_numeric)
+
+    return _coerce_str_list(values, "attacks"), None
+
+
 def _slug_to_enum_name(value: str) -> str:
     return value.strip().upper().replace("-", "_").replace(" ", "_")
 
@@ -99,7 +137,46 @@ def _extract_species_fields(species_body: str) -> dict[str, Any]:
         "base_exp": field_num("baseExp"),
         "growth_rate": growth_rate_match.group(1) if growth_rate_match else None,
         "generation": field_num("generation"),
+        "level_moves": [],
     }
+
+
+def _extract_array_literal(source: str, field_name: str) -> str | None:
+    marker = f"{field_name}:"
+    marker_index = source.find(marker)
+    if marker_index < 0:
+        return None
+
+    array_start = source.find("[", marker_index)
+    if array_start < 0:
+        return None
+
+    depth = 0
+    for index in range(array_start, len(source)):
+        char = source[index]
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                return source[array_start + 1:index]
+
+    return None
+
+
+def _first_n_unique(values: list[str], count: int) -> list[str]:
+    if count <= 0:
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+        if len(out) >= count:
+            break
+    return out
 
 
 def _extract_species_entry(species_name: str, source_files: list[Path]) -> dict[str, Any] | None:
@@ -119,7 +196,11 @@ def _extract_species_entry(species_name: str, source_files: list[Path]) -> dict[
         if not species_match:
             continue
 
-        return _extract_species_fields(species_match.group("species"))
+        parsed = _extract_species_fields(species_match.group("species"))
+        level_moves_body = _extract_array_literal(body, "levelMoves")
+        if level_moves_body is not None:
+            parsed["level_moves"] = re.findall(r"MoveId\.([A-Z0-9_]+)", level_moves_body)
+        return parsed
 
     return None
 
@@ -162,6 +243,7 @@ def _build_species_catalog(
     pokemon_ids: list[str],
     species_enum_by_value: dict[int, str],
     source_files: list[Path],
+    starter_moves_count: int | None,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
 
@@ -205,6 +287,10 @@ def _build_species_catalog(
             item["base_exp"] = parsed["base_exp"]
         if parsed["growth_rate"] is not None:
             item["growth_rate"] = parsed["growth_rate"]
+
+        if starter_moves_count is not None and starter_moves_count > 0:
+            starter_moves = _first_n_unique(parsed.get("level_moves", []), starter_moves_count)
+            item["starter_moves"] = starter_moves
 
         items.append(item)
 
@@ -258,7 +344,7 @@ def main() -> None:
         raise ValueError("minimal data export requires object-style minimal-asset-list.json with pokemon/attacks fields")
 
     pokemon_ids = _coerce_str_list(config.get("pokemon", []), "pokemon")
-    attacks = _coerce_str_list(config.get("attacks", []), "attacks")
+    attacks, attack_count_selector = _parse_attack_selector(config.get("attacks", []))
 
     species_enum = _parse_ts_enum(pokerogue_root / "src" / "enums" / "species-id.ts", "SpeciesId")
     species_enum_by_value = {value: key for key, value in species_enum.items()}
@@ -267,8 +353,22 @@ def main() -> None:
     species_source_files = sorted((pokerogue_root / "src" / "data" / "balance" / "species").glob("generation-*.ts"))
     move_ts = (pokerogue_root / "src" / "data" / "moves" / "move.ts").read_text(encoding="utf-8")
 
-    species_items = _build_species_catalog(pokemon_ids, species_enum_by_value, species_source_files)
-    move_items = _build_moves_catalog(attacks, move_enum, move_ts)
+    species_items = _build_species_catalog(
+        pokemon_ids,
+        species_enum_by_value,
+        species_source_files,
+        attack_count_selector,
+    )
+
+    derived_attacks: set[str] = set()
+    if attack_count_selector is not None and attack_count_selector > 0:
+        for species_item in species_items:
+            for move_id in species_item.get("starter_moves", []):
+                if isinstance(move_id, str) and move_id.strip():
+                    derived_attacks.add(move_id.strip())
+
+    combined_attacks = list(dict.fromkeys(attacks + sorted(derived_attacks)))
+    move_items = _build_moves_catalog(combined_attacks, move_enum, move_ts)
 
     generated_at = datetime.now(timezone.utc).isoformat()
 

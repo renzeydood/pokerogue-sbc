@@ -32,6 +32,39 @@ def _coerce_str_list(values: Any, field_name: str) -> list[str]:
     return out
 
 
+def _try_parse_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+    return None
+
+
+def _parse_attack_selector(values: Any) -> tuple[list[str], int | None]:
+    if values is None:
+        return [], None
+
+    single_numeric = _try_parse_int(values)
+    if single_numeric is not None:
+        return [], max(0, single_numeric)
+
+    if not isinstance(values, list):
+        raise ValueError("'attacks' must be a JSON array, number, or null")
+
+    if len(values) == 1:
+        list_numeric = _try_parse_int(values[0])
+        if list_numeric is not None:
+            return [], max(0, list_numeric)
+
+    return _coerce_str_list(values, "attacks"), None
+
+
 def _matches_pokemon_file(stem: str, pokemon_id: str) -> bool:
     return stem == pokemon_id or stem.startswith(f"{pokemon_id}-") or stem.startswith(f"{pokemon_id}_")
 
@@ -155,11 +188,13 @@ def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
             continue
         assets.extend(_collect_pokemon_assets(pid, pokerogue_root))
 
-    for attack in _coerce_str_list(raw_data.get("attacks", []), "attacks"):
-        slug = _normalize_attack_slug(attack)
-        if not slug:
-            continue
-        assets.extend(_collect_move_assets(slug, pokerogue_root, name_index))
+    attacks, attack_count_selector = _parse_attack_selector(raw_data.get("attacks", []))
+    if attack_count_selector is None:
+        for attack in attacks:
+            slug = _normalize_attack_slug(attack)
+            if not slug:
+                continue
+            assets.extend(_collect_move_assets(slug, pokerogue_root, name_index))
 
     # Preserve order but remove duplicates.
     return list(dict.fromkeys(assets))
