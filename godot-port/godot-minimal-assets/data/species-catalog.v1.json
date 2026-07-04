@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "generated_from": "dependency/pokerogue",
-  "generated_at": "2026-07-01T07:27:37.144135+00:00",
+  "generated_at": "2026-07-04T05:32:08.329415+00:00",
   "items": [
     {
       "schema_version": 1,
@@ -29,7 +29,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 64,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "TACKLE",
+        "GROWL",
+        "VINE_WHIP",
+        "LEECH_SEED"
+      ]
     },
     {
       "schema_version": 1,
@@ -57,7 +63,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 142,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "TACKLE",
+        "GROWL",
+        "VINE_WHIP",
+        "LEECH_SEED"
+      ]
     },
     {
       "schema_version": 1,
@@ -85,7 +97,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 263,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "PETAL_BLIZZARD",
+        "TACKLE",
+        "GROWL",
+        "VINE_WHIP"
+      ]
     },
     {
       "schema_version": 1,
@@ -112,7 +130,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 62,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "SCRATCH",
+        "GROWL",
+        "EMBER",
+        "RAGE"
+      ]
     },
     {
       "schema_version": 1,
@@ -139,7 +163,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 142,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "SCRATCH",
+        "GROWL",
+        "EMBER",
+        "RAGE"
+      ]
     },
     {
       "schema_version": 1,
@@ -167,7 +197,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 267,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "SHADOW_CLAW",
+        "AIR_SLASH",
+        "SCRATCH",
+        "GROWL"
+      ]
     },
     {
       "schema_version": 1,
@@ -194,7 +230,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 63,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "TACKLE",
+        "TAIL_WHIP",
+        "WATER_GUN",
+        "BUBBLE"
+      ]
     },
     {
       "schema_version": 1,
@@ -221,7 +263,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 142,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "TACKLE",
+        "TAIL_WHIP",
+        "WATER_GUN",
+        "BUBBLE"
+      ]
     },
     {
       "schema_version": 1,
@@ -248,7 +296,13 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 265,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "FLASH_CANNON",
+        "TACKLE",
+        "TAIL_WHIP",
+        "WATER_GUN"
+      ]
     }
   ]
 }
