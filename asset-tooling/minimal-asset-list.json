@@ -1,6 +1,6 @@
 {
   "pokemon": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  "attacks": ["tackle", "ember", "water-gun"],
+  "attacks": [4],
   "general_assets": [
     "assets/images/pokemon_icons_0.png",
     "assets/images/pokemon_icons_0.json",

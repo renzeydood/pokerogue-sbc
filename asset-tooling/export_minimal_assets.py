@@ -10,6 +10,7 @@ ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets"
 POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
+MOVES_CATALOG_FILE = OUT_DIR / "data" / "moves-catalog.v1.json"
 
 
 def _normalize_attack_slug(value: str) -> str:
@@ -63,6 +64,38 @@ def _parse_attack_selector(values: Any) -> tuple[list[str], int | None]:
             return [], max(0, list_numeric)
 
     return _coerce_str_list(values, "attacks"), None
+
+
+def _enum_name_to_attack_slug(value: str) -> str:
+    return value.strip().lower().replace("_", "-")
+
+
+def _load_exported_move_slugs(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as err:
+        print(f"Warning: failed to parse moves catalog for count-mode attack assets: {err}")
+        return []
+
+    if not isinstance(payload, dict):
+        return []
+
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return []
+
+    slugs: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        move_id = item.get("move_id")
+        if not isinstance(move_id, str) or not move_id.strip():
+            continue
+        slugs.append(_enum_name_to_attack_slug(move_id))
+    return list(dict.fromkeys(slugs))
 
 
 def _matches_pokemon_file(stem: str, pokemon_id: str) -> bool:
@@ -189,12 +222,22 @@ def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
         assets.extend(_collect_pokemon_assets(pid, pokerogue_root))
 
     attacks, attack_count_selector = _parse_attack_selector(raw_data.get("attacks", []))
+    attack_slugs: list[str] = []
+
     if attack_count_selector is None:
-        for attack in attacks:
-            slug = _normalize_attack_slug(attack)
-            if not slug:
-                continue
-            assets.extend(_collect_move_assets(slug, pokerogue_root, name_index))
+        attack_slugs = [_normalize_attack_slug(attack) for attack in attacks]
+    else:
+        attack_slugs = _load_exported_move_slugs(MOVES_CATALOG_FILE)
+        if not attack_slugs:
+            print(
+                "Warning: attacks is in count mode but no generated moves catalog was found; "
+                "run 'asset_pipeline.py --export-data' (or '--export-all') before '--export'"
+            )
+
+    for slug in attack_slugs:
+        if not slug:
+            continue
+        assets.extend(_collect_move_assets(slug, pokerogue_root, name_index))
 
     # Preserve order but remove duplicates.
     return list(dict.fromkeys(assets))

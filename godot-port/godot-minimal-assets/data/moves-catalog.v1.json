@@ -1,8 +1,168 @@
 {
   "schema_version": 1,
   "generated_from": "dependency/pokerogue",
-  "generated_at": "2026-07-01T07:27:37.144135+00:00",
+  "generated_at": "2026-07-04T05:32:08.329415+00:00",
   "items": [
+    {
+      "schema_version": 1,
+      "move_id": "AIR_SLASH",
+      "name": "Air Slash",
+      "type": "FLYING",
+      "category": "SPECIAL",
+      "power": 75,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "AIR_SLASH",
+        "generation": 4
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BUBBLE",
+      "name": "Bubble",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BUBBLE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "EMBER",
+      "name": "Ember",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "EMBER",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FLASH_CANNON",
+      "name": "Flash Cannon",
+      "type": "STEEL",
+      "category": "SPECIAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FLASH_CANNON",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "GROWL",
+      "name": "Growl",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "GROWL",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LEECH_SEED",
+      "name": "Leech Seed",
+      "type": "GRASS",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LEECH_SEED",
+        "generation": 1
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PETAL_BLIZZARD",
+      "name": "Petal Blizzard",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PETAL_BLIZZARD",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "RAGE",
+      "name": "Rage",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 20,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "RAGE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SCRATCH",
+      "name": "Scratch",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SCRATCH",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SHADOW_CLAW",
+      "name": "Shadow Claw",
+      "type": "GHOST",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SHADOW_CLAW",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
     {
       "schema_version": 1,
       "move_id": "TACKLE",
@@ -21,14 +181,30 @@
     },
     {
       "schema_version": 1,
-      "move_id": "EMBER",
-      "name": "Ember",
-      "type": "FIRE",
-      "category": "SPECIAL",
-      "power": 40,
+      "move_id": "TAIL_WHIP",
+      "name": "Tail Whip",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
       "source": {
         "repo": "dependency/pokerogue",
-        "move_enum_name": "EMBER",
+        "move_enum_name": "TAIL_WHIP",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "VINE_WHIP",
+      "name": "Vine Whip",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 45,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "VINE_WHIP",
         "generation": 1
       },
       "accuracy": 100,
