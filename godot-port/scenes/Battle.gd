@@ -52,7 +52,6 @@ onready var attack_type_sprite = $UILayer/AttackMenuContainer/HBoxContainer/Atta
 onready var attack_power_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPowerLabel
 onready var attack_category_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackCategorySprite
 onready var attack_pp_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPpLabel
-onready var attack_cancel_button = $UILayer/AttackMenuContainer/AttackCancelButton
 
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
@@ -79,24 +78,13 @@ var type_ui_assets := {
 
 var battle_data = null
 var hp_overlay_frames := {}
-var move_sfx_paths := {
-	"EMBER": "assets/audio/battle_anims/PRSFX- Ember.wav",
-	"TACKLE": "assets/audio/battle_anims/PRSFX- Tackle.wav",
-}
-var move_anim_texture_paths := {
-	"EMBER": "assets/images/battle_anims/PRAS- Fire.png",
-	"TACKLE": "assets/images/battle_anims/PRAS- Strike.png",
-}
-var move_anim_config_paths := {
-	"EMBER": "assets/battle-anims/ember.json",
-	"TACKLE": "assets/battle-anims/tackle.json",
-}
 var move_anim_textures := {}
 var move_anim_configs := {}
 var add_blend_material: CanvasItemMaterial = null
 const ANIM_FOCUS_TARGET = 1
 const ANIM_FOCUS_USER = 2
 const ANIM_FOCUS_USER_TARGET = 3
+const ANIM_FOCUS_SCREEN = 4
 const USER_FOCUS_X = 106.0
 const USER_FOCUS_Y = 116.0
 const TARGET_FOCUS_X = 234.0
@@ -129,8 +117,6 @@ func _ready():
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
 	build_hp_overlay_frames()
 	load_audio_assets()
-	load_move_anim_textures()
-	load_move_anim_configs()
 	setup_type_sprite_placeholders()
 	setup_attack_detail_sprites()
 	reset_battle_state("Battle ready.")
@@ -202,7 +188,6 @@ func apply_fonts():
 	attack_move_button_4.add_font_override("font", button_font)
 	attack_power_label.add_font_override("font", ui_font)
 	attack_pp_label.add_font_override("font", ui_font)
-	attack_cancel_button.add_font_override("font", button_font)
 
 func bind_battle_data():
 	var enemy_data = battle_data["enemy"]
@@ -383,6 +368,11 @@ func _unhandled_input(event):
 		press_focused_button()
 		accept_event()
 		return
+	if event.is_action_pressed("ui_back"):
+		if attack_menu_visible:
+			close_attack_menu()
+			accept_event()
+		return
 
 func _on_MoveButton_pressed():
 	if battle_ended:
@@ -417,7 +407,7 @@ func _on_AttackMoveButton_pressed(move_slot: int):
 func _on_AttackMoveButton_focus_entered(move_slot: int):
 	refresh_attack_move_details(move_slot)
 
-func _on_AttackCancelButton_pressed():
+func close_attack_menu():
 	if turn_in_progress or battle_ended:
 		return
 	hide_attack_menu()
@@ -605,6 +595,7 @@ func setup_keyboard_controls():
 	ensure_input_action_key("ui_up", KEY_UP)
 	ensure_input_action_key("ui_down", KEY_DOWN)
 	ensure_input_action_key("ui_accept", KEY_SPACE)
+	ensure_input_action_key("ui_back", KEY_BACKSPACE)
 
 	move_button.focus_mode = Control.FOCUS_ALL
 	ball_button.focus_mode = Control.FOCUS_ALL
@@ -614,7 +605,6 @@ func setup_keyboard_controls():
 	attack_move_button_2.focus_mode = Control.FOCUS_ALL
 	attack_move_button_3.focus_mode = Control.FOCUS_ALL
 	attack_move_button_4.focus_mode = Control.FOCUS_ALL
-	attack_cancel_button.focus_mode = Control.FOCUS_ALL
 
 func ensure_input_action_key(action_name: String, key_code: int):
 	if not InputMap.has_action(action_name):
@@ -688,8 +678,6 @@ func move_attack_menu_focus(action_name: String, focus_owner):
 			attack_move_button_1.grab_focus()
 		elif focus_owner == attack_move_button_4:
 			attack_move_button_3.grab_focus()
-		elif focus_owner == attack_cancel_button:
-			attack_move_button_3.grab_focus()
 		return
 
 	if action_name == "ui_right":
@@ -704,8 +692,6 @@ func move_attack_menu_focus(action_name: String, focus_owner):
 			attack_move_button_1.grab_focus()
 		elif focus_owner == attack_move_button_4:
 			attack_move_button_2.grab_focus()
-		elif focus_owner == attack_cancel_button:
-			attack_move_button_3.grab_focus()
 		return
 
 	if action_name == "ui_down":
@@ -713,8 +699,6 @@ func move_attack_menu_focus(action_name: String, focus_owner):
 			attack_move_button_3.grab_focus()
 		elif focus_owner == attack_move_button_2:
 			attack_move_button_4.grab_focus()
-		elif focus_owner == attack_move_button_3 or focus_owner == attack_move_button_4:
-			attack_cancel_button.grab_focus()
 		return
 
 func press_focused_button():
@@ -785,7 +769,6 @@ func refresh_attack_menu():
 			button.disabled = true
 			button.text = "-"
 
-	attack_cancel_button.disabled = false
 	refresh_attack_move_details(0)
 
 func set_attack_menu_enabled(enabled: bool):
@@ -793,7 +776,6 @@ func set_attack_menu_enabled(enabled: bool):
 	attack_move_button_2.disabled = (not enabled) or attack_move_button_2.text == "-"
 	attack_move_button_3.disabled = (not enabled) or attack_move_button_3.text == "-"
 	attack_move_button_4.disabled = (not enabled) or attack_move_button_4.text == "-"
-	attack_cancel_button.disabled = not enabled
 
 func refresh_attack_move_details(move_slot: int):
 	var attacker = battle_data["player"] if battle_data != null and battle_data.has("player") else null
@@ -881,14 +863,12 @@ func focus_first_attack_move_button():
 	if not attack_move_button_4.disabled:
 		attack_move_button_4.grab_focus()
 		return
-	attack_cancel_button.grab_focus()
 
 func is_attack_menu_button(focus_owner) -> bool:
 	return focus_owner == attack_move_button_1 \
 		or focus_owner == attack_move_button_2 \
 		or focus_owner == attack_move_button_3 \
-		or focus_owner == attack_move_button_4 \
-		or focus_owner == attack_cancel_button
+		or focus_owner == attack_move_button_4
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
@@ -901,36 +881,105 @@ func build_type_effectiveness_text(type_multiplier: float) -> String:
 		return " It's not very effective..."
 	return ""
 
-func load_move_anim_textures():
-	move_anim_textures.clear()
-	for move_id in move_anim_texture_paths.keys():
-		var rel_path = String(move_anim_texture_paths[move_id])
-		var abs_path = minimal_assets_path + rel_path
-		if resource_exists(abs_path):
-			move_anim_textures[move_id] = load(abs_path)
-		else:
-			log_debug("Missing move anim texture: %s" % abs_path)
+func _move_id_to_anim_slug(move_id: String) -> String:
+	return move_id.strip_edges().to_lower().replace("_", "-")
 
-func load_move_anim_configs():
-	move_anim_configs.clear()
+func _read_json_payload(path: String):
 	var f = File.new()
-	for move_id in move_anim_config_paths.keys():
-		var rel_path = String(move_anim_config_paths[move_id])
-		var abs_path = minimal_assets_path + rel_path
-		if not f.file_exists(abs_path):
-			continue
+	if not f.file_exists(path):
+		return null
 
-		f.open(abs_path, File.READ)
-		var json_text = f.get_as_text()
-		f.close()
+	var open_error = f.open(path, File.READ)
+	if open_error != OK:
+		return null
 
-		var parsed = JSON.parse(json_text)
-		if parsed.error != OK:
-			continue
-		if parsed.result == null:
-			continue
+	var json_text = f.get_as_text()
+	f.close()
 
-		move_anim_configs[move_id] = parsed.result
+	var parsed = JSON.parse(json_text)
+	if parsed.error != OK:
+		return null
+
+	return parsed.result
+
+func _normalize_move_anim_config(payload):
+	if typeof(payload) == TYPE_DICTIONARY:
+		return payload
+	if typeof(payload) == TYPE_ARRAY and payload.size() > 0 and typeof(payload[0]) == TYPE_DICTIONARY:
+		return payload[0]
+	return {}
+
+func _extract_first_graphic_name(anim_config: Dictionary) -> String:
+	if anim_config.has("graphic"):
+		var direct_name = String(anim_config.get("graphic", "")).strip_edges()
+		if not direct_name.empty():
+			return direct_name
+
+	var frames = anim_config.get("frames", [])
+	if typeof(frames) != TYPE_ARRAY:
+		return ""
+
+	for frame_entries in frames:
+		if typeof(frame_entries) != TYPE_ARRAY:
+			continue
+		for frame_entry in frame_entries:
+			if typeof(frame_entry) != TYPE_DICTIONARY:
+				continue
+			if frame_entry.has("graphic"):
+				var frame_graphic = String(frame_entry.get("graphic", "")).strip_edges()
+				if not frame_graphic.empty():
+					return frame_graphic
+
+	return ""
+
+func get_move_anim_config(move_id: String) -> Dictionary:
+	var key = move_id.strip_edges().to_upper()
+	if key.empty():
+		return {}
+
+	if move_anim_configs.has(key):
+		var cached_config = move_anim_configs[key]
+		if typeof(cached_config) == TYPE_DICTIONARY:
+			return cached_config
+		return {}
+
+	var slug = _move_id_to_anim_slug(key)
+	var config_path = minimal_assets_path + "assets/battle-anims/" + slug + ".json"
+	var payload = _read_json_payload(config_path)
+	var normalized = _normalize_move_anim_config(payload)
+	if normalized.empty():
+		move_anim_configs[key] = null
+		return {}
+
+	move_anim_configs[key] = normalized
+	return normalized
+
+func get_move_anim_texture(move_id: String, anim_config: Dictionary):
+	var key = move_id.strip_edges().to_upper()
+	if key.empty() or anim_config.empty():
+		return null
+
+	if move_anim_textures.has(key):
+		return move_anim_textures[key]
+
+	var graphic_name = _extract_first_graphic_name(anim_config)
+	if graphic_name.empty():
+		move_anim_textures[key] = null
+		return null
+
+	var texture_candidates = [
+		minimal_assets_path + "assets/images/battle_anims/" + graphic_name + ".png",
+		minimal_assets_path + "assets/images/battle_anims/" + graphic_name + ".webp",
+	]
+
+	for texture_path in texture_candidates:
+		if resource_exists(texture_path):
+			var texture = load(texture_path)
+			move_anim_textures[key] = texture
+			return texture
+
+	move_anim_textures[key] = null
+	return null
 
 func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_sprite: Sprite, active_turn_token: int):
 	if not battle_fx_enabled:
@@ -939,24 +988,22 @@ func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_spri
 		return null
 	if effects_layer == null:
 		return null
-	if not move_anim_textures.has(move_id):
-		return null
-	if not move_anim_configs.has(move_id):
+	var anim_config = get_move_anim_config(move_id)
+	if anim_config.empty():
 		play_move_sfx(move_id)
 		return null
 
-	var anim_config = move_anim_configs[move_id]
+	var anim_texture = get_move_anim_texture(move_id, anim_config)
+	if anim_texture == null:
+		play_move_sfx(move_id)
+		return null
+
 	var anim_frames = anim_config.get("frames", [])
 	if anim_frames.empty():
 		play_move_sfx(move_id)
 		return null
 
-	var effect = Sprite.new()
-	effect.texture = move_anim_textures[move_id]
-	effect.region_enabled = true
-	effect.centered = true
-	effect.z_index = 10
-	effects_layer.add_child(effect)
+	var effect_sprites := []
 
 	var user_x = attacker_sprite.position.x
 	var user_y = attacker_sprite.position.y
@@ -969,20 +1016,21 @@ func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_spri
 
 	for frame_idx in range(anim_frames.size()):
 		if active_turn_token != turn_token:
-			effect.queue_free()
+			free_effect_sprites(effect_sprites)
 			return null
 
 		var frame_entries = anim_frames[frame_idx]
-		var graphic_entry = null
+		var visible_effect_count = 0
 		for frame_entry in frame_entries:
-			if int(frame_entry.get("target", 0)) == 2:
-				graphic_entry = frame_entry
-				break
+			if typeof(frame_entry) != TYPE_DICTIONARY:
+				continue
+			if int(frame_entry.get("target", 0)) != 2:
+				continue
 
-		if graphic_entry != null:
+			var effect = ensure_effect_sprite(effect_sprites, visible_effect_count, anim_texture)
 			apply_move_graphic_frame(
 				effect,
-				graphic_entry,
+				frame_entry,
 				user_x,
 				user_y,
 				target_x,
@@ -990,6 +1038,10 @@ func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_spri
 				user_half_h,
 				target_half_h
 			)
+			visible_effect_count += 1
+
+		for effect_index in range(visible_effect_count, effect_sprites.size()):
+			effect_sprites[effect_index].visible = false
 
 		var frame_events = timed_events.get(str(frame_idx), [])
 		for evt in frame_events:
@@ -1002,8 +1054,28 @@ func play_move_animation(move_id: String, attacker_sprite: Sprite, defender_spri
 	if not played_timed_sound:
 		play_move_sfx(move_id)
 
-	effect.queue_free()
+	free_effect_sprites(effect_sprites)
 	return null
+
+func ensure_effect_sprite(effect_sprites: Array, sprite_index: int, anim_texture):
+	while effect_sprites.size() <= sprite_index:
+		var effect = Sprite.new()
+		effect.texture = anim_texture
+		effect.region_enabled = true
+		effect.centered = true
+		effect.z_index = 0
+		effects_layer.add_child(effect)
+		effect_sprites.append(effect)
+
+	var sprite = effect_sprites[sprite_index]
+	sprite.texture = anim_texture
+	sprite.visible = true
+	return sprite
+
+func free_effect_sprites(effect_sprites: Array):
+	for effect in effect_sprites:
+		if effect != null:
+			effect.queue_free()
 
 func apply_move_graphic_frame(
 	effect: Sprite,
@@ -1043,6 +1115,8 @@ func apply_move_graphic_frame(
 		)
 		frame_x = mapped.x
 		frame_y = mapped.y
+	elif focus == ANIM_FOCUS_SCREEN:
+		pass
 
 	var zoom_x = float(frame_entry.get("zoomX", 100.0)) / 100.0
 	var zoom_y = float(frame_entry.get("zoomY", 100.0)) / 100.0
@@ -1138,7 +1212,28 @@ func play_move_sfx(move_id: String):
 	if not battle_fx_enabled:
 		return
 
-	var sfx_relative_path = String(move_sfx_paths.get(move_id, "assets/audio/ui/select.wav"))
+	var sfx_relative_path = "assets/audio/ui/select.wav"
+	var anim_config = get_move_anim_config(move_id)
+	if not anim_config.empty():
+		var timed_events = anim_config.get("frameTimedEvents", {})
+		if typeof(timed_events) == TYPE_DICTIONARY:
+			for frame_key in timed_events.keys():
+				var frame_events = timed_events.get(frame_key, [])
+				if typeof(frame_events) != TYPE_ARRAY:
+					continue
+				for evt in frame_events:
+					if typeof(evt) != TYPE_DICTIONARY:
+						continue
+					if String(evt.get("eventType", "")) != "AnimTimedSoundEvent":
+						continue
+					var resource_name = String(evt.get("resourceName", "")).strip_edges()
+					if resource_name.empty():
+						continue
+					sfx_relative_path = "assets/audio/battle_anims/" + resource_name
+					break
+				if sfx_relative_path != "assets/audio/ui/select.wav":
+					break
+
 	var sfx_path = minimal_assets_path + sfx_relative_path
 	if not resource_exists(sfx_path):
 		log_debug("Missing move SFX resource: %s" % sfx_path)
