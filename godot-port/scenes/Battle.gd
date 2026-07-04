@@ -26,6 +26,7 @@ const ATTACK_CATEGORY_ATLAS_REL := "assets/images/categories.json"
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
+var runtime_state_script = load("res://logic/RuntimeState.gd")
 
 onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
 onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
@@ -545,7 +546,13 @@ func _on_PokemonButton_pressed():
 	if attack_menu_visible:
 		hide_attack_menu()
 
-	set_battle_text("Pokemon menu not implemented yet.")
+	var party_size = 0
+	if runtime_state_script != null:
+		var party = runtime_state_script.get_party(get_tree())
+		if party != null:
+			party_size = party.size()
+
+	set_battle_text("Pokemon menu (PARTY-02) not implemented yet. Party slots: %d/6" % party_size)
 
 func _on_RunButton_pressed():
 	if turn_in_progress:
@@ -606,8 +613,36 @@ func reset_battle_state(message: String):
 	var handoff_species_id = consume_selected_species_id()
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
+
+	var active_party_member := {}
+	if runtime_state_script != null:
+		var party = runtime_state_script.get_party(get_tree())
+		if party != null and not handoff_species_id.empty() and party.is_empty():
+			party.add_member({
+				"species_id": handoff_species_id,
+				"level": 5,
+				"current_hp": -1,
+				"move_ids": [],
+			})
+			party.set_active_slot(0)
+		if party != null:
+			active_party_member = party.get_active_member()
+
+	if active_party_member.empty() and not selected_player_species_id.empty():
+		active_party_member = {
+			"species_id": selected_player_species_id,
+			"level": 5,
+			"current_hp": -1,
+			"move_ids": [],
+		}
+
+	var active_player_species_id = String(active_party_member.get("species_id", selected_player_species_id)).strip_edges().to_upper()
+	if active_player_species_id.empty():
+		active_player_species_id = "BLASTOISE"
+	selected_player_species_id = active_player_species_id
+
 	var next_enemy_species_id = pick_random_enemy_species_id("")
-	battle_data = build_battle_seed(selected_player_species_id, next_enemy_species_id)
+	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member)
 	enemy_layer.rect_position = enemy_layer_home_position
 	load_battle_sprites()
 	battle_ended = false
@@ -626,11 +661,24 @@ func reset_battle_state(message: String):
 	ensure_button_focus()
 	set_battle_text(message)
 
-func build_battle_seed(player_species_id: String, enemy_species_id: String) -> Dictionary:
+func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}) -> Dictionary:
 	if catalog_loader == null:
 		catalog_loader = catalog_loader_script.new()
 
 	if catalog_loader != null and catalog_loader.load_catalogs():
+		if typeof(player_party_member) == TYPE_DICTIONARY and not player_party_member.empty():
+			var player_level = max(1, int(player_party_member.get("level", 5)))
+			var player_move_ids = player_party_member.get("move_ids", [])
+			if typeof(player_move_ids) != TYPE_ARRAY:
+				player_move_ids = []
+
+			var player_data = catalog_loader.build_pokemon_data(player_species_id, player_level, player_move_ids)
+			var enemy_data = catalog_loader.build_pokemon_data(enemy_species_id, 5)
+			return {
+				"player": player_data,
+				"enemy": enemy_data,
+			}
+
 		return catalog_loader.build_battle_seed(player_species_id, enemy_species_id)
 
 	return pokemon_data_script.create_battle_02_test_data(player_species_id)

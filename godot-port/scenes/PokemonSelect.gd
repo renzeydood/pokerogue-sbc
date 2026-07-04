@@ -4,6 +4,7 @@ const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v
 const BATTLE_SCENE_PATH := "res://scenes/Battle.tscn"
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
+var runtime_state_script = load("res://logic/RuntimeState.gd")
 
 export(int) var ui_font_size := 17
 export(int) var control_button_font_size := 12
@@ -364,7 +365,11 @@ func _process(delta):
 func _on_StartButton_pressed():
 	if selected_species_entry == null:
 		return
-	get_tree().set_meta("selected_species_id", String(selected_species_entry.get("species_id", "UNKNOWN")))
+	var selected_species_id = String(selected_species_entry.get("species_id", "UNKNOWN")).strip_edges().to_upper()
+	if runtime_state_script != null:
+		runtime_state_script.ensure_party_with_starter(get_tree(), selected_species_id, 5)
+	else:
+		get_tree().set_meta("selected_species_id", selected_species_id)
 	var result = get_tree().change_scene(BATTLE_SCENE_PATH)
 	if result != OK:
 		push_error("Failed to open battle scene: %s" % BATTLE_SCENE_PATH)
