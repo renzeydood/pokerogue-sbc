@@ -13,6 +13,10 @@ export(float) var move_anim_step_sec := 0.05
 export(float) var faint_step_sec := 0.05
 export(float) var faint_drop_px := 20.0
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
+const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
+const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
+const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
+const ATTACK_CATEGORY_ATLAS_REL := "assets/images/categories.json"
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -34,10 +38,21 @@ onready var player_type1_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerTy
 onready var player_type2_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType2Sprite")
 onready var player_pokemon_sprite = $BattlefieldLayer/PlayerLayer/PlayerPokemonSprite
 onready var battle_text_label = $UILayer/MessagePanel/MessageMargin/BattleTextLabel
-onready var move_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/MoveButton
-onready var ball_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/RestartButton
-onready var pokemon_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/MoveButton
-onready var run_button = $UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton
+onready var controls_container = $UILayer/ControlsContainer
+onready var move_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1/MoveButton
+onready var ball_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1/RestartButton
+onready var pokemon_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2/MoveButton
+onready var run_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2/RestartButton
+onready var attack_menu_container = $UILayer/AttackMenuContainer
+onready var attack_move_button_1 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton1
+onready var attack_move_button_2 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton2
+onready var attack_move_button_3 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3
+onready var attack_move_button_4 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4
+onready var attack_type_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackTypeSprite
+onready var attack_power_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPowerLabel
+onready var attack_category_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackCategorySprite
+onready var attack_pp_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPpLabel
+onready var attack_cancel_button = $UILayer/AttackMenuContainer/AttackCancelButton
 
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
@@ -102,10 +117,12 @@ var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
 var catalog_loader = null
 var selected_player_species_id := ""
+var attack_menu_visible := false
 
 func _ready():
 	log_debug("Battle scene ready")
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
+	ensure_ui_signal_connections()
 	apply_fonts()
 	update_run_button_label()
 	player_sprite_home_position = player_pokemon_sprite.position
@@ -115,11 +132,25 @@ func _ready():
 	load_move_anim_textures()
 	load_move_anim_configs()
 	setup_type_sprite_placeholders()
+	setup_attack_detail_sprites()
 	reset_battle_state("Battle ready.")
 
 	add_blend_material = CanvasItemMaterial.new()
 	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	setup_keyboard_controls()
+
+func ensure_ui_signal_connections():
+	if move_button != null and not move_button.is_connected("pressed", self, "_on_MoveButton_pressed"):
+		move_button.connect("pressed", self, "_on_MoveButton_pressed")
+
+	if ball_button != null and not ball_button.is_connected("pressed", self, "_on_RestartButton_pressed"):
+		ball_button.connect("pressed", self, "_on_RestartButton_pressed")
+
+	if pokemon_button != null and not pokemon_button.is_connected("pressed", self, "_on_PokemonButton_pressed"):
+		pokemon_button.connect("pressed", self, "_on_PokemonButton_pressed")
+
+	if run_button != null and not run_button.is_connected("pressed", self, "_on_RunButton_pressed"):
+		run_button.connect("pressed", self, "_on_RunButton_pressed")
 
 func log_debug(message: String):
 	var f = File.new()
@@ -165,6 +196,13 @@ func apply_fonts():
 	ball_button.add_font_override("font", button_font)
 	pokemon_button.add_font_override("font", button_font)
 	run_button.add_font_override("font", button_font)
+	attack_move_button_1.add_font_override("font", button_font)
+	attack_move_button_2.add_font_override("font", button_font)
+	attack_move_button_3.add_font_override("font", button_font)
+	attack_move_button_4.add_font_override("font", button_font)
+	attack_power_label.add_font_override("font", ui_font)
+	attack_pp_label.add_font_override("font", ui_font)
+	attack_cancel_button.add_font_override("font", button_font)
 
 func bind_battle_data():
 	var enemy_data = battle_data["enemy"]
@@ -194,6 +232,10 @@ func setup_type_sprite_placeholders():
 	configure_type_sprite(enemy_type2_sprite, Vector2(89, 61))
 	configure_type_sprite(player_type1_sprite, Vector2(89, 43))
 	configure_type_sprite(player_type2_sprite, Vector2(89, 55))
+
+func setup_attack_detail_sprites():
+	configure_type_sprite(attack_type_sprite, Vector2.ZERO)
+	configure_type_sprite(attack_category_sprite, Vector2.ZERO)
 
 func configure_type_sprite(type_sprite, fallback_position: Vector2):
 	if type_sprite == null:
@@ -350,7 +392,44 @@ func _on_MoveButton_pressed():
 	if turn_in_progress:
 		return
 
+	show_attack_menu()
+	set_battle_text("")
+
+func _on_AttackMoveButton_pressed(move_slot: int):
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball to restart.")
+		return
+
+	if turn_in_progress:
+		return
+
+	var attacker = battle_data["player"]
+	if attacker == null:
+		set_battle_text("Battle data missing.")
+		return
+
+	if move_slot < 0 or move_slot >= attacker.moves.size():
+		set_battle_text("No move in that slot.")
+		return
+
+	execute_player_move(attacker.moves[move_slot])
+
+func _on_AttackMoveButton_focus_entered(move_slot: int):
+	refresh_attack_move_details(move_slot)
+
+func _on_AttackCancelButton_pressed():
+	if turn_in_progress or battle_ended:
+		return
+	hide_attack_menu()
+	ensure_button_focus()
+
+func execute_player_move(move):
+	if move == null:
+		set_battle_text("No move available.")
+		return
+
 	turn_in_progress = true
+	hide_all_command_menus()
 	set_action_lock(true)
 	var active_turn_token = turn_token
 
@@ -361,12 +440,6 @@ func _on_MoveButton_pressed():
 		_finish_turn()
 		return
 
-	if attacker.moves.empty():
-		set_battle_text("No move available.")
-		_finish_turn()
-		return
-
-	var move = attacker.moves[0]
 	var player_move_anim = play_move_animation(move.move_id, player_pokemon_sprite, enemy_pokemon_sprite, active_turn_token)
 	if player_move_anim is GDScriptFunctionState:
 		yield(player_move_anim, "completed")
@@ -455,6 +528,9 @@ func _on_PokemonButton_pressed():
 	if turn_in_progress:
 		return
 
+	if attack_menu_visible:
+		hide_attack_menu()
+
 	set_battle_text("Pokemon menu not implemented yet.")
 
 func _on_RunButton_pressed():
@@ -472,16 +548,19 @@ func set_action_lock(locked: bool):
 	pokemon_button.disabled = locked
 	run_button.disabled = locked
 	ball_button.disabled = locked and battle_ended == false
+	set_attack_menu_enabled(not locked)
 	if not locked and not battle_ended:
 		ensure_button_focus()
 
 func _finish_turn():
 	turn_in_progress = false
 	if not battle_ended:
+		show_main_controls()
 		set_action_lock(false)
 
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
+	show_main_controls()
 	set_action_lock(true)
 	ball_button.disabled = false
 	ball_button.grab_focus()
@@ -497,6 +576,8 @@ func reset_battle_state(message: String):
 	load_battle_sprites()
 	battle_ended = false
 	turn_in_progress = false
+	hide_attack_menu()
+	refresh_attack_menu()
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
 	set_action_lock(false)
@@ -529,6 +610,11 @@ func setup_keyboard_controls():
 	ball_button.focus_mode = Control.FOCUS_ALL
 	pokemon_button.focus_mode = Control.FOCUS_ALL
 	run_button.focus_mode = Control.FOCUS_ALL
+	attack_move_button_1.focus_mode = Control.FOCUS_ALL
+	attack_move_button_2.focus_mode = Control.FOCUS_ALL
+	attack_move_button_3.focus_mode = Control.FOCUS_ALL
+	attack_move_button_4.focus_mode = Control.FOCUS_ALL
+	attack_cancel_button.focus_mode = Control.FOCUS_ALL
 
 func ensure_input_action_key(action_name: String, key_code: int):
 	if not InputMap.has_action(action_name):
@@ -543,6 +629,13 @@ func ensure_input_action_key(action_name: String, key_code: int):
 	InputMap.action_add_event(action_name, new_event)
 
 func ensure_button_focus():
+	if attack_menu_visible:
+		var attack_focus_owner = get_focus_owner()
+		if is_attack_menu_button(attack_focus_owner):
+			return
+		focus_first_attack_move_button()
+		return
+
 	var focus_owner = get_focus_owner()
 	if focus_owner == move_button or focus_owner == ball_button or focus_owner == pokemon_button or focus_owner == run_button:
 		return
@@ -555,6 +648,10 @@ func move_button_focus(action_name: String):
 	ensure_button_focus()
 	var focus_owner = get_focus_owner()
 	if focus_owner == null:
+		return
+
+	if attack_menu_visible:
+		move_attack_menu_focus(action_name, focus_owner)
 		return
 
 	if action_name == "ui_left":
@@ -585,6 +682,41 @@ func move_button_focus(action_name: String):
 			run_button.grab_focus()
 		return
 
+func move_attack_menu_focus(action_name: String, focus_owner):
+	if action_name == "ui_left":
+		if focus_owner == attack_move_button_2:
+			attack_move_button_1.grab_focus()
+		elif focus_owner == attack_move_button_4:
+			attack_move_button_3.grab_focus()
+		elif focus_owner == attack_cancel_button:
+			attack_move_button_3.grab_focus()
+		return
+
+	if action_name == "ui_right":
+		if focus_owner == attack_move_button_1:
+			attack_move_button_2.grab_focus()
+		elif focus_owner == attack_move_button_3:
+			attack_move_button_4.grab_focus()
+		return
+
+	if action_name == "ui_up":
+		if focus_owner == attack_move_button_3:
+			attack_move_button_1.grab_focus()
+		elif focus_owner == attack_move_button_4:
+			attack_move_button_2.grab_focus()
+		elif focus_owner == attack_cancel_button:
+			attack_move_button_3.grab_focus()
+		return
+
+	if action_name == "ui_down":
+		if focus_owner == attack_move_button_1:
+			attack_move_button_3.grab_focus()
+		elif focus_owner == attack_move_button_2:
+			attack_move_button_4.grab_focus()
+		elif focus_owner == attack_move_button_3 or focus_owner == attack_move_button_4:
+			attack_cancel_button.grab_focus()
+		return
+
 func press_focused_button():
 	ensure_button_focus()
 	var focus_owner = get_focus_owner()
@@ -597,8 +729,166 @@ func update_run_button_label():
 	if run_button == null:
 		return
 
-	var state_text = "ON" if battle_fx_enabled else "OFF"
-	run_button.text = "Run FX: %s" % state_text
+	# Keep this short so the fixed two-column controls window does not resize at runtime.
+	run_button.text = "FX ON" if battle_fx_enabled else "FX OFF"
+
+func show_attack_menu():
+	refresh_attack_menu()
+	attack_menu_visible = true
+	attack_menu_container.visible = true
+	controls_container.visible = false
+	refresh_attack_move_details(0)
+	focus_first_attack_move_button()
+
+func hide_attack_menu():
+	show_main_controls()
+
+func show_main_controls():
+	attack_menu_visible = false
+	attack_menu_container.visible = false
+	controls_container.visible = true
+	set_main_command_prompt()
+
+func hide_all_command_menus():
+	attack_menu_visible = false
+	attack_menu_container.visible = false
+	controls_container.visible = false
+
+func set_main_command_prompt():
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		set_battle_text("What will Pokemon do?")
+		return
+
+	var player_species = String(battle_data["player"].species_id)
+	set_battle_text("What will %s do?" % player_species)
+
+func refresh_attack_menu():
+	var attacker = battle_data["player"] if battle_data != null and battle_data.has("player") else null
+	var moves = []
+	if attacker != null:
+		moves = attacker.moves
+
+	var move_buttons = [
+		attack_move_button_1,
+		attack_move_button_2,
+		attack_move_button_3,
+		attack_move_button_4,
+	]
+
+	for i in range(move_buttons.size()):
+		var button = move_buttons[i]
+		if i < moves.size():
+			var move = moves[i]
+			button.disabled = false
+			button.text = String(move.move_id)
+		else:
+			button.disabled = true
+			button.text = "-"
+
+	attack_cancel_button.disabled = false
+	refresh_attack_move_details(0)
+
+func set_attack_menu_enabled(enabled: bool):
+	attack_move_button_1.disabled = (not enabled) or attack_move_button_1.text == "-"
+	attack_move_button_2.disabled = (not enabled) or attack_move_button_2.text == "-"
+	attack_move_button_3.disabled = (not enabled) or attack_move_button_3.text == "-"
+	attack_move_button_4.disabled = (not enabled) or attack_move_button_4.text == "-"
+	attack_cancel_button.disabled = not enabled
+
+func refresh_attack_move_details(move_slot: int):
+	var attacker = battle_data["player"] if battle_data != null and battle_data.has("player") else null
+	if attacker == null or move_slot < 0 or move_slot >= attacker.moves.size():
+		attack_type_sprite.visible = false
+		attack_power_label.text = "Power: -"
+		attack_category_sprite.visible = false
+		attack_pp_label.text = "PP: -/-"
+		return
+
+	var move = attacker.moves[move_slot]
+	apply_attack_detail_badge(
+		attack_type_sprite,
+		ATTACK_TYPE_TEXTURE_REL,
+		ATTACK_TYPE_ATLAS_REL,
+		[String(move.move_type).strip_edges().to_lower(), "unknown"]
+	)
+	attack_power_label.text = "Power: %d" % int(move.power)
+	apply_attack_detail_badge(
+		attack_category_sprite,
+		ATTACK_CATEGORY_TEXTURE_REL,
+		ATTACK_CATEGORY_ATLAS_REL,
+		[
+			String(move.category).strip_edges().to_lower(),
+			String(move.category).strip_edges(),
+			String(move.category).strip_edges().to_upper(),
+		]
+	)
+	attack_pp_label.text = "PP: %s" % build_move_pp_text(move)
+
+func apply_attack_detail_badge(sprite_node: Sprite, texture_rel: String, atlas_rel: String, frame_candidates: Array):
+	if sprite_node == null:
+		return
+
+	var texture_path = minimal_assets_path + texture_rel
+	var atlas_path = minimal_assets_path + atlas_rel
+	if not resource_exists(texture_path):
+		sprite_node.visible = false
+		return
+
+	var frame_data = null
+	for candidate in frame_candidates:
+		var frame_name = String(candidate).strip_edges()
+		if frame_name.empty():
+			continue
+		frame_data = parse_sprite_frame(atlas_path, frame_name)
+		if frame_data != null:
+			break
+
+	if frame_data == null:
+		sprite_node.visible = false
+		return
+
+	sprite_node.texture = load(texture_path)
+	sprite_node.region_enabled = true
+	sprite_node.centered = false
+	var frame = frame_data["frame"]
+	sprite_node.region_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+	sprite_node.visible = true
+
+func build_move_pp_text(move) -> String:
+	# Placeholder-first: we will populate real PP once move runtime tracks current/max values.
+	if move == null:
+		return "-/-"
+
+	if move is Dictionary:
+		if move.has("current_pp") and move.has("max_pp"):
+			return "%d/%d" % [int(move["current_pp"]), int(move["max_pp"])]
+		if move.has("pp"):
+			var pp = int(move["pp"])
+			return "%d/%d" % [pp, pp]
+
+	return "-/-"
+
+func focus_first_attack_move_button():
+	if not attack_move_button_1.disabled:
+		attack_move_button_1.grab_focus()
+		return
+	if not attack_move_button_2.disabled:
+		attack_move_button_2.grab_focus()
+		return
+	if not attack_move_button_3.disabled:
+		attack_move_button_3.grab_focus()
+		return
+	if not attack_move_button_4.disabled:
+		attack_move_button_4.grab_focus()
+		return
+	attack_cancel_button.grab_focus()
+
+func is_attack_menu_button(focus_owner) -> bool:
+	return focus_owner == attack_move_button_1 \
+		or focus_owner == attack_move_button_2 \
+		or focus_owner == attack_move_button_3 \
+		or focus_owner == attack_move_button_4 \
+		or focus_owner == attack_cancel_button
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
