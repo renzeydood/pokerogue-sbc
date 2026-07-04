@@ -229,14 +229,13 @@ autowrap = true
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 189.5
+margin_left = 190.0
 margin_top = -64.0
-margin_right = -1.5
+margin_right = -1.0
 
 [node name="ControlWindowSprite" type="NinePatchRect" parent="UILayer/ControlsContainer"]
-margin_left = 3.0
 margin_top = 1.0
-margin_right = 131.0
+margin_right = 128.0
 margin_bottom = 63.0
 rect_min_size = Vector2( 128, 62 )
 texture = ExtResource( 13 )
@@ -245,57 +244,185 @@ patch_margin_top = 8
 patch_margin_right = 8
 patch_margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/ControlsContainer"]
-margin_top = 10.0
-margin_right = 134.0
-margin_bottom = 54.0
+[node name="ContentMargin" type="MarginContainer" parent="UILayer/ControlsContainer/ControlWindowSprite"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 8.0
+margin_right = 7.0
+margin_bottom = -8.0
 
-[node name="ControlsPanel1" type="HBoxContainer" parent="UILayer/ControlsContainer/VBoxContainer"]
-margin_right = 134.0
+[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin"]
+margin_right = 125.0
+margin_bottom = 46.0
+rect_min_size = Vector2( 100, 0 )
+
+[node name="ControlsPanel1" type="HBoxContainer" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer"]
+margin_right = 125.0
 margin_bottom = 20.0
 custom_constants/separation = 8
 
-[node name="MoveButton" type="Button" parent="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1"]
-margin_right = 63.0
+[node name="MoveButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1"]
+margin_right = 58.0
 margin_bottom = 20.0
-rect_min_size = Vector2( 54, 20 )
+rect_min_size = Vector2( 45, 20 )
 size_flags_horizontal = 3
 text = "Fight"
 flat = true
 align = 0
 
-[node name="RestartButton" type="Button" parent="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1"]
-margin_left = 71.0
-margin_right = 134.0
+[node name="RestartButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1"]
+margin_left = 66.0
+margin_right = 125.0
 margin_bottom = 20.0
-rect_min_size = Vector2( 54, 20 )
+rect_min_size = Vector2( 45, 20 )
 size_flags_horizontal = 3
 text = "Ball"
 flat = true
 align = 0
 
-[node name="ControlsPanel2" type="HBoxContainer" parent="UILayer/ControlsContainer/VBoxContainer"]
+[node name="ControlsPanel2" type="HBoxContainer" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer"]
 margin_top = 24.0
-margin_right = 134.0
+margin_right = 125.0
 margin_bottom = 44.0
 custom_constants/separation = 8
 
-[node name="MoveButton" type="Button" parent="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2"]
+[node name="MoveButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2"]
 margin_right = 72.0
 margin_bottom = 20.0
-rect_min_size = Vector2( 54, 20 )
+rect_min_size = Vector2( 45, 20 )
 size_flags_horizontal = 3
 text = "Pokemon"
 flat = true
 align = 0
 
-[node name="RestartButton" type="Button" parent="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2"]
+[node name="RestartButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2"]
 margin_left = 80.0
-margin_right = 134.0
+margin_right = 125.0
 margin_bottom = 20.0
-rect_min_size = Vector2( 54, 20 )
+rect_min_size = Vector2( 45, 20 )
 size_flags_horizontal = 3
 text = "Run"
+flat = true
+align = 0
+
+[node name="AttackMenuContainer" type="CenterContainer" parent="UILayer"]
+visible = false
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 2.0
+margin_top = -64.0
+margin_right = 3.0
+margin_bottom = 1.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UILayer/AttackMenuContainer"]
+margin_top = 1.0
+margin_right = 320.0
+margin_bottom = 63.0
+
+[node name="AttackWindowSprite" type="NinePatchRect" parent="UILayer/AttackMenuContainer/HBoxContainer"]
+margin_right = 230.0
+margin_bottom = 62.0
+rect_min_size = Vector2( 230, 62 )
+texture = ExtResource( 13 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="AttackMovesGrid" type="GridContainer" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite"]
+margin_left = 6.0
+margin_top = 7.0
+margin_right = 224.0
+margin_bottom = 55.0
+columns = 2
+
+[node name="AttackMoveButton1" type="Button" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid"]
+margin_right = 107.0
+margin_bottom = 22.0
+rect_min_size = Vector2( 54, 22 )
+size_flags_horizontal = 3
+text = "MOVE 1"
+flat = true
+align = 0
+
+[node name="AttackMoveButton2" type="Button" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid"]
+margin_left = 111.0
+margin_right = 218.0
+margin_bottom = 22.0
+rect_min_size = Vector2( 54, 22 )
+size_flags_horizontal = 3
+text = "MOVE 2"
+flat = true
+align = 0
+
+[node name="AttackMoveButton3" type="Button" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid"]
+margin_top = 26.0
+margin_right = 107.0
+margin_bottom = 48.0
+rect_min_size = Vector2( 54, 22 )
+size_flags_horizontal = 3
+text = "MOVE 3"
+flat = true
+align = 0
+
+[node name="AttackMoveButton4" type="Button" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid"]
+margin_left = 111.0
+margin_top = 26.0
+margin_right = 218.0
+margin_bottom = 48.0
+rect_min_size = Vector2( 54, 22 )
+size_flags_horizontal = 3
+text = "MOVE 4"
+flat = true
+align = 0
+
+[node name="AttackWindowSprite2" type="NinePatchRect" parent="UILayer/AttackMenuContainer/HBoxContainer"]
+margin_left = 230.0
+margin_right = 316.0
+margin_bottom = 62.0
+rect_min_size = Vector2( 86, 62 )
+texture = ExtResource( 13 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="AttackMoveDetails" type="Control" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2"]
+margin_left = 6.0
+margin_right = 80.0
+margin_bottom = 62.0
+
+[node name="AttackTypeSprite" type="Sprite" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails"]
+position = Vector2( 2, 7.5 )
+
+[node name="AttackCategorySprite" type="Sprite" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails"]
+position = Vector2( 38, 7.5 )
+scale = Vector2( 1.25, 1.25 )
+
+[node name="AttackPowerLabel" type="Label" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails"]
+margin_left = 1.5
+margin_top = 35.5
+margin_right = 75.5
+margin_bottom = 49.5
+text = "Power: -"
+
+[node name="AttackPpLabel" type="Label" parent="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails"]
+margin_left = 1.5
+margin_top = 23.5
+margin_right = 75.5
+margin_bottom = 37.5
+text = "PP: -/-"
+
+[node name="AttackCancelButton" type="Button" parent="UILayer/AttackMenuContainer"]
+margin_left = 133.0
+margin_top = 21.0
+margin_right = 187.0
+margin_bottom = 43.0
+rect_min_size = Vector2( 54, 22 )
+size_flags_horizontal = 3
+text = "Cancel"
 flat = true
 align = 0
 
@@ -303,7 +430,12 @@ align = 0
 
 [node name="UIAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/MoveButton" to="." method="_on_MoveButton_pressed"]
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel1/RestartButton" to="." method="_on_RestartButton_pressed"]
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/MoveButton" to="." method="_on_PokemonButton_pressed"]
-[connection signal="pressed" from="UILayer/ControlsContainer/VBoxContainer/ControlsPanel2/RestartButton" to="." method="_on_RunButton_pressed"]
+[connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton1" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 0 ]]
+[connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton1" to="." method="_on_AttackMoveButton_pressed" binds= [ 0 ]]
+[connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton2" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 1 ]]
+[connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton2" to="." method="_on_AttackMoveButton_pressed" binds= [ 1 ]]
+[connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 2 ]]
+[connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3" to="." method="_on_AttackMoveButton_pressed" binds= [ 2 ]]
+[connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 3 ]]
+[connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_pressed" binds= [ 3 ]]
+[connection signal="pressed" from="UILayer/AttackMenuContainer/AttackCancelButton" to="." method="_on_AttackCancelButton_pressed"]
