@@ -17,12 +17,51 @@ export(float) var defeat_return_delay_sec := 1.3
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
 export(bool) var debug_open_party_menu_on_ready := false
+export(bool) var player_trainer_enabled := true
+export(float) var player_trainer_idle_hold_sec := 0.5
+export(float) var player_trainer_reveal_delay_sec := 0.1
+export(float) var player_trainer_exit_duration_sec := 1.2
+export(float) var player_trainer_exit_distance_px := 120.0
+export(float) var player_pokeball_start_offset_x := 8.0
+export(float) var player_pokeball_start_offset_y := -42.0
+export(float) var player_pokeball_target_offset_x := 10.0
+export(float) var player_pokeball_target_offset_y := -72.0
+export(float) var player_pokeball_start_delay_sec := 0.0
+export(float) var player_pokeball_arc_height_px := 42.0
+export(float) var player_pokeball_lob_duration_sec := 0.65
+export(float) var player_pokeball_lob_up_duration_sec := 0.15
+export(float) var player_pokeball_spin_degrees := 720.0
+export(float) var player_pokeball_opening_hold_sec := 0.06
+export(float) var player_pokeball_open_hold_sec := 0.08
+export(float) var player_pokemon_reveal_start_scale := 0.5
+export(float) var player_pokemon_reveal_scale_duration_sec := 0.25
+export(float) var player_pokemon_reveal_flash_mul := 1.35
+export(float) var player_pokemon_reveal_flash_duration_sec := 0.18
+export(Color) var player_pokemon_reveal_tint_color := Color(1.0, 0.75, 0.75, 1.0)
+export(float) var player_pokemon_reveal_alpha_start := 0.0
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
 const SELECTION_SCENE_PATH := "res://scenes/PokemonSelect.tscn"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
 const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
 const ATTACK_CATEGORY_ATLAS_REL := "assets/images/categories.json"
+const PLAYER_TRAINER_BACK_TEXTURE_REL := "assets/images/trainer/trainer_m_back.png"
+const PLAYER_TRAINER_BACK_ATLAS_REL := "assets/images/trainer/trainer_m_back.json"
+const PLAYER_TRAINER_BACK_PB_TEXTURE_REL := "assets/images/trainer/trainer_m_back_pb.png"
+const PLAYER_TRAINER_BACK_PB_ATLAS_REL := "assets/images/trainer/trainer_m_back_pb.json"
+const POKEBALL_TEXTURE_REL := "assets/images/pb.png"
+const POKEBALL_ATLAS_REL := "assets/images/pb.json"
+const POKEBALL_FRAME_CLOSED := "pb"
+const POKEBALL_FRAME_OPENING := "pb_opening"
+const POKEBALL_FRAME_OPEN := "pb_open"
+const POKEBALL_PARTICLES_TEXTURE_REL := "assets/images/effects/pb_particles.png"
+const POKEBALL_PARTICLES_ATLAS_REL := "assets/images/effects/pb_particles.json"
+export(int) var player_pokeball_particle_count := 17
+export(float) var player_pokeball_particle_spawn_interval_sec := 0.02
+export(float) var player_pokeball_particle_radius_px := 48.0
+export(float) var player_pokeball_particle_travel_duration_sec := 0.575
+export(float) var player_pokeball_particle_fade_delay_sec := 0.5
+export(float) var player_pokeball_particle_fade_duration_sec := 0.075
 
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
@@ -45,6 +84,7 @@ onready var player_hp_bar = get_node_or_null("UILayer/PlayerPanel/PlayerHpBar")
 onready var player_hp_value_label = $UILayer/PlayerPanel/PlayerHpValueLabel
 onready var player_type1_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType1Sprite")
 onready var player_type2_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType2Sprite")
+onready var player_trainer_sprite = get_node_or_null("BattlefieldLayer/PlayerLayer/PlayerTrainerSprite")
 onready var player_pokemon_sprite = $BattlefieldLayer/PlayerLayer/PlayerPokemonSprite
 onready var battle_text_label = $UILayer/MessagePanel/MessageMargin/BattleTextLabel
 onready var controls_container = $UILayer/ControlsContainer
@@ -110,9 +150,29 @@ var player_anim_elapsed := 0.0
 var enemy_anim_elapsed := 0.0
 var enemy_layer_home_position := Vector2.ZERO
 var player_sprite_home_position := Vector2.ZERO
+var player_sprite_home_scale := Vector2.ONE
 var enemy_sprite_home_position := Vector2.ZERO
+var player_trainer_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
+var player_trainer_texture_back = null
+var player_trainer_texture_back_pb = null
+var player_trainer_idle_frame := {}
+var player_trainer_throw_frames := []
+var player_trainer_choreo_playing := false
+var player_trainer_choreo_elapsed := 0.0
+var player_trainer_last_throw_index := -1
+var player_trainer_pokemon_revealed := false
+var player_trainer_exit_started := false
+var player_pokeball_sprite = null
+var player_pokeball_lob_started := false
+var player_pokeball_release_done := false
+var player_sendout_cry_played := false
+var player_sendout_cry_key := ""
+var player_cry_audio_player: AudioStreamPlayer = null
+var pokeball_particles_texture = null
+var pokeball_particles_frames := []
+var pokeball_open_particle_sprite_frames: SpriteFrames = null
 var catalog_loader = null
 var selected_player_species_id := ""
 var attack_menu_visible := false
@@ -129,7 +189,10 @@ func _ready():
 	update_run_button_label()
 	enemy_layer_home_position = enemy_layer.rect_position
 	player_sprite_home_position = player_pokemon_sprite.position
+	player_sprite_home_scale = player_pokemon_sprite.scale
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
+	if player_trainer_sprite != null:
+		player_trainer_sprite_home_position = player_trainer_sprite.position
 	build_hp_overlay_frames()
 	load_audio_assets()
 	setup_type_sprite_placeholders()
@@ -163,8 +226,17 @@ func ensure_ui_signal_connections():
 
 func log_debug(message: String):
 	var f = File.new()
+	# Ensure the log file exists before opening in append mode.
+	if not f.file_exists(debug_log_path):
+		var create_error = f.open(debug_log_path, File.WRITE_READ)
+		if create_error != OK:
+			print("[Battle] log create failed: %s" % debug_log_path)
+			return
+		f.close()
+
 	var open_error = f.open(debug_log_path, File.READ_WRITE)
 	if open_error != OK:
+		print("[Battle] log open failed: %s" % debug_log_path)
 		return
 	f.seek_end()
 	f.store_line("[%s] %s" % [str(OS.get_unix_time()), message])
@@ -380,6 +452,7 @@ func load_audio_assets():
 
 func _process(_delta):
 	update_pokemon_animations(_delta)
+	update_player_trainer_choreography(_delta)
 
 	if Input.is_action_just_pressed("ui_accept") and get_focus_owner() == null and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
@@ -721,6 +794,7 @@ func reset_battle_state(message: String):
 	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
+	start_player_trainer_summon_choreography()
 	ensure_button_focus()
 	set_battle_text(message)
 
@@ -1579,6 +1653,26 @@ func reposition_y(x1: float, y1: float, x2: float, y2: float, tx: float, ty: flo
 	var dy = y2 - y1
 	return Vector2(x1 + tx * dx, y1 + ty * dy)
 
+func resolve_audio_asset_path(relative_path: String) -> String:
+	var normalized = relative_path.strip_edges()
+	if normalized.empty():
+		return ""
+
+	var exact_path = minimal_assets_path + normalized
+	if resource_exists(exact_path):
+		return exact_path
+
+	if normalized.to_lower().ends_with(".m4a"):
+		var base = normalized.substr(0, normalized.length() - 4)
+		var ogg_path = minimal_assets_path + base + ".ogg"
+		if resource_exists(ogg_path):
+			return ogg_path
+		var wav_path = minimal_assets_path + base + ".wav"
+		if resource_exists(wav_path):
+			return wav_path
+
+	return ""
+
 func play_anim_event_sound(resource_name: String):
 	if not battle_fx_enabled:
 		return
@@ -1587,8 +1681,8 @@ func play_anim_event_sound(resource_name: String):
 	if file_name.empty():
 		return
 
-	var sfx_path = minimal_assets_path + "assets/audio/battle_anims/" + file_name
-	if not resource_exists(sfx_path):
+	var sfx_path = resolve_audio_asset_path("assets/audio/battle_anims/" + file_name)
+	if sfx_path.empty():
 		log_debug("Missing timed anim SFX: %s" % sfx_path)
 		play_move_sfx("")
 		return
@@ -1622,11 +1716,11 @@ func play_move_sfx(move_id: String):
 				if sfx_relative_path != "assets/audio/ui/select.wav":
 					break
 
-	var sfx_path = minimal_assets_path + sfx_relative_path
-	if not resource_exists(sfx_path):
+	var sfx_path = resolve_audio_asset_path(sfx_relative_path)
+	if sfx_path.empty():
 		log_debug("Missing move SFX resource: %s" % sfx_path)
-		sfx_path = minimal_assets_path + "assets/audio/ui/select.wav"
-		if not resource_exists(sfx_path):
+		sfx_path = resolve_audio_asset_path("assets/audio/ui/select.wav")
+		if sfx_path.empty():
 			log_debug("Missing fallback select SFX: %s" % sfx_path)
 			return
 
@@ -1759,16 +1853,11 @@ func get_all_numeric_frames(json_path: String) -> Array:
 	for frame in frames:
 		if frame == null or not frame.has("filename"):
 			continue
-		var filename = String(frame["filename"])
-		if filename.length() != 8:
-			continue
-		if not filename.ends_with(".png"):
-			continue
-		var frame_num_text = filename.substr(0, 4)
-		if not frame_num_text.is_valid_integer():
+		var frame_index = _extract_numeric_frame_index(String(frame["filename"]))
+		if frame_index < 0:
 			continue
 		indexed.append({
-			"index": int(frame_num_text),
+			"index": frame_index,
 			"frame": frame,
 		})
 
@@ -1782,6 +1871,19 @@ func get_all_numeric_frames(json_path: String) -> Array:
 
 func _sort_frame_dicts(a: Dictionary, b: Dictionary) -> bool:
 	return int(a["index"]) < int(b["index"])
+
+func _extract_numeric_frame_index(filename: String) -> int:
+	var cleaned = filename.strip_edges()
+	if cleaned.empty():
+		return -1
+
+	if cleaned.ends_with(".png"):
+		cleaned = cleaned.substr(0, cleaned.length() - 4)
+
+	if cleaned.is_valid_integer():
+		return int(cleaned)
+
+	return -1
 
 func load_battle_sprites():
 	var enemy_species_id = "BULBASAUR"
@@ -1808,6 +1910,568 @@ func load_battle_sprites():
 
 	enemy_sprite_frames = load_sprite_for_node(enemy_pokemon_sprite, String(enemy_paths["texture_rel"]), String(enemy_paths["atlas_rel"]))
 	player_sprite_frames = load_sprite_for_node(player_pokemon_sprite, String(player_paths["texture_rel"]), String(player_paths["atlas_rel"]))
+	player_sendout_cry_key = _resolve_player_sendout_cry_key(player_species_id, player_paths)
+	if player_sendout_cry_key.empty():
+		log_debug("Player sendout cry key unresolved for species %s" % player_species_id)
+	load_player_trainer_sprite()
+
+func _resolve_player_sendout_cry_key(player_species_id: String, player_paths: Dictionary) -> String:
+	var normalized_species_id = player_species_id.strip_edges().to_upper()
+	if not normalized_species_id.empty():
+		if catalog_loader == null:
+			catalog_loader = catalog_loader_script.new()
+		if catalog_loader != null and catalog_loader.load_catalogs():
+			var dex_number = catalog_loader.get_species_dex_number(normalized_species_id)
+			if dex_number > 0:
+				return str(dex_number)
+
+	var sprite_key = String(player_paths.get("sprite_key", "")).strip_edges().to_lower()
+	if sprite_key.empty():
+		var texture_rel = String(player_paths.get("texture_rel", "")).strip_edges().to_lower()
+		if not texture_rel.empty():
+			sprite_key = texture_rel.get_file().get_basename()
+
+	if sprite_key.empty():
+		return ""
+
+	var dash_index = sprite_key.find("-")
+	if dash_index > 0:
+		sprite_key = sprite_key.substr(0, dash_index)
+
+	var underscore_index = sprite_key.find("_")
+	if underscore_index > 0:
+		sprite_key = sprite_key.substr(0, underscore_index)
+
+	if not sprite_key.is_valid_integer():
+		return ""
+
+	return sprite_key
+
+func load_player_trainer_sprite() -> void:
+	player_trainer_idle_frame = {}
+	player_trainer_throw_frames.clear()
+	player_trainer_choreo_playing = false
+	player_trainer_choreo_elapsed = 0.0
+	player_trainer_last_throw_index = -1
+	player_trainer_pokemon_revealed = false
+	player_trainer_exit_started = false
+	player_pokeball_lob_started = false
+	player_pokeball_release_done = false
+	_hide_player_pokeball_sprite()
+
+	if player_trainer_sprite == null:
+		return
+	if not player_trainer_enabled:
+		player_trainer_sprite.visible = false
+		return
+
+	var back_texture_path = minimal_assets_path + PLAYER_TRAINER_BACK_TEXTURE_REL
+	var back_atlas_path = minimal_assets_path + PLAYER_TRAINER_BACK_ATLAS_REL
+	var back_pb_texture_path = minimal_assets_path + PLAYER_TRAINER_BACK_PB_TEXTURE_REL
+	var back_pb_atlas_path = minimal_assets_path + PLAYER_TRAINER_BACK_PB_ATLAS_REL
+
+	if not resource_exists(back_texture_path):
+		log_debug("Missing player trainer texture: %s" % back_texture_path)
+		player_trainer_sprite.visible = false
+		return
+
+	player_trainer_texture_back = load(back_texture_path)
+	if resource_exists(back_pb_texture_path):
+		player_trainer_texture_back_pb = load(back_pb_texture_path)
+	else:
+		player_trainer_texture_back_pb = null
+
+	var back_frames = get_all_numeric_frames(back_atlas_path)
+	if back_frames.empty():
+		var fallback_back_frame = parse_sprite_frame(back_atlas_path, "0001.png")
+		if fallback_back_frame != null:
+			back_frames.append(fallback_back_frame)
+
+	var back_pb_frames = get_all_numeric_frames(back_pb_atlas_path)
+	if back_pb_frames.empty():
+		var fallback_back_pb_frame = parse_sprite_frame(back_pb_atlas_path, "0001.png")
+		if fallback_back_pb_frame != null:
+			back_pb_frames.append(fallback_back_pb_frame)
+
+	if back_frames.empty():
+		# Atlas fallback: render full texture so trainer is still present.
+		player_trainer_sprite.texture = player_trainer_texture_back
+		player_trainer_sprite.centered = true
+		player_trainer_sprite.region_enabled = false
+		player_trainer_sprite.offset = Vector2.ZERO
+		player_trainer_sprite.visible = true
+		return
+
+	player_trainer_idle_frame = {
+		"texture": player_trainer_texture_back,
+		"frame": back_frames[0],
+	}
+
+	if player_trainer_texture_back_pb != null and not back_pb_frames.empty():
+		for i in range(min(3, back_pb_frames.size())):
+			player_trainer_throw_frames.append({
+				"texture": player_trainer_texture_back_pb,
+				"frame": back_pb_frames[i],
+			})
+
+	if player_trainer_idle_frame.empty():
+		player_trainer_sprite.visible = false
+		return
+
+	_apply_trainer_frame(player_trainer_idle_frame)
+	# Keep trainer hidden until summon choreography explicitly starts.
+	player_trainer_sprite.visible = false
+
+func _apply_trainer_frame(frame_entry: Dictionary) -> void:
+	if player_trainer_sprite == null:
+		return
+	if frame_entry.empty() or not frame_entry.has("texture") or not frame_entry.has("frame"):
+		return
+	player_trainer_sprite.texture = frame_entry["texture"]
+	player_trainer_sprite.centered = true
+	player_trainer_sprite.region_enabled = true
+	player_trainer_sprite.offset = Vector2.ZERO
+	apply_sprite_frame(player_trainer_sprite, frame_entry["frame"])
+
+func start_player_trainer_summon_choreography() -> void:
+	if player_trainer_sprite == null or not player_trainer_enabled:
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = true
+		_play_player_sendout_cry_once()
+		return
+	if player_trainer_idle_frame.empty():
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = true
+		_play_player_sendout_cry_once()
+		return
+
+	player_trainer_choreo_playing = true
+	player_trainer_choreo_elapsed = 0.0
+	player_trainer_last_throw_index = -1
+	player_trainer_pokemon_revealed = false
+	player_trainer_exit_started = false
+	player_sendout_cry_played = false
+
+	player_trainer_sprite.visible = true
+	player_trainer_sprite.position = player_trainer_sprite_home_position
+	_apply_trainer_frame(player_trainer_idle_frame)
+
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.visible = false
+
+func _start_player_trainer_exit_tween() -> void:
+	if player_trainer_sprite == null:
+		return
+	if player_trainer_exit_started:
+		return
+	player_trainer_exit_started = true
+
+	var exit_tween = Tween.new()
+	add_child(exit_tween)
+	exit_tween.interpolate_property(
+		player_trainer_sprite,
+		"position:x",
+		player_trainer_sprite.position.x,
+		player_trainer_sprite_home_position.x - player_trainer_exit_distance_px,
+		max(0.01, player_trainer_exit_duration_sec),
+		Tween.TRANS_LINEAR,
+		Tween.EASE_IN_OUT
+	)
+	exit_tween.start()
+	if not exit_tween.is_connected("tween_all_completed", self, "_on_player_trainer_exit_tween_completed"):
+		exit_tween.connect("tween_all_completed", self, "_on_player_trainer_exit_tween_completed", [exit_tween])
+
+func update_player_trainer_choreography(delta: float) -> void:
+	if not player_trainer_choreo_playing:
+		return
+
+	player_trainer_choreo_elapsed += delta
+
+	# Pokerogue-style player send-out keyframe moments (seconds):
+	# 0.000 -> pb frame 1, 0.562 -> pb frame 2, 0.626 -> pb frame 3.
+	# We offset these by an idle-hold window so the trainer can breathe before throwing.
+	var idle_hold = max(0.0, player_trainer_idle_hold_sec)
+	var throw_schedule = [idle_hold, idle_hold + 0.562, idle_hold + 0.626]
+	var pokeball_start_time = idle_hold + max(0.0, player_pokeball_start_delay_sec)
+	for throw_index in range(min(throw_schedule.size(), player_trainer_throw_frames.size())):
+		if player_trainer_choreo_elapsed >= throw_schedule[throw_index] and player_trainer_last_throw_index < throw_index:
+			_apply_trainer_frame(player_trainer_throw_frames[throw_index])
+			player_trainer_last_throw_index = throw_index
+			if throw_index == 0:
+				_start_player_trainer_exit_tween()
+
+	if not player_pokeball_lob_started and player_trainer_choreo_elapsed >= pokeball_start_time:
+		_start_player_pokeball_lob()
+
+	if player_trainer_throw_frames.empty() and player_trainer_choreo_elapsed >= idle_hold:
+		_start_player_trainer_exit_tween()
+
+	var reveal_ready = false
+	if player_pokeball_lob_started:
+		reveal_ready = player_pokeball_release_done
+	else:
+		if player_trainer_choreo_elapsed < pokeball_start_time:
+			reveal_ready = false
+		else:
+			# If the lob could not start (missing asset/frame), use the delay fallback.
+			var reveal_delay = max(max(0.01, player_trainer_reveal_delay_sec), idle_hold)
+			reveal_ready = player_trainer_choreo_elapsed >= reveal_delay
+
+	if not player_trainer_pokemon_revealed and reveal_ready:
+		player_trainer_pokemon_revealed = true
+		if player_pokemon_sprite != null:
+			_play_player_pokemon_sendout_reveal_fx()
+		if player_trainer_sprite == null or not player_trainer_sprite.visible:
+			player_trainer_choreo_playing = false
+
+func _play_player_pokeball_release_sfx() -> void:
+	if not battle_fx_enabled:
+		return
+
+	var sfx_path = minimal_assets_path + "assets/audio/se/pb_rel.wav"
+	if not resource_exists(sfx_path):
+		sfx_path = minimal_assets_path + "assets/audio/ui/menu_open.wav"
+		if not resource_exists(sfx_path):
+			sfx_path = minimal_assets_path + "assets/audio/ui/select.wav"
+			if not resource_exists(sfx_path):
+				return
+
+	$UIAudioStreamPlayer.stream = load(sfx_path)
+	$UIAudioStreamPlayer.play()
+
+func _play_player_pokemon_sendout_reveal_fx() -> void:
+	if player_pokemon_sprite == null:
+		return
+
+	if not battle_fx_enabled:
+		player_pokemon_sprite.visible = true
+		player_pokemon_sprite.scale = player_sprite_home_scale
+		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+		_play_player_sendout_cry_once()
+		return
+
+	_play_player_pokeball_release_sfx()
+
+	var start_scale_mul = max(0.1, player_pokemon_reveal_start_scale)
+	var target_scale = player_sprite_home_scale
+	var start_scale = Vector2(target_scale.x * start_scale_mul, target_scale.y * start_scale_mul)
+	player_pokemon_sprite.scale = start_scale
+	var tint = player_pokemon_reveal_tint_color
+	var flash_mul = max(0.1, player_pokemon_reveal_flash_mul)
+	tint.r = clamp(tint.r * flash_mul, 0.0, 2.0)
+	tint.g = clamp(tint.g * flash_mul, 0.0, 2.0)
+	tint.b = clamp(tint.b * flash_mul, 0.0, 2.0)
+	tint.a = clamp(player_pokemon_reveal_alpha_start, 0.0, 1.0)
+	player_pokemon_sprite.modulate = tint
+	player_pokemon_sprite.visible = true
+
+	var reveal_tween = Tween.new()
+	add_child(reveal_tween)
+	reveal_tween.interpolate_property(
+		player_pokemon_sprite,
+		"scale",
+		start_scale,
+		target_scale,
+		max(0.01, player_pokemon_reveal_scale_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.interpolate_property(
+		player_pokemon_sprite,
+		"modulate",
+		player_pokemon_sprite.modulate,
+		Color(1, 1, 1, 1),
+		max(0.01, player_pokemon_reveal_flash_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.start()
+	reveal_tween.connect("tween_all_completed", self, "_on_player_pokemon_reveal_tween_completed", [reveal_tween])
+
+func _on_player_pokemon_reveal_tween_completed(reveal_tween: Tween) -> void:
+	_play_player_sendout_cry_once()
+	_on_player_pokeball_tween_completed(reveal_tween)
+
+func _play_player_sendout_cry_once() -> void:
+	if player_sendout_cry_played:
+		return
+	if player_sendout_cry_key.empty():
+		log_debug("Skipping player cry: no resolved cry key")
+		print("[Battle] Skipping player cry: no resolved cry key")
+		return
+
+	var cry_candidates = [
+		minimal_assets_path + "assets/audio/cry/%s.ogg" % player_sendout_cry_key,
+		minimal_assets_path + "assets/audio/cry/%s.wav" % player_sendout_cry_key,
+	]
+
+	var cry_path = ""
+	for candidate in cry_candidates:
+		if resource_exists(candidate):
+			cry_path = candidate
+			break
+
+	if cry_path.empty():
+		log_debug("Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
+		print("[Battle] Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
+		return
+
+	var cry_stream = load(cry_path)
+	if cry_stream == null:
+		log_debug("Skipping player cry: failed to load stream %s" % cry_path)
+		print("[Battle] Skipping player cry: failed to load stream %s" % cry_path)
+		return
+
+	# Some imported streams may carry loop metadata. Force one-shot behavior.
+	if cry_stream is AudioStreamOGGVorbis:
+		cry_stream.loop = false
+	elif cry_stream is AudioStreamSample:
+		cry_stream.loop_mode = AudioStreamSample.LOOP_DISABLED
+
+	if player_cry_audio_player == null:
+		player_cry_audio_player = AudioStreamPlayer.new()
+		player_cry_audio_player.name = "PlayerCryAudioPlayer"
+		add_child(player_cry_audio_player)
+
+	player_cry_audio_player.stream = cry_stream
+	player_cry_audio_player.play()
+	log_debug("Played player cry: %s" % cry_path)
+	print("[Battle] Played player cry: %s" % cry_path)
+	player_sendout_cry_played = true
+
+func _ensure_player_pokeball_sprite() -> bool:
+	if player_pokeball_sprite != null:
+		return true
+	if effects_layer == null:
+		return false
+
+	player_pokeball_sprite = Sprite.new()
+	player_pokeball_sprite.centered = true
+	player_pokeball_sprite.region_enabled = true
+	player_pokeball_sprite.visible = false
+	effects_layer.add_child(player_pokeball_sprite)
+	return true
+
+func _apply_pokeball_frame(frame_name: String) -> bool:
+	if not _ensure_player_pokeball_sprite():
+		return false
+
+	var texture_path = minimal_assets_path + POKEBALL_TEXTURE_REL
+	var atlas_path = minimal_assets_path + POKEBALL_ATLAS_REL
+	if not resource_exists(texture_path):
+		return false
+
+	var frame_data = parse_sprite_frame(atlas_path, frame_name)
+	if frame_data == null:
+		return false
+
+	player_pokeball_sprite.texture = load(texture_path)
+	player_pokeball_sprite.region_enabled = true
+	player_pokeball_sprite.centered = true
+	var frame = frame_data["frame"]
+	player_pokeball_sprite.region_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+	return true
+
+func _start_player_pokeball_lob() -> void:
+	if player_pokeball_lob_started:
+		return
+	if not _apply_pokeball_frame(POKEBALL_FRAME_CLOSED):
+		return
+
+	player_pokeball_lob_started = true
+	player_pokeball_release_done = false
+	player_pokeball_sprite.visible = true
+	player_pokeball_sprite.rotation_degrees = 0.0
+
+	var start_pos = player_trainer_sprite_home_position + Vector2(player_pokeball_start_offset_x, player_pokeball_start_offset_y)
+	if player_trainer_sprite != null:
+		start_pos = player_trainer_sprite.position + Vector2(player_pokeball_start_offset_x, player_pokeball_start_offset_y)
+	var target_pos = player_sprite_home_position + Vector2(player_pokeball_target_offset_x, player_pokeball_target_offset_y)
+	var arc_peak_y = target_pos.y - player_pokeball_arc_height_px
+	player_pokeball_sprite.position = start_pos
+	var lob_duration = max(0.01, player_pokeball_lob_duration_sec)
+	var lob_up_duration = clamp(player_pokeball_lob_up_duration_sec, 0.01, lob_duration - 0.01)
+	var lob_down_duration = max(0.01, lob_duration - lob_up_duration)
+
+	var x_tween = Tween.new()
+	add_child(x_tween)
+	x_tween.interpolate_property(player_pokeball_sprite, "position:x", start_pos.x, target_pos.x, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	x_tween.start()
+	x_tween.connect("tween_all_completed", self, "_on_player_pokeball_tween_completed", [x_tween])
+
+	var rotate_tween = Tween.new()
+	add_child(rotate_tween)
+	rotate_tween.interpolate_property(player_pokeball_sprite, "rotation_degrees", 0.0, player_pokeball_spin_degrees, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	rotate_tween.start()
+	rotate_tween.connect("tween_all_completed", self, "_on_player_pokeball_tween_completed", [rotate_tween])
+
+	var up_tween = Tween.new()
+	add_child(up_tween)
+	up_tween.interpolate_property(player_pokeball_sprite, "position:y", start_pos.y, arc_peak_y, lob_up_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	up_tween.start()
+	up_tween.connect("tween_all_completed", self, "_on_player_pokeball_up_completed", [target_pos.y, lob_down_duration, up_tween])
+
+func _on_player_pokeball_up_completed(target_y: float, down_duration: float, up_tween: Tween) -> void:
+	if up_tween != null:
+		up_tween.queue_free()
+	if player_pokeball_sprite == null:
+		return
+
+	var down_tween = Tween.new()
+	add_child(down_tween)
+	down_tween.interpolate_property(player_pokeball_sprite, "position:y", player_pokeball_sprite.position.y, target_y, max(0.01, down_duration), Tween.TRANS_CUBIC, Tween.EASE_IN)
+	down_tween.start()
+	down_tween.connect("tween_all_completed", self, "_on_player_pokeball_down_completed", [down_tween])
+
+func _on_player_pokeball_down_completed(down_tween: Tween) -> void:
+	if down_tween != null:
+		down_tween.queue_free()
+	if player_pokeball_sprite == null:
+		player_pokeball_release_done = true
+		return
+
+	if not _apply_pokeball_frame(POKEBALL_FRAME_OPENING):
+		player_pokeball_release_done = true
+		_hide_player_pokeball_sprite()
+		return
+
+	var timer_open = get_tree().create_timer(max(0.01, player_pokeball_opening_hold_sec))
+	timer_open.connect("timeout", self, "_on_player_pokeball_open_timeout")
+
+func _on_player_pokeball_open_timeout() -> void:
+	if player_pokeball_sprite != null:
+		if not _apply_pokeball_frame(POKEBALL_FRAME_OPEN):
+			pass
+	player_pokeball_release_done = true
+	_spawn_player_pokeball_open_particles()
+	var timer_hide = get_tree().create_timer(max(0.01, player_pokeball_open_hold_sec))
+	timer_hide.connect("timeout", self, "_on_player_pokeball_hide_timeout")
+
+func _on_player_pokeball_hide_timeout() -> void:
+	_hide_player_pokeball_sprite()
+
+func _on_player_pokeball_tween_completed(tween_node: Tween) -> void:
+	if tween_node != null:
+		tween_node.queue_free()
+
+func _ensure_pokeball_particles_assets() -> bool:
+	if pokeball_particles_texture != null and not pokeball_particles_frames.empty() and pokeball_open_particle_sprite_frames != null:
+		return true
+
+	var texture_path = minimal_assets_path + POKEBALL_PARTICLES_TEXTURE_REL
+	var atlas_path = minimal_assets_path + POKEBALL_PARTICLES_ATLAS_REL
+	if not resource_exists(texture_path):
+		return false
+
+	var frames = get_all_numeric_frames(atlas_path)
+	if frames.empty():
+		frames = parse_all_sprite_frames(atlas_path)
+		if frames.empty():
+			return false
+
+	pokeball_particles_texture = load(texture_path)
+	pokeball_particles_frames = frames
+
+	var anim_frames = min(4, pokeball_particles_frames.size())
+	if anim_frames <= 0:
+		return false
+
+	var sprite_frames = SpriteFrames.new()
+	sprite_frames.add_animation("default")
+	sprite_frames.set_animation_speed("default", 16.0)
+	sprite_frames.set_animation_loop("default", true)
+	for i in range(anim_frames):
+		var frame_entry = pokeball_particles_frames[i]
+		if frame_entry == null or not frame_entry.has("frame"):
+			continue
+		var frame = frame_entry["frame"]
+		var atlas_tex = AtlasTexture.new()
+		atlas_tex.atlas = pokeball_particles_texture
+		atlas_tex.region = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+		sprite_frames.add_frame("default", atlas_tex)
+
+	if sprite_frames.get_frame_count("default") <= 0:
+		return false
+
+	pokeball_open_particle_sprite_frames = sprite_frames
+	return true
+
+func _spawn_player_pokeball_open_particles() -> void:
+	if not battle_fx_enabled:
+		return
+	if effects_layer == null:
+		return
+	if not _ensure_pokeball_particles_assets():
+		return
+
+	var count = max(0, player_pokeball_particle_count)
+	if count <= 0:
+		return
+
+	var origin = player_sprite_home_position + Vector2(0, -16)
+	var spawn_interval = max(0.0, player_pokeball_particle_spawn_interval_sec)
+	var radius = max(0.0, player_pokeball_particle_radius_px)
+	var travel_duration = max(0.05, player_pokeball_particle_travel_duration_sec)
+	var fade_delay = max(0.0, player_pokeball_particle_fade_delay_sec)
+	var fade_duration = max(0.01, player_pokeball_particle_fade_duration_sec)
+
+	for i in range(count):
+		var timer = get_tree().create_timer(spawn_interval * i)
+		timer.connect(
+			"timeout",
+			self,
+			"_spawn_player_pokeball_open_particle_step",
+			[i + 1, origin, radius, travel_duration, fade_delay, fade_duration]
+		)
+
+func _spawn_player_pokeball_open_particle_step(index: int, origin: Vector2, radius: float, travel_duration: float, fade_delay: float, fade_duration: float) -> void:
+	if effects_layer == null:
+		return
+	if pokeball_open_particle_sprite_frames == null:
+		return
+
+	var particle = AnimatedSprite.new()
+	particle.frames = pokeball_open_particle_sprite_frames
+	particle.animation = "default"
+	var frame_count = int(max(1, pokeball_open_particle_sprite_frames.get_frame_count("default")))
+	particle.frame = int((index + 3) % frame_count)
+	particle.speed_scale = 1.0
+	particle.centered = true
+	particle.position = origin
+	particle.modulate = Color(1, 1, 1, 1)
+	effects_layer.add_child(particle)
+	particle.play("default")
+
+	var angle_radians = deg2rad(float(index) * 45.0)
+	var target = origin + Vector2(cos(angle_radians), sin(angle_radians)) * radius
+
+	var tween = Tween.new()
+	add_child(tween)
+	tween.interpolate_property(particle, "position", particle.position, target, travel_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	tween.interpolate_property(particle, "modulate:a", 1.0, 0.0, fade_duration, Tween.TRANS_SINE, Tween.EASE_IN, fade_delay)
+	tween.start()
+	tween.connect("tween_all_completed", self, "_on_player_pokeball_particle_tween_completed", [particle, tween])
+
+func _on_player_pokeball_particle_tween_completed(particle: Node, tween_node: Tween) -> void:
+	if particle != null:
+		particle.queue_free()
+	if tween_node != null:
+		tween_node.queue_free()
+
+func _hide_player_pokeball_sprite() -> void:
+	if player_pokeball_sprite != null:
+		player_pokeball_sprite.visible = false
+
+func _on_player_trainer_exit_tween_completed(exit_tween: Tween) -> void:
+	if exit_tween != null:
+		exit_tween.queue_free()
+	player_trainer_exit_started = false
+	if player_trainer_sprite != null:
+		player_trainer_sprite.visible = false
+		player_trainer_sprite.position = player_trainer_sprite_home_position
+	if player_trainer_pokemon_revealed:
+		player_trainer_choreo_playing = false
+	_hide_player_pokeball_sprite()
 
 func get_species_sprite_paths(species_id: String, is_back: bool) -> Dictionary:
 	if catalog_loader == null:
@@ -1877,11 +2541,29 @@ func reset_pokemon_animation_state():
 	enemy_anim_index = 0
 	player_anim_elapsed = 0.0
 	enemy_anim_elapsed = 0.0
+	player_trainer_choreo_elapsed = 0.0
+	player_trainer_last_throw_index = -1
+	player_trainer_pokemon_revealed = false
+	player_trainer_choreo_playing = false
+	player_trainer_exit_started = false
+	player_pokeball_lob_started = false
+	player_pokeball_release_done = false
+	player_sendout_cry_played = false
 
 	if not player_sprite_frames.empty():
 		apply_sprite_frame(player_pokemon_sprite, player_sprite_frames[0])
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.scale = player_sprite_home_scale
+		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+		player_pokemon_sprite.visible = true
 	if not enemy_sprite_frames.empty():
 		apply_sprite_frame(enemy_pokemon_sprite, enemy_sprite_frames[0])
+	if player_trainer_enabled and not player_trainer_idle_frame.empty():
+		_apply_trainer_frame(player_trainer_idle_frame)
+	if player_trainer_sprite != null:
+		player_trainer_sprite.visible = false
+		player_trainer_sprite.position = player_trainer_sprite_home_position
+	_hide_player_pokeball_sprite()
 
 func update_pokemon_animations(delta: float):
 	if not battle_fx_enabled:

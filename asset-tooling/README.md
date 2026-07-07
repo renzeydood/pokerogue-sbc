@@ -76,14 +76,36 @@ Structured format example:
 }
 ```
 
+Count-mode example for starter moves:
+
+```json
+{
+	"pokemon": ["1", "4", "7"],
+	"attacks": [4],
+	"general_assets": []
+}
+```
+
+When `attacks` is a single number (or single numeric string), data export interprets it as:
+
+- pull first `N` unique `levelMoves` from each selected species
+- store those per-species move ids in `species-catalog.v1.json` as `starter_moves`
+- include the union of those move ids in `moves-catalog.v1.json`
+
+If `attacks` is a list of names/slugs, explicit mode is preserved.
+
 Expansion rules used by the exporter:
 
 - `pokemon`: auto-discovers matching files for each id in:
 	- `assets/images/pokemon/`
 	- `assets/images/pokemon/back/`
+	- also auto-includes base cries: `assets/audio/cry/<id>.m4a`
+	- variant cries (`-mega`, `-gigantamax`, etc.) are not auto-included
 - `attacks`: adds `assets/battle-anims/<attack-slug>.json` (lowercase kebab-case), then parses that json and also pulls:
 	- `graphic` -> assets from `assets/images/battle_anims/` (png/json/webp)
 	- `resourceName` -> audio from `assets/audio/battle_anims/` (with filename fallback search under `assets/`)
+	- in count mode (`attacks: [N]`), attack slugs are sourced from `godot-minimal-assets/data/moves-catalog.v1.json` and then expanded the same way
+	- if that moves catalog does not exist yet, run `py asset-tooling/asset_pipeline.py --export-data` (or `--export-all`) first
 - `general_assets`: copied as-is
 
 This keeps minimal export focused while allowing a single reference list to drive both selected entities and shared assets.
