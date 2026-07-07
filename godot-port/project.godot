@@ -20,14 +20,38 @@ _global_script_classes=[ {
 "path": "res://logic/CatalogDataLoader.gd"
 }, {
 "base": "Reference",
+"class": "EditorPreviewSync",
+"language": "GDScript",
+"path": "res://logic/EditorPreviewSync.gd"
+}, {
+"base": "Reference",
 "class": "MoveData",
 "language": "GDScript",
 "path": "res://data/MoveData.gd"
+}, {
+"base": "Reference",
+"class": "PartyModel",
+"language": "GDScript",
+"path": "res://data/PartyModel.gd"
+}, {
+"base": "Reference",
+"class": "RuntimeState",
+"language": "GDScript",
+"path": "res://logic/RuntimeState.gd"
+}, {
+"base": "Control",
+"class": "UiScaledModalTemplate",
+"language": "GDScript",
+"path": "res://scenes/templates/UiScaledModalTemplate.gd"
 } ]
 _global_script_class_icons={
 "BattleCalc": "",
 "CatalogDataLoader": "",
-"MoveData": ""
+"EditorPreviewSync": "",
+"MoveData": "",
+"PartyModel": "",
+"RuntimeState": "",
+"UiScaledModalTemplate": ""
 }
 
 [application]
