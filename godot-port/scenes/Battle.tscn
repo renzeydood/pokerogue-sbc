@@ -19,6 +19,11 @@
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource( 1 )
+player_pokeball_start_offset_x = -25.0
+player_pokeball_start_offset_y = -110.0
+player_pokeball_target_offset_y = 20.0
+player_pokeball_start_delay_sec = 0.65
+player_pokeball_arc_height_px = 120.0
 
 [node name="ArenaBackdrop" type="TextureRect" parent="."]
 anchor_right = 1.0
@@ -68,6 +73,10 @@ anchor_bottom = 1.0
 position = Vector2( 179.5, 78.5 )
 scale = Vector2( 1.5, 1.5 )
 texture = ExtResource( 4 )
+
+[node name="PlayerTrainerSprite" type="Sprite" parent="BattlefieldLayer/PlayerLayer"]
+position = Vector2( 76.5, 206.5 )
+scale = Vector2( 1.2, 1.2 )
 
 [node name="PlayerPokemonSprite" type="Sprite" parent="BattlefieldLayer/PlayerLayer"]
 position = Vector2( 90, 199 )

@@ -7,6 +7,18 @@
     "assets/images/pokemon_icons_1.png",
     "assets/images/pokemon_icons_1.json",
     "assets/images/logo.png",
+    "assets/images/trainer/trainer_f_back.json",
+    "assets/images/trainer/trainer_f_back.png",
+    "assets/images/trainer/trainer_f_back_pb.json",
+    "assets/images/trainer/trainer_f_back_pb.png",
+    "assets/images/trainer/trainer_m_back.json",
+    "assets/images/trainer/trainer_m_back.png",
+    "assets/images/trainer/trainer_m_back_pb.json",
+    "assets/images/trainer/trainer_m_back_pb.png",
+    "assets/images/trainer/player_f.json",
+    "assets/images/trainer/player_f.png",
+    "assets/images/trainer/player_m.png",
+    "assets/images/trainer/player_m.json",
     "assets/images/arenas/abyss_a.png",
     "assets/images/arenas/abyss_b_1.png",
     "assets/images/arenas/abyss_b_2.png",
@@ -86,13 +98,16 @@
     "assets/images/categories.json",
     "assets/images/pb.png",
     "assets/images/pb.json",
+    "assets/images/effects/pb_particles.png",
+    "assets/images/effects/pb_particles.json",
     "assets/images/types.png",
     "assets/images/types.json",
     "assets/fonts/pokemon-emerald-pro.ttf",
     "assets/fonts/8-bit-devanagari.ttf",
     "assets/audio/bgm/title.mp3",
     "assets/audio/ui/select.wav",
-    "assets/audio/ui/menu_open.wav"
+    "assets/audio/ui/menu_open.wav",
+    "assets/audio/se/pb_rel.wav"
   ]
 }
 

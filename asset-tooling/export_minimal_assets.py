@@ -3,6 +3,9 @@ import argparse
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import shutil as py_shutil
+import os
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +14,71 @@ ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets"
 POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
 MOVES_CATALOG_FILE = OUT_DIR / "data" / "moves-catalog.v1.json"
+
+
+def _find_ffmpeg_executable() -> str:
+    env_ffmpeg = os.environ.get("FFMPEG_EXE", "").strip()
+    if env_ffmpeg and Path(env_ffmpeg).exists():
+        return env_ffmpeg
+
+    ffmpeg_path = py_shutil.which("ffmpeg")
+    if ffmpeg_path:
+        return ffmpeg_path
+
+    # Winget installs ffmpeg under LocalAppData, sometimes without PATH updates.
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        winget_packages = Path(local_app_data) / "Microsoft" / "WinGet" / "Packages"
+        if winget_packages.exists():
+            matches = sorted(winget_packages.rglob("ffmpeg.exe"))
+            if matches:
+                return str(matches[-1])
+
+    try:
+        import imageio_ffmpeg  # type: ignore
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return ""
+
+
+def _map_export_path(relative_path: str, cry_ffmpeg_path: str) -> str:
+    lower_rel = relative_path.lower()
+    if lower_rel.startswith("assets/audio/cry/") and lower_rel.endswith(".m4a"):
+        return relative_path[:-4] + ".ogg"
+    return relative_path
+
+
+def _transcode_audio_to_ogg(source: Path, destination: Path, ffmpeg_path: str) -> bool:
+    cmd = [
+        ffmpeg_path,
+        "-y",
+        "-v",
+        "error",
+        "-i",
+        str(source),
+        "-ac",
+        "1",
+        "-ar",
+        "44100",
+        "-c:a",
+        "libvorbis",
+        "-q:a",
+        "4",
+        str(destination),
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except Exception as err:
+        print(f"Warning: failed to run ffmpeg for cry conversion: {err}")
+        return False
+
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        print(f"Warning: cry conversion failed for {source.name}: {stderr}")
+        return False
+
+    return True
 
 
 def _normalize_attack_slug(value: str) -> str:
@@ -117,6 +185,12 @@ def _collect_pokemon_assets(pokemon_id: str, pokerogue_root: Path) -> list[str]:
                 continue
             if _matches_pokemon_file(file_path.stem, pokemon_id):
                 assets.append(file_path.relative_to(pokerogue_root).as_posix())
+
+    # Pull the base cry for each selected species id.
+    # Variant cries (mega/gigantamax/etc.) are intentionally not auto-included.
+    cry_rel = f"assets/audio/cry/{pokemon_id}.m4a"
+    if (pokerogue_root / cry_rel).exists():
+        assets.append(cry_rel)
 
     return assets
 
@@ -248,21 +322,48 @@ def main() -> None:
     parser.parse_args()
 
     POKEROGUE_ASSETS_DIR = POKEROGUE_ROOT
+    cry_ffmpeg_path = _find_ffmpeg_executable()
+    if cry_ffmpeg_path:
+        print(f"Using ffmpeg for cry conversion: {cry_ffmpeg_path}")
+    else:
+        print("Warning: ffmpeg not found; cry files will be skipped (ogg-only export policy)")
+
+    # Keep output clean: cry assets should be ogg-only.
+    cry_output_dir = OUT_DIR / "assets" / "audio" / "cry"
+    if cry_output_dir.exists():
+        for stale_m4a in cry_output_dir.glob("*.m4a"):
+            try:
+                stale_m4a.unlink()
+            except Exception as err:
+                print(f"Warning: failed removing stale cry file {stale_m4a}: {err}")
+
     asset_list_raw = json.loads(ASSET_LIST_FILE.read_text(encoding="utf-8"))
     asset_paths = load_asset_paths(asset_list_raw, pokerogue_root=POKEROGUE_ASSETS_DIR)
     copied = []
 
     for relative_path in asset_paths:
         source = POKEROGUE_ASSETS_DIR / relative_path
-        destination = OUT_DIR / relative_path
+        export_relative_path = _map_export_path(relative_path, cry_ffmpeg_path)
+        destination = OUT_DIR / export_relative_path
 
         if not source.exists():
             print(f"Warning: source asset not found: {relative_path}")
             continue
 
         destination.parent.mkdir(parents=True, exist_ok=True)
+        is_cry_m4a = relative_path.lower().startswith("assets/audio/cry/") and relative_path.lower().endswith(".m4a")
+        if is_cry_m4a:
+            if not cry_ffmpeg_path:
+                print(f"Warning: skipping cry (ffmpeg unavailable): {relative_path}")
+                continue
+            if not _transcode_audio_to_ogg(source, destination, cry_ffmpeg_path):
+                print(f"Warning: skipping cry after failed conversion: {relative_path}")
+                continue
+            copied.append(export_relative_path)
+            continue
+
         shutil.copy2(source, destination)
-        copied.append(relative_path)
+        copied.append(export_relative_path)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     manifest_path = OUT_DIR / "asset-list.json"
