@@ -16,6 +16,7 @@ export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
+export(bool) var debug_open_party_menu_on_ready := false
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
 const SELECTION_SCENE_PATH := "res://scenes/PokemonSelect.tscn"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
@@ -27,6 +28,7 @@ var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
+var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 
 onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
 onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
@@ -114,6 +116,8 @@ var enemy_sprite_anim_enabled := true
 var catalog_loader = null
 var selected_player_species_id := ""
 var attack_menu_visible := false
+var party_menu_visible := false
+var party_menu_overlay = null
 var enemy_species_pool := []
 
 func _ready():
@@ -130,11 +134,19 @@ func _ready():
 	load_audio_assets()
 	setup_type_sprite_placeholders()
 	setup_attack_detail_sprites()
+	setup_party_menu_overlay()
 	reset_battle_state("Battle ready.")
 
 	add_blend_material = CanvasItemMaterial.new()
 	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	setup_keyboard_controls()
+	if debug_open_party_menu_on_ready:
+		call_deferred("_open_party_menu_on_ready")
+
+func _open_party_menu_on_ready():
+	if turn_in_progress or battle_ended:
+		return
+	open_party_menu()
 
 func ensure_ui_signal_connections():
 	if move_button != null and not move_button.is_connected("pressed", self, "_on_MoveButton_pressed"):
@@ -199,6 +211,25 @@ func apply_fonts():
 	attack_move_button_4.add_font_override("font", button_font)
 	attack_power_label.add_font_override("font", ui_font)
 	attack_pp_label.add_font_override("font", ui_font)
+	if party_menu_overlay != null and party_menu_overlay.has_method("apply_fonts"):
+		party_menu_overlay.apply_fonts(ui_font_path, ui_font_size, control_button_font_size)
+
+func setup_party_menu_overlay():
+	if party_menu_scene == null:
+		return
+
+	party_menu_overlay = party_menu_scene.instance()
+	if party_menu_overlay == null:
+		return
+
+	party_menu_overlay.visible = false
+	party_menu_visible = false
+	if not party_menu_overlay.is_connected("close_requested", self, "_on_PartyMenu_close_requested"):
+		party_menu_overlay.connect("close_requested", self, "_on_PartyMenu_close_requested")
+	add_child(party_menu_overlay)
+	party_menu_overlay.raise()
+	if party_menu_overlay.has_method("apply_fonts"):
+		party_menu_overlay.apply_fonts(ui_font_path, ui_font_size, control_button_font_size)
 
 func bind_battle_data():
 	var enemy_data = battle_data["enemy"]
@@ -353,10 +384,46 @@ func _process(_delta):
 	if Input.is_action_just_pressed("ui_accept") and get_focus_owner() == null and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
+func _input(event):
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+	if not party_menu_visible:
+		return
+
+	if event.is_action_pressed("ui_back"):
+		close_party_menu()
+		accept_event()
+		return
+	if event.is_action_pressed("ui_up"):
+		party_menu_overlay.move_focus("ui_up")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_down"):
+		party_menu_overlay.move_focus("ui_down")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_left"):
+		party_menu_overlay.move_focus("ui_left")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_right"):
+		party_menu_overlay.move_focus("ui_right")
+		accept_event()
+		return
+	if event.is_action_pressed("ui_accept"):
+		party_menu_overlay.press_focused()
+		accept_event()
+		return
+
 func _unhandled_input(event):
 	if not (event is InputEventKey):
 		return
 	if not event.pressed or event.echo:
+		return
+
+	if party_menu_visible:
 		return
 
 	if event.is_action_pressed("ui_left"):
@@ -496,6 +563,7 @@ func execute_player_move(move):
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
 	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
 	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
 	if enemy_hit_feedback is GDScriptFunctionState:
 		yield(enemy_hit_feedback, "completed")
@@ -546,13 +614,7 @@ func _on_PokemonButton_pressed():
 	if attack_menu_visible:
 		hide_attack_menu()
 
-	var party_size = 0
-	if runtime_state_script != null:
-		var party = runtime_state_script.get_party(get_tree())
-		if party != null:
-			party_size = party.size()
-
-	set_battle_text("Pokemon menu (PARTY-02) not implemented yet. Party slots: %d/6" % party_size)
+	open_party_menu()
 
 func _on_RunButton_pressed():
 	if turn_in_progress:
@@ -610,6 +672,7 @@ func _return_to_selection_scene():
 
 func reset_battle_state(message: String):
 	turn_token += 1
+	_close_party_menu_internal()
 	var handoff_species_id = consume_selected_species_id()
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
@@ -837,6 +900,13 @@ func ensure_input_action_key(action_name: String, key_code: int):
 	InputMap.action_add_event(action_name, new_event)
 
 func ensure_button_focus():
+	if party_menu_visible and party_menu_overlay != null:
+		var party_focus_owner = get_focus_owner()
+		if party_menu_overlay.is_overlay_focus_owner(party_focus_owner):
+			return
+		party_menu_overlay.focus_default()
+		return
+
 	if attack_menu_visible:
 		var attack_focus_owner = get_focus_owner()
 		if is_attack_menu_button(attack_focus_owner):
@@ -853,6 +923,10 @@ func ensure_button_focus():
 		move_button.grab_focus()
 
 func move_button_focus(action_name: String):
+	if party_menu_visible and party_menu_overlay != null:
+		party_menu_overlay.move_focus(action_name)
+		return
+
 	ensure_button_focus()
 	var focus_owner = get_focus_owner()
 	if focus_owner == null:
@@ -920,6 +994,10 @@ func move_attack_menu_focus(action_name: String, focus_owner):
 		return
 
 func press_focused_button():
+	if party_menu_visible and party_menu_overlay != null:
+		party_menu_overlay.press_focused()
+		return
+
 	ensure_button_focus()
 	var focus_owner = get_focus_owner()
 	if focus_owner == null:
@@ -955,6 +1033,98 @@ func hide_all_command_menus():
 	attack_menu_visible = false
 	attack_menu_container.visible = false
 	controls_container.visible = false
+	_close_party_menu_internal()
+
+func open_party_menu():
+	if party_menu_overlay == null:
+		set_battle_text("Party menu scene is missing.")
+		return
+
+	sync_active_party_member_from_battle()
+
+	var members := []
+	var active_index := -1
+	if runtime_state_script != null:
+		var party = runtime_state_script.get_party(get_tree())
+		if party != null:
+			members = party.get_members_copy()
+			active_index = party.get_active_slot_index()
+
+	hide_all_command_menus()
+	party_menu_overlay.open_menu(members, active_index)
+	party_menu_visible = true
+	set_battle_text("Party menu open.")
+
+func sync_active_party_member_from_battle() -> void:
+	if runtime_state_script == null:
+		return
+	if battle_data == null or not battle_data.has("player"):
+		return
+
+	var player_data = battle_data["player"]
+	if player_data == null:
+		return
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return
+
+	var active_index = party.get_active_slot_index()
+	if active_index < 0:
+		return
+
+	var move_ids := []
+	var moves = []
+	if typeof(player_data) == TYPE_DICTIONARY:
+		moves = player_data.get("moves", [])
+	elif player_data.has_method("get"):
+		moves = player_data.get("moves")
+
+	if typeof(moves) == TYPE_ARRAY:
+		for move in moves:
+			if move == null:
+				continue
+			var move_id = String(move.move_id).strip_edges().to_upper()
+			if move_id.empty() or move_ids.has(move_id):
+				continue
+			move_ids.append(move_id)
+
+	var next_level = int(player_data.level)
+	var next_current_hp = int(player_data.current_hp)
+	var existing_member = party.get_member_at(active_index)
+	if not existing_member.empty():
+		var existing_level = int(existing_member.get("level", -1))
+		var existing_current_hp = int(existing_member.get("current_hp", -1))
+		var existing_move_ids = existing_member.get("move_ids", [])
+		if typeof(existing_move_ids) == TYPE_ARRAY \
+				and existing_level == next_level \
+				and existing_current_hp == next_current_hp \
+				and existing_move_ids == move_ids:
+			return
+
+	party.update_member_at(active_index, {
+		"level": next_level,
+		"current_hp": next_current_hp,
+		"move_ids": move_ids,
+	})
+
+func close_party_menu():
+	if not party_menu_visible:
+		return
+
+	_close_party_menu_internal()
+	if not battle_ended and not turn_in_progress:
+		show_main_controls()
+		set_action_lock(false)
+	ensure_button_focus()
+
+func _close_party_menu_internal():
+	party_menu_visible = false
+	if party_menu_overlay != null:
+		party_menu_overlay.close_menu()
+
+func _on_PartyMenu_close_requested():
+	close_party_menu()
 
 func set_main_command_prompt():
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:

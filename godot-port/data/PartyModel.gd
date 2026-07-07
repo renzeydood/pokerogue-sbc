@@ -115,7 +115,7 @@ func to_dict() -> Dictionary:
 
 static func from_dict(payload: Dictionary):
 	if typeof(payload) != TYPE_DICTIONARY:
-		return PartyModel.new()
+		return _new_party_model()
 
 	var payload_max_slots = int(payload.get("max_slots", DEFAULT_MAX_SLOTS))
 	var payload_members = payload.get("members", [])
@@ -123,7 +123,14 @@ static func from_dict(payload: Dictionary):
 		payload_members = []
 
 	var payload_active_slot_index = int(payload.get("active_slot_index", -1))
-	return PartyModel.new(payload_max_slots, payload_members, payload_active_slot_index)
+	return _new_party_model(payload_max_slots, payload_members, payload_active_slot_index)
+
+static func _new_party_model(p_max_slots: int = DEFAULT_MAX_SLOTS, initial_members: Array = [], p_active_slot_index: int = -1):
+	# Avoid `PartyModel.new(...)` inside its own class file to prevent cyclic parser errors.
+	var script_ref = load("res://data/PartyModel.gd")
+	if script_ref == null:
+		return null
+	return script_ref.new(p_max_slots, initial_members, p_active_slot_index)
 
 func _normalize_member(member_data: Dictionary) -> Dictionary:
 	if typeof(member_data) != TYPE_DICTIONARY:

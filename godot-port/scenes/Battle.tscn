@@ -379,8 +379,8 @@ flat = true
 align = 0
 
 [node name="AttackWindowSprite2" type="NinePatchRect" parent="UILayer/AttackMenuContainer/HBoxContainer"]
-margin_left = 230.0
-margin_right = 316.0
+margin_left = 234.0
+margin_right = 320.0
 margin_bottom = 62.0
 rect_min_size = Vector2( 86, 62 )
 texture = ExtResource( 13 )
