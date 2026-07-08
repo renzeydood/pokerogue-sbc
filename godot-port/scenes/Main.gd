@@ -1,6 +1,6 @@
 extends Control
 
-var entry_scene_path := "res://scenes/PokemonSelect.tscn"
+var entry_scene_path := "res://scenes/Battle.tscn"
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 const PartyModel = preload("res://data/PartyModel.gd")
 

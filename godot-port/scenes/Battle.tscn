@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=2]
+[gd_scene load_steps=17 format=2]
 
 [ext_resource path="res://scenes/Battle.gd" type="Script" id=1]
 [ext_resource path="res://godot-minimal-assets/assets/images/arenas/abyss_bg.png" type="Texture" id=2]
@@ -14,16 +14,24 @@
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/text_images/en/battle_ui/overlay_hp_label.png" type="Texture" id=12]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/windows/window_1.png" type="Texture" id=13]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/overlay_hp.png" type="Texture" id=14]
+[ext_resource path="res://themes/PokemonUiTheme.tres" type="Theme" id=15]
+[ext_resource path="res://themes/PokemonUiThemeFooter.tres" type="Theme" id=16]
 
 [node name="Battle" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
+theme = ExtResource( 15 )
 script = ExtResource( 1 )
 player_pokeball_start_offset_x = -25.0
 player_pokeball_start_offset_y = -110.0
 player_pokeball_target_offset_y = 20.0
 player_pokeball_start_delay_sec = 0.65
 player_pokeball_arc_height_px = 120.0
+player_pokemon_reveal_tint_color = Color( 1, 0.74902, 0.74902, 1 )
+capture_throw_start_offset_x = -100.0
+capture_throw_target_offset_x = -10.0
+capture_throw_target_offset_y = -100.0
+capture_ball_settle_offset_y = 50.0
 
 [node name="ArenaBackdrop" type="TextureRect" parent="."]
 anchor_right = 1.0
@@ -215,6 +223,7 @@ margin_left = 16.0
 margin_top = -66.0
 margin_right = -16.0
 margin_bottom = -2.0
+theme = ExtResource( 16 )
 
 [node name="Sprite" type="Sprite" parent="UILayer/MessagePanel"]
 position = Vector2( 144, 34 )
@@ -241,6 +250,7 @@ anchor_bottom = 1.0
 margin_left = 190.0
 margin_top = -64.0
 margin_right = -1.0
+theme = ExtResource( 16 )
 
 [node name="ControlWindowSprite" type="NinePatchRect" parent="UILayer/ControlsContainer"]
 margin_top = 1.0
@@ -297,7 +307,7 @@ margin_bottom = 44.0
 custom_constants/separation = 8
 
 [node name="MoveButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2"]
-margin_right = 72.0
+margin_right = 58.0
 margin_bottom = 20.0
 rect_min_size = Vector2( 45, 20 )
 size_flags_horizontal = 3
@@ -306,7 +316,7 @@ flat = true
 align = 0
 
 [node name="RestartButton" type="Button" parent="UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2"]
-margin_left = 80.0
+margin_left = 66.0
 margin_right = 125.0
 margin_bottom = 20.0
 rect_min_size = Vector2( 45, 20 )
@@ -324,6 +334,7 @@ margin_left = 2.0
 margin_top = -64.0
 margin_right = 3.0
 margin_bottom = 1.0
+theme = ExtResource( 16 )
 
 [node name="HBoxContainer" type="HBoxContainer" parent="UILayer/AttackMenuContainer"]
 margin_top = 1.0
@@ -424,6 +435,73 @@ margin_right = 75.5
 margin_bottom = 37.5
 text = "PP: -/-"
 
+[node name="BallMenuContainer" type="CenterContainer" parent="UILayer"]
+visible = false
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 192.0
+margin_top = -128.0
+margin_right = 2.0
+margin_bottom = -62.0
+theme = ExtResource( 16 )
+
+[node name="BallWindowSprite" type="NinePatchRect" parent="UILayer/BallMenuContainer"]
+margin_left = 2.0
+margin_top = 2.0
+margin_right = 126.0
+margin_bottom = 64.0
+rect_min_size = Vector2( 124, 62 )
+texture = ExtResource( 13 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="BallContentMargin" type="MarginContainer" parent="UILayer/BallMenuContainer/BallWindowSprite"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 8.0
+margin_right = -8.0
+margin_bottom = -8.0
+
+[node name="BallButtonList" type="VBoxContainer" parent="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin"]
+margin_right = 108.0
+margin_bottom = 86.0
+custom_constants/separation = 2
+
+[node name="PokeballButton" type="Button" parent="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList"]
+margin_right = 108.0
+margin_bottom = 14.0
+text = "5 x Poke Ball"
+flat = true
+align = 0
+
+[node name="GreatballButton" type="Button" parent="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList"]
+margin_top = 16.0
+margin_right = 108.0
+margin_bottom = 30.0
+text = "4 x Great Ball"
+flat = true
+align = 0
+
+[node name="MasterballButton" type="Button" parent="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList"]
+margin_top = 32.0
+margin_right = 108.0
+margin_bottom = 46.0
+text = "1 x Master Ball"
+flat = true
+align = 0
+
+[node name="BallCancelButton" type="Button" parent="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList"]
+margin_top = 48.0
+margin_right = 108.0
+margin_bottom = 62.0
+text = "Cancel"
+flat = true
+align = 0
+
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 
 [node name="UIAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
@@ -436,3 +514,7 @@ text = "PP: -/-"
 [connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3" to="." method="_on_AttackMoveButton_pressed" binds= [ 2 ]]
 [connection signal="focus_entered" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_focus_entered" binds= [ 3 ]]
 [connection signal="pressed" from="UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4" to="." method="_on_AttackMoveButton_pressed" binds= [ 3 ]]
+[connection signal="pressed" from="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/PokeballButton" to="." method="_on_BallMenu_pokeball_pressed"]
+[connection signal="pressed" from="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/GreatballButton" to="." method="_on_BallMenu_greatball_pressed"]
+[connection signal="pressed" from="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/MasterballButton" to="." method="_on_BallMenu_masterball_pressed"]
+[connection signal="pressed" from="UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/BallCancelButton" to="." method="_on_BallMenu_cancel_pressed"]
