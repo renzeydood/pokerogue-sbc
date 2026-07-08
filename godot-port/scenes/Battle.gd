@@ -54,6 +54,52 @@ const POKEBALL_ATLAS_REL := "assets/images/pb.json"
 const POKEBALL_FRAME_CLOSED := "pb"
 const POKEBALL_FRAME_OPENING := "pb_opening"
 const POKEBALL_FRAME_OPEN := "pb_open"
+const CAPTURE_REQUIRED_SHAKES := 3
+const BALL_KEY_POKEBALL := "pokeball"
+const BALL_KEY_GREATBALL := "greatball"
+const BALL_KEY_MASTERBALL := "masterball"
+const BALL_DEFAULT_COUNTS := {
+	BALL_KEY_POKEBALL: 5,
+	BALL_KEY_GREATBALL: 4,
+	BALL_KEY_MASTERBALL: 3,
+}
+const BALL_DEFS := {
+	BALL_KEY_POKEBALL: {
+		"label": "Pokeball",
+		"frame_prefix": "pb",
+		"catch_bonus": 1.0,
+		"guaranteed": false,
+	},
+	BALL_KEY_GREATBALL: {
+		"label": "Greatball",
+		"frame_prefix": "gb",
+		"catch_bonus": 1.5,
+		"guaranteed": false,
+	},
+	BALL_KEY_MASTERBALL: {
+		"label": "Masterball",
+		"frame_prefix": "mb",
+		"catch_bonus": 99.0,
+		"guaranteed": true,
+	},
+}
+export(float) var capture_throw_start_offset_x := 6.0
+export(float) var capture_throw_start_offset_y := -22.0
+export(float) var capture_throw_target_offset_x := -2.0
+export(float) var capture_throw_target_offset_y := -14.0
+export(float) var capture_throw_arc_height_px := 46.0
+export(float) var capture_throw_duration_sec := 0.56
+export(float) var capture_throw_up_duration_sec := 0.17
+export(float) var capture_enemy_absorb_delay_sec := 0.14
+export(float) var capture_breakout_open_delay_sec := 0.24
+export(float) var capture_ball_settle_offset_y := 12.0
+export(float) var capture_enemy_absorb_duration_sec := 0.42
+export(float) var capture_enemy_absorb_scale_mul := 0.25
+export(float) var capture_enemy_breakout_duration_sec := 0.24
+export(float) var capture_ball_success_fade_duration_sec := 0.28
+export(float) var capture_ball_pre_bounce_delay_sec := 0.25
+export(float) var capture_ball_bounce_duration_sec := 0.35
+export(float) var capture_shake_beat_delay_sec := 0.5
 const POKEBALL_PARTICLES_TEXTURE_REL := "assets/images/effects/pb_particles.png"
 const POKEBALL_PARTICLES_ATLAS_REL := "assets/images/effects/pb_particles.json"
 export(int) var player_pokeball_particle_count := 17
@@ -101,6 +147,14 @@ onready var attack_type_sprite = $UILayer/AttackMenuContainer/HBoxContainer/Atta
 onready var attack_power_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPowerLabel
 onready var attack_category_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackCategorySprite
 onready var attack_pp_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPpLabel
+onready var ball_menu_container = $UILayer/BallMenuContainer
+onready var ball_window_sprite = $UILayer/BallMenuContainer/BallWindowSprite
+onready var ball_content_margin = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin
+onready var ball_button_list = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList
+onready var ball_pokeball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/PokeballButton
+onready var ball_greatball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/GreatballButton
+onready var ball_masterball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/MasterballButton
+onready var ball_cancel_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/BallCancelButton
 
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
@@ -152,6 +206,7 @@ var enemy_layer_home_position := Vector2.ZERO
 var player_sprite_home_position := Vector2.ZERO
 var player_sprite_home_scale := Vector2.ONE
 var enemy_sprite_home_position := Vector2.ZERO
+var enemy_sprite_home_scale := Vector2.ONE
 var player_trainer_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
@@ -176,9 +231,13 @@ var pokeball_open_particle_sprite_frames: SpriteFrames = null
 var catalog_loader = null
 var selected_player_species_id := ""
 var attack_menu_visible := false
+var ball_menu_visible := false
 var party_menu_visible := false
 var party_menu_overlay = null
 var enemy_species_pool := []
+var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
+var capture_in_progress := false
+var sendout_controls_locked := false
 
 func _ready():
 	randomize()
@@ -191,6 +250,7 @@ func _ready():
 	player_sprite_home_position = player_pokemon_sprite.position
 	player_sprite_home_scale = player_pokemon_sprite.scale
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
+	enemy_sprite_home_scale = enemy_pokemon_sprite.scale
 	if player_trainer_sprite != null:
 		player_trainer_sprite_home_position = player_trainer_sprite.position
 	build_hp_overlay_frames()
@@ -199,6 +259,9 @@ func _ready():
 	setup_attack_detail_sprites()
 	setup_party_menu_overlay()
 	reset_battle_state("Battle ready.")
+	if ball_menu_container != null:
+		ball_menu_container.visible = false
+	refresh_ball_menu_layout()
 
 	add_blend_material = CanvasItemMaterial.new()
 	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -281,6 +344,14 @@ func apply_fonts():
 	attack_move_button_2.add_font_override("font", button_font)
 	attack_move_button_3.add_font_override("font", button_font)
 	attack_move_button_4.add_font_override("font", button_font)
+	if ball_pokeball_button != null:
+		ball_pokeball_button.add_font_override("font", button_font)
+	if ball_greatball_button != null:
+		ball_greatball_button.add_font_override("font", button_font)
+	if ball_masterball_button != null:
+		ball_masterball_button.add_font_override("font", button_font)
+	if ball_cancel_button != null:
+		ball_cancel_button.add_font_override("font", button_font)
 	attack_power_label.add_font_override("font", ui_font)
 	attack_pp_label.add_font_override("font", ui_font)
 	if party_menu_overlay != null and party_menu_overlay.has_method("apply_fonts"):
@@ -462,6 +533,31 @@ func _input(event):
 		return
 	if not event.pressed or event.echo:
 		return
+	if ball_menu_visible:
+		if event.is_action_pressed("ui_back"):
+			hide_ball_menu(true)
+			accept_event()
+			return
+		if event.is_action_pressed("ui_up"):
+			move_ball_menu_focus("ui_up", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_down"):
+			move_ball_menu_focus("ui_down", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_left"):
+			move_ball_menu_focus("ui_left", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_right"):
+			move_ball_menu_focus("ui_right", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_accept"):
+			press_focused_button()
+			accept_event()
+			return
 	if not party_menu_visible:
 		return
 
@@ -497,6 +593,8 @@ func _unhandled_input(event):
 		return
 
 	if party_menu_visible:
+		return
+	if ball_menu_visible:
 		return
 
 	if event.is_action_pressed("ui_left"):
@@ -668,13 +766,27 @@ func _on_RestartButton_pressed():
 		reset_battle_state("Battle reset.")
 		return
 
-	if turn_in_progress:
+	if turn_in_progress or capture_in_progress:
 		return
 
 	if attack_menu_visible:
 		hide_attack_menu()
+	if party_menu_visible:
+		close_party_menu()
 
-	set_battle_text("Ball menu not implemented yet.")
+	show_ball_menu()
+
+func _on_BallMenu_pokeball_pressed():
+	attempt_capture_with_ball(BALL_KEY_POKEBALL)
+
+func _on_BallMenu_greatball_pressed():
+	attempt_capture_with_ball(BALL_KEY_GREATBALL)
+
+func _on_BallMenu_masterball_pressed():
+	attempt_capture_with_ball(BALL_KEY_MASTERBALL)
+
+func _on_BallMenu_cancel_pressed():
+	hide_ball_menu(true)
 
 func _on_PokemonButton_pressed():
 	if battle_ended:
@@ -698,6 +810,510 @@ func _on_RunButton_pressed():
 	update_run_button_label()
 	var state_text = "ON" if battle_fx_enabled else "OFF"
 	set_battle_text("Battle FX toggled %s." % state_text)
+
+func attempt_capture_with_ball(ball_key: String) -> void:
+	if battle_ended or turn_in_progress or capture_in_progress:
+		return
+	if battle_data == null or not battle_data.has("enemy") or battle_data["enemy"] == null:
+		set_battle_text("No target to capture.")
+		return
+
+	var available = int(ball_inventory.get(ball_key, 0))
+	if available <= 0:
+		set_battle_text("No %s left." % _get_ball_label(ball_key))
+		refresh_ball_menu_labels()
+		focus_first_ball_menu_button()
+		return
+
+	ball_inventory[ball_key] = max(0, available - 1)
+	refresh_ball_menu_labels()
+	hide_all_command_menus()
+
+	turn_in_progress = true
+	capture_in_progress = true
+	set_action_lock(true)
+	var active_turn_token = turn_token
+	var enemy = battle_data["enemy"]
+	var capture_flow = _run_capture_sequence(ball_key, enemy, active_turn_token)
+	if capture_flow is GDScriptFunctionState:
+		yield(capture_flow, "completed")
+
+	if active_turn_token != turn_token:
+		capture_in_progress = false
+		return
+
+	capture_in_progress = false
+	_finish_turn()
+
+func _run_capture_sequence(ball_key: String, enemy, active_turn_token: int):
+	set_battle_text("You threw a %s!" % _get_ball_label(ball_key))
+	_play_capture_sfx("pb_throw.wav")
+
+	var throw_anim = _play_capture_throw_open_animation(ball_key, active_turn_token)
+	if throw_anim is GDScriptFunctionState:
+		yield(throw_anim, "completed")
+	if active_turn_token != turn_token:
+		return null
+
+	var shake_successes = _roll_capture_shakes(ball_key, enemy)
+	var capture_success = shake_successes >= CAPTURE_REQUIRED_SHAKES
+	var shake_anim = _play_capture_shakes(ball_key, enemy, shake_successes, capture_success, active_turn_token)
+	if shake_anim is GDScriptFunctionState:
+		yield(shake_anim, "completed")
+	if active_turn_token != turn_token:
+		return null
+
+	if capture_success:
+		var success_flow = _handle_capture_success(enemy, active_turn_token)
+		if success_flow is GDScriptFunctionState:
+			yield(success_flow, "completed")
+		return null
+
+	_handle_capture_failure(enemy)
+	return null
+
+func _play_capture_throw_open_animation(ball_key: String, active_turn_token: int):
+	if not _apply_capture_ball_frame(ball_key, ""):
+		return null
+
+	var sprite = player_pokeball_sprite
+	sprite.visible = true
+	sprite.rotation_degrees = 0.0
+	var start_pos = player_sprite_home_position + Vector2(capture_throw_start_offset_x, capture_throw_start_offset_y)
+	var target_pos = enemy_sprite_home_position + Vector2(capture_throw_target_offset_x, capture_throw_target_offset_y)
+	var arc_peak_y = min(start_pos.y, target_pos.y) - abs(capture_throw_arc_height_px)
+	var total_duration = max(0.08, capture_throw_duration_sec)
+	var up_duration = clamp(capture_throw_up_duration_sec, 0.04, total_duration - 0.04)
+	var down_duration = max(0.04, total_duration - up_duration)
+	sprite.position = start_pos
+
+	var throw_tween = Tween.new()
+	add_child(throw_tween)
+	throw_tween.interpolate_property(sprite, "position:x", start_pos.x, target_pos.x, total_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	throw_tween.interpolate_property(sprite, "rotation_degrees", 0.0, 540.0, total_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	throw_tween.interpolate_property(sprite, "position:y", start_pos.y, arc_peak_y, up_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	throw_tween.interpolate_property(sprite, "position:y", arc_peak_y, target_pos.y, down_duration, Tween.TRANS_CUBIC, Tween.EASE_IN, up_duration)
+	throw_tween.start()
+	yield(throw_tween, "tween_all_completed")
+	throw_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+
+	var _opening_frame_applied = _apply_capture_ball_frame(ball_key, "_opening")
+	yield(get_tree().create_timer(0.08), "timeout")
+	if active_turn_token != turn_token:
+		return null
+
+	var _open_frame_applied = _apply_capture_ball_frame(ball_key, "_open")
+	_play_capture_sfx("pb_rel.wav")
+	_spawn_player_pokeball_open_particles(target_pos + Vector2(0, -2))
+	var absorb_anim = _play_capture_enemy_absorb_animation(target_pos, active_turn_token)
+	if absorb_anim is GDScriptFunctionState:
+		yield(absorb_anim, "completed")
+	if active_turn_token != turn_token:
+		return null
+	yield(get_tree().create_timer(max(0.01, capture_enemy_absorb_delay_sec)), "timeout")
+	if active_turn_token != turn_token:
+		return null
+
+	var _closed_frame_applied = _apply_capture_ball_frame(ball_key, "")
+	var settle_anim = _play_capture_ball_drop_and_bounce(target_pos, active_turn_token)
+	if settle_anim is GDScriptFunctionState:
+		yield(settle_anim, "completed")
+	if active_turn_token != turn_token:
+		return null
+	return null
+
+func _play_capture_shakes(ball_key: String, enemy, shake_successes: int, capture_success: bool, active_turn_token: int):
+	for shake_index in range(CAPTURE_REQUIRED_SHAKES):
+		if shake_index >= shake_successes:
+			if capture_breakout_open_delay_sec > 0.0:
+				yield(get_tree().create_timer(capture_breakout_open_delay_sec), "timeout")
+				if active_turn_token != turn_token:
+					return null
+			_play_capture_sfx("pb_rel.wav")
+			if player_pokeball_sprite != null:
+				var _break_opening_frame_applied = _apply_capture_ball_frame(ball_key, "_opening")
+				_spawn_player_pokeball_open_particles(player_pokeball_sprite.position + Vector2(0, -2))
+				yield(get_tree().create_timer(0.06), "timeout")
+				if active_turn_token != turn_token:
+					return null
+				_hide_player_pokeball_sprite()
+			var breakout_origin = enemy_sprite_home_position + Vector2(capture_throw_target_offset_x, capture_throw_target_offset_y + capture_ball_settle_offset_y)
+			if player_pokeball_sprite != null:
+				breakout_origin = player_pokeball_sprite.position
+			var breakout_anim = _play_capture_enemy_breakout_animation(breakout_origin, active_turn_token)
+			if breakout_anim is GDScriptFunctionState:
+				yield(breakout_anim, "completed")
+			if active_turn_token != turn_token:
+				return null
+			set_battle_text("%s broke free!" % String(enemy.species_id))
+			return null
+
+		_play_capture_sfx("pb_move.wav")
+		var shake_step = _animate_capture_single_shake(active_turn_token)
+		if shake_step is GDScriptFunctionState:
+			yield(shake_step, "completed")
+		if active_turn_token != turn_token:
+			return null
+		if shake_index < CAPTURE_REQUIRED_SHAKES - 1 and capture_shake_beat_delay_sec > 0.0:
+			yield(get_tree().create_timer(capture_shake_beat_delay_sec), "timeout")
+			if active_turn_token != turn_token:
+				return null
+
+	if capture_success:
+		_play_capture_sfx("pb_catch.wav")
+		yield(get_tree().create_timer(0.2), "timeout")
+		if active_turn_token != turn_token:
+			return null
+		_play_capture_sfx("pb_lock.wav")
+
+	return null
+
+func _animate_capture_single_shake(active_turn_token: int):
+	if player_pokeball_sprite == null:
+		return null
+
+	var sprite = player_pokeball_sprite
+	var base_pos = sprite.position
+	var shake_tween = Tween.new()
+	add_child(shake_tween)
+	shake_tween.interpolate_property(sprite, "rotation_degrees", 0.0, 16.0, 0.07, Tween.TRANS_SINE, Tween.EASE_OUT)
+	shake_tween.interpolate_property(sprite, "rotation_degrees", 16.0, -14.0, 0.11, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.07)
+	shake_tween.interpolate_property(sprite, "rotation_degrees", -14.0, 10.0, 0.09, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.18)
+	shake_tween.interpolate_property(sprite, "rotation_degrees", 10.0, 0.0, 0.08, Tween.TRANS_SINE, Tween.EASE_IN, 0.27)
+	shake_tween.interpolate_property(sprite, "position:x", base_pos.x, base_pos.x + 1.5, 0.07, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	shake_tween.interpolate_property(sprite, "position:x", base_pos.x + 1.5, base_pos.x - 1.5, 0.11, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT, 0.07)
+	shake_tween.interpolate_property(sprite, "position:x", base_pos.x - 1.5, base_pos.x + 1.0, 0.09, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT, 0.18)
+	shake_tween.interpolate_property(sprite, "position:x", base_pos.x + 1.0, base_pos.x, 0.08, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT, 0.27)
+	shake_tween.start()
+	yield(shake_tween, "tween_all_completed")
+	shake_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+	if player_pokeball_sprite != null:
+		player_pokeball_sprite.rotation_degrees = 0.0
+		player_pokeball_sprite.position = base_pos
+	return null
+
+func _play_capture_ball_drop_and_bounce(target_pos: Vector2, active_turn_token: int):
+	if player_pokeball_sprite == null:
+		return null
+
+	var sprite = player_pokeball_sprite
+	sprite.rotation_degrees = 0.0
+	sprite.position = target_pos
+	if capture_ball_pre_bounce_delay_sec > 0.0:
+		yield(get_tree().create_timer(capture_ball_pre_bounce_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return null
+
+	var settle_y = target_pos.y + capture_ball_settle_offset_y
+	var bounce_power = 1.0
+	var yd = capture_ball_settle_offset_y
+	var bounce_duration = max(0.05, capture_ball_bounce_duration_sec)
+
+	while bounce_power > 0.01:
+		var down_tween = Tween.new()
+		add_child(down_tween)
+		down_tween.interpolate_property(sprite, "position:y", sprite.position.y, settle_y, bounce_power * bounce_duration, Tween.TRANS_CUBIC, Tween.EASE_IN)
+		down_tween.start()
+		yield(down_tween, "tween_all_completed")
+		down_tween.queue_free()
+		if active_turn_token != turn_token:
+			return null
+
+		bounce_power = (bounce_power * 0.5) if bounce_power > 0.01 else 0.0
+		if bounce_power <= 0.01:
+			break
+
+		var bounce_y = settle_y - (yd * bounce_power)
+		var up_tween = Tween.new()
+		add_child(up_tween)
+		up_tween.interpolate_property(sprite, "position:y", sprite.position.y, bounce_y, bounce_power * bounce_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+		up_tween.start()
+		yield(up_tween, "tween_all_completed")
+		up_tween.queue_free()
+		if active_turn_token != turn_token:
+			return null
+
+	sprite.position = Vector2(target_pos.x, settle_y)
+	return null
+
+func _handle_capture_success(enemy, active_turn_token: int):
+	var enemy_species_id = String(enemy.species_id).strip_edges().to_upper()
+	set_battle_text("Gotcha! %s was caught!" % enemy_species_id)
+	var fade_anim = _fade_capture_ball_on_success(active_turn_token)
+	if fade_anim is GDScriptFunctionState:
+		yield(fade_anim, "completed")
+	if active_turn_token != turn_token:
+		return null
+
+	var add_result = _try_add_captured_enemy_to_party(enemy)
+	if add_result.has("ok") and not bool(add_result["ok"]):
+		if String(add_result.get("reason", "")) == "full":
+			set_battle_text("Gotcha! %s was caught, but party is full." % enemy_species_id)
+
+	yield(get_tree().create_timer(0.45), "timeout")
+	if active_turn_token != turn_token:
+		return null
+
+	var next_enemy_flow = _spawn_next_enemy_after_capture(enemy_species_id, active_turn_token)
+	if next_enemy_flow is GDScriptFunctionState:
+		yield(next_enemy_flow, "completed")
+	return null
+
+func _handle_capture_failure(enemy) -> void:
+	_hide_player_pokeball_sprite()
+	if enemy_pokemon_sprite != null:
+		restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	set_battle_text("%s escaped!" % String(enemy.species_id))
+
+func _play_capture_enemy_absorb_animation(ball_target_pos: Vector2, active_turn_token: int):
+	if enemy_pokemon_sprite == null:
+		return null
+
+	enemy_pokemon_sprite.visible = true
+	enemy_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+	var start_scale = enemy_pokemon_sprite.scale
+	var target_scale = start_scale * max(0.05, capture_enemy_absorb_scale_mul)
+	var absorb_tween = Tween.new()
+	add_child(absorb_tween)
+	absorb_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"position",
+		enemy_pokemon_sprite.position,
+		ball_target_pos,
+		max(0.01, capture_enemy_absorb_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	absorb_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"scale",
+		start_scale,
+		target_scale,
+		max(0.01, capture_enemy_absorb_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	absorb_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"modulate:a",
+		1.0,
+		0.0,
+		max(0.01, capture_enemy_absorb_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	absorb_tween.start()
+	yield(absorb_tween, "tween_all_completed")
+	absorb_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+	enemy_pokemon_sprite.visible = false
+	return null
+
+func _play_capture_enemy_breakout_animation(ball_origin_pos: Vector2, active_turn_token: int):
+	if enemy_pokemon_sprite == null:
+		return null
+
+	enemy_pokemon_sprite.visible = true
+	var home_scale = enemy_sprite_home_scale
+	var start_scale = home_scale * max(0.05, capture_enemy_absorb_scale_mul)
+	enemy_pokemon_sprite.position = ball_origin_pos
+	enemy_pokemon_sprite.scale = start_scale
+	enemy_pokemon_sprite.modulate = Color(1, 1, 1, 0)
+	var breakout_tween = Tween.new()
+	add_child(breakout_tween)
+	breakout_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"position",
+		ball_origin_pos,
+		enemy_sprite_home_position,
+		max(0.01, capture_enemy_breakout_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_OUT
+	)
+	breakout_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"scale",
+		start_scale,
+		home_scale,
+		max(0.01, capture_enemy_breakout_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_OUT
+	)
+	breakout_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"modulate:a",
+		0.0,
+		1.0,
+		max(0.01, capture_enemy_breakout_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_OUT
+	)
+	breakout_tween.start()
+	yield(breakout_tween, "tween_all_completed")
+	breakout_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	return null
+
+func _fade_capture_ball_on_success(active_turn_token: int):
+	if player_pokeball_sprite == null or not player_pokeball_sprite.visible:
+		return null
+
+	player_pokeball_sprite.modulate.a = 1.0
+	var fade_tween = Tween.new()
+	add_child(fade_tween)
+	fade_tween.interpolate_property(
+		player_pokeball_sprite,
+		"modulate:a",
+		1.0,
+		0.0,
+		max(0.01, capture_ball_success_fade_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	fade_tween.start()
+	yield(fade_tween, "tween_all_completed")
+	fade_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+	_hide_player_pokeball_sprite()
+	player_pokeball_sprite.modulate.a = 1.0
+	return null
+
+func _roll_capture_shakes(ball_key: String, enemy) -> int:
+	if _ball_has_guaranteed_catch(ball_key):
+		return CAPTURE_REQUIRED_SHAKES
+
+	var max_hp = max(1, int(enemy.get_base_stat("hp")))
+	var hp_ratio = clamp(float(enemy.current_hp) / float(max_hp), 0.0, 1.0)
+	var hp_factor = 1.0 - hp_ratio
+
+	var catch_rate = _get_enemy_catch_rate(String(enemy.species_id))
+	var catch_bonus = _get_ball_catch_bonus(ball_key)
+	var shake_chance = (float(catch_rate) / 255.0) * (0.35 + 0.65 * hp_factor) * catch_bonus
+	shake_chance = clamp(shake_chance, 0.05, 0.95)
+
+	var successes = 0
+	for _i in range(CAPTURE_REQUIRED_SHAKES):
+		if randf() <= shake_chance:
+			successes += 1
+		else:
+			break
+	return successes
+
+func _get_enemy_catch_rate(species_id: String) -> int:
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader != null and catalog_loader.load_catalogs():
+		var species_entry = catalog_loader.get_species(species_id)
+		if not species_entry.empty():
+			return int(max(1, int(species_entry.get("catch_rate", 45))))
+	return 45
+
+func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_token: int):
+	var next_enemy_species_id = pick_random_enemy_species_id(captured_species_id)
+	var next_enemy = null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader != null and catalog_loader.load_catalogs():
+		next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, 5)
+
+	if next_enemy == null:
+		end_battle(true, captured_species_id)
+		return null
+
+	var enemy_slide_out = animate_enemy_layer_to(
+		enemy_layer_home_position + Vector2(enemy_switch_slide_distance_px, 0),
+		enemy_switch_slide_duration_sec,
+		active_turn_token
+	)
+	if enemy_slide_out is GDScriptFunctionState:
+		yield(enemy_slide_out, "completed")
+		if active_turn_token != -1 and active_turn_token != turn_token:
+			return null
+
+	battle_data["enemy"] = next_enemy
+	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+	var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
+	if enemy_slide_in is GDScriptFunctionState:
+		yield(enemy_slide_in, "completed")
+		if active_turn_token != -1 and active_turn_token != turn_token:
+			return null
+
+	set_battle_text("A wild %s appeared!" % String(next_enemy.species_id))
+	return null
+
+func _try_add_captured_enemy_to_party(enemy) -> Dictionary:
+	if runtime_state_script == null:
+		return {"ok": false, "reason": "runtime_missing"}
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return {"ok": false, "reason": "party_missing"}
+
+	var move_ids := []
+	var enemy_moves = enemy.moves if enemy != null else []
+	if typeof(enemy_moves) == TYPE_ARRAY:
+		for move in enemy_moves:
+			if move == null:
+				continue
+			var move_id = String(move.move_id).strip_edges().to_upper()
+			if move_id.empty() or move_ids.has(move_id):
+				continue
+			move_ids.append(move_id)
+
+	return party.add_member({
+		"species_id": String(enemy.species_id).strip_edges().to_upper(),
+		"level": max(1, int(enemy.level)),
+		"current_hp": max(1, int(enemy.current_hp)),
+		"move_ids": move_ids,
+	})
+
+func _get_ball_label(ball_key: String) -> String:
+	if BALL_DEFS.has(ball_key):
+		return String(BALL_DEFS[ball_key].get("label", "Ball"))
+	return "Ball"
+
+func _get_ball_frame_prefix(ball_key: String) -> String:
+	if BALL_DEFS.has(ball_key):
+		return String(BALL_DEFS[ball_key].get("frame_prefix", "pb"))
+	return "pb"
+
+func _get_ball_catch_bonus(ball_key: String) -> float:
+	if BALL_DEFS.has(ball_key):
+		return max(0.1, float(BALL_DEFS[ball_key].get("catch_bonus", 1.0)))
+	return 1.0
+
+func _ball_has_guaranteed_catch(ball_key: String) -> bool:
+	if not BALL_DEFS.has(ball_key):
+		return false
+	return bool(BALL_DEFS[ball_key].get("guaranteed", false))
+
+func _apply_capture_ball_frame(ball_key: String, suffix: String) -> bool:
+	var frame_name = _get_ball_frame_prefix(ball_key) + suffix
+	return _apply_pokeball_frame(frame_name)
+
+func _play_capture_sfx(file_name: String) -> void:
+	if not battle_fx_enabled:
+		return
+	var sfx_path = resolve_audio_asset_path("assets/audio/se/" + file_name)
+	if sfx_path.empty():
+		return
+	$UIAudioStreamPlayer.stream = load(sfx_path)
+	$UIAudioStreamPlayer.play()
 
 func set_action_lock(locked: bool):
 	move_button.disabled = locked
@@ -745,7 +1361,12 @@ func _return_to_selection_scene():
 
 func reset_battle_state(message: String):
 	turn_token += 1
+	capture_in_progress = false
+	sendout_controls_locked = false
 	_close_party_menu_internal()
+	hide_ball_menu(false)
+	ball_inventory = BALL_DEFAULT_COUNTS.duplicate(true)
+	refresh_ball_menu_labels()
 	var handoff_species_id = consume_selected_species_id()
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
@@ -787,7 +1408,7 @@ func reset_battle_state(message: String):
 	refresh_attack_menu()
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
-	set_action_lock(false)
+	set_sendout_controls_locked(true)
 	ball_button.disabled = false
 	update_run_button_label()
 	bind_battle_data()
@@ -797,6 +1418,18 @@ func reset_battle_state(message: String):
 	start_player_trainer_summon_choreography()
 	ensure_button_focus()
 	set_battle_text(message)
+
+func set_sendout_controls_locked(locked: bool) -> void:
+	sendout_controls_locked = locked
+	if battle_ended:
+		set_action_lock(true)
+		return
+	set_action_lock(locked)
+
+func _on_player_sendout_settled() -> void:
+	if not sendout_controls_locked:
+		return
+	set_sendout_controls_locked(false)
 
 func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}) -> Dictionary:
 	if catalog_loader == null:
@@ -960,6 +1593,14 @@ func setup_keyboard_controls():
 	attack_move_button_2.focus_mode = Control.FOCUS_ALL
 	attack_move_button_3.focus_mode = Control.FOCUS_ALL
 	attack_move_button_4.focus_mode = Control.FOCUS_ALL
+	if ball_pokeball_button != null:
+		ball_pokeball_button.focus_mode = Control.FOCUS_ALL
+	if ball_greatball_button != null:
+		ball_greatball_button.focus_mode = Control.FOCUS_ALL
+	if ball_masterball_button != null:
+		ball_masterball_button.focus_mode = Control.FOCUS_ALL
+	if ball_cancel_button != null:
+		ball_cancel_button.focus_mode = Control.FOCUS_ALL
 
 func ensure_input_action_key(action_name: String, key_code: int):
 	if not InputMap.has_action(action_name):
@@ -981,6 +1622,13 @@ func ensure_button_focus():
 		party_menu_overlay.focus_default()
 		return
 
+	if ball_menu_visible:
+		var ball_focus_owner = get_focus_owner()
+		if is_ball_menu_button(ball_focus_owner):
+			return
+		focus_first_ball_menu_button()
+		return
+
 	if attack_menu_visible:
 		var attack_focus_owner = get_focus_owner()
 		if is_attack_menu_button(attack_focus_owner):
@@ -999,6 +1647,9 @@ func ensure_button_focus():
 func move_button_focus(action_name: String):
 	if party_menu_visible and party_menu_overlay != null:
 		party_menu_overlay.move_focus(action_name)
+		return
+	if ball_menu_visible:
+		move_ball_menu_focus(action_name, get_focus_owner())
 		return
 
 	ensure_button_focus()
@@ -1067,6 +1718,50 @@ func move_attack_menu_focus(action_name: String, focus_owner):
 			attack_move_button_4.grab_focus()
 		return
 
+func is_ball_menu_button(focus_owner) -> bool:
+	return focus_owner == ball_pokeball_button or focus_owner == ball_greatball_button or focus_owner == ball_masterball_button or focus_owner == ball_cancel_button
+
+func focus_first_ball_menu_button() -> void:
+	if ball_pokeball_button != null and not ball_pokeball_button.disabled:
+		ball_pokeball_button.grab_focus()
+		return
+	if ball_greatball_button != null and not ball_greatball_button.disabled:
+		ball_greatball_button.grab_focus()
+		return
+	if ball_masterball_button != null and not ball_masterball_button.disabled:
+		ball_masterball_button.grab_focus()
+		return
+	if ball_cancel_button != null:
+		ball_cancel_button.grab_focus()
+
+func move_ball_menu_focus(action_name: String, focus_owner):
+	if focus_owner == null or not is_ball_menu_button(focus_owner):
+		focus_first_ball_menu_button()
+		return
+
+	var focus_order = [ball_pokeball_button, ball_greatball_button, ball_masterball_button, ball_cancel_button]
+	var enabled_order := []
+	for button in focus_order:
+		if button == null:
+			continue
+		if button == ball_cancel_button or not button.disabled:
+			enabled_order.append(button)
+	if enabled_order.empty():
+		return
+
+	var current_index = enabled_order.find(focus_owner)
+	if current_index == -1:
+		focus_first_ball_menu_button()
+		return
+
+	if action_name == "ui_up" or action_name == "ui_left":
+		enabled_order[(current_index - 1 + enabled_order.size()) % enabled_order.size()].grab_focus()
+		return
+
+	if action_name == "ui_down" or action_name == "ui_right":
+		enabled_order[(current_index + 1) % enabled_order.size()].grab_focus()
+		return
+
 func press_focused_button():
 	if party_menu_visible and party_menu_overlay != null:
 		party_menu_overlay.press_focused()
@@ -1100,14 +1795,74 @@ func hide_attack_menu():
 func show_main_controls():
 	attack_menu_visible = false
 	attack_menu_container.visible = false
+	if ball_menu_container != null:
+		ball_menu_container.visible = false
+	ball_menu_visible = false
 	controls_container.visible = true
 	set_main_command_prompt()
 
 func hide_all_command_menus():
 	attack_menu_visible = false
 	attack_menu_container.visible = false
+	if ball_menu_container != null:
+		ball_menu_container.visible = false
+	ball_menu_visible = false
 	controls_container.visible = false
 	_close_party_menu_internal()
+
+func show_ball_menu() -> void:
+	if ball_menu_container == null:
+		set_battle_text("Ball menu is missing.")
+		return
+
+	hide_all_command_menus()
+	refresh_ball_menu_labels()
+	refresh_ball_menu_layout()
+	ball_menu_visible = true
+	ball_menu_container.visible = true
+	focus_first_ball_menu_button()
+	set_battle_text("Choose a Ball.")
+
+func hide_ball_menu(show_controls: bool) -> void:
+	ball_menu_visible = false
+	if ball_menu_container != null:
+		ball_menu_container.visible = false
+	if show_controls and not battle_ended and not turn_in_progress and not capture_in_progress:
+		show_main_controls()
+		set_action_lock(false)
+	ensure_button_focus()
+
+func refresh_ball_menu_labels() -> void:
+	if ball_pokeball_button == null or ball_greatball_button == null or ball_masterball_button == null or ball_cancel_button == null:
+		return
+
+	var pokeball_count = int(ball_inventory.get(BALL_KEY_POKEBALL, 0))
+	var greatball_count = int(ball_inventory.get(BALL_KEY_GREATBALL, 0))
+	var masterball_count = int(ball_inventory.get(BALL_KEY_MASTERBALL, 0))
+	ball_pokeball_button.text = "%d x Pokeball" % max(0, pokeball_count)
+	ball_greatball_button.text = "%d x Greatball" % max(0, greatball_count)
+	ball_masterball_button.text = "%d x Masterball" % max(0, masterball_count)
+	ball_pokeball_button.disabled = pokeball_count <= 0
+	ball_greatball_button.disabled = greatball_count <= 0
+	ball_masterball_button.disabled = masterball_count <= 0
+	ball_cancel_button.disabled = false
+	refresh_ball_menu_layout()
+
+func refresh_ball_menu_layout() -> void:
+	if ball_menu_container == null or ball_window_sprite == null or ball_content_margin == null or ball_button_list == null:
+		return
+
+	var list_min_size = ball_button_list.get_combined_minimum_size()
+	var margin_padding_y = ball_content_margin.margin_top - ball_content_margin.margin_bottom
+	var window_min_height = max(1.0, list_min_size.y + margin_padding_y)
+	var window_min_width = max(1.0, ball_window_sprite.rect_min_size.x)
+	ball_window_sprite.rect_min_size = Vector2(window_min_width, window_min_height)
+	ball_window_sprite.rect_size = Vector2(window_min_width, window_min_height)
+
+	# Keep the menu bottom anchored and expand upward as options are added.
+	# BallWindowSprite sits with 2px inset on top and bottom inside BallMenuContainer.
+	var container_height = window_min_height + 4.0
+	ball_menu_container.margin_top = ball_menu_container.margin_bottom - container_height
 
 func open_party_menu():
 	if party_menu_overlay == null:
@@ -1799,6 +2554,10 @@ func restore_battler_sprite_state(target_sprite: Sprite, home_pos: Vector2):
 
 	target_sprite.visible = true
 	target_sprite.position = home_pos
+	if target_sprite == player_pokemon_sprite:
+		target_sprite.scale = player_sprite_home_scale
+	elif target_sprite == enemy_pokemon_sprite:
+		target_sprite.scale = enemy_sprite_home_scale
 	target_sprite.modulate = Color(1, 1, 1, 1)
 
 func parse_sprite_frame(json_path: String, frame_name: String):
@@ -2034,15 +2793,18 @@ func _apply_trainer_frame(frame_entry: Dictionary) -> void:
 	apply_sprite_frame(player_trainer_sprite, frame_entry["frame"])
 
 func start_player_trainer_summon_choreography() -> void:
+	set_sendout_controls_locked(true)
 	if player_trainer_sprite == null or not player_trainer_enabled:
 		if player_pokemon_sprite != null:
 			player_pokemon_sprite.visible = true
 		_play_player_sendout_cry_once()
+		_on_player_sendout_settled()
 		return
 	if player_trainer_idle_frame.empty():
 		if player_pokemon_sprite != null:
 			player_pokemon_sprite.visible = true
 		_play_player_sendout_cry_once()
+		_on_player_sendout_settled()
 		return
 
 	player_trainer_choreo_playing = true
@@ -2141,6 +2903,7 @@ func _play_player_pokeball_release_sfx() -> void:
 
 func _play_player_pokemon_sendout_reveal_fx() -> void:
 	if player_pokemon_sprite == null:
+		_on_player_sendout_settled()
 		return
 
 	if not battle_fx_enabled:
@@ -2148,6 +2911,7 @@ func _play_player_pokemon_sendout_reveal_fx() -> void:
 		player_pokemon_sprite.scale = player_sprite_home_scale
 		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
 		_play_player_sendout_cry_once()
+		_on_player_sendout_settled()
 		return
 
 	_play_player_pokeball_release_sfx()
@@ -2191,6 +2955,7 @@ func _play_player_pokemon_sendout_reveal_fx() -> void:
 func _on_player_pokemon_reveal_tween_completed(reveal_tween: Tween) -> void:
 	_play_player_sendout_cry_once()
 	_on_player_pokeball_tween_completed(reveal_tween)
+	_on_player_sendout_settled()
 
 func _play_player_sendout_cry_once() -> void:
 	if player_sendout_cry_played:
@@ -2396,7 +3161,7 @@ func _ensure_pokeball_particles_assets() -> bool:
 	pokeball_open_particle_sprite_frames = sprite_frames
 	return true
 
-func _spawn_player_pokeball_open_particles() -> void:
+func _spawn_player_pokeball_open_particles(origin_override = null) -> void:
 	if not battle_fx_enabled:
 		return
 	if effects_layer == null:
@@ -2409,6 +3174,8 @@ func _spawn_player_pokeball_open_particles() -> void:
 		return
 
 	var origin = player_sprite_home_position + Vector2(0, -16)
+	if typeof(origin_override) == TYPE_VECTOR2:
+		origin = origin_override
 	var spawn_interval = max(0.0, player_pokeball_particle_spawn_interval_sec)
 	var radius = max(0.0, player_pokeball_particle_radius_px)
 	var travel_duration = max(0.05, player_pokeball_particle_travel_duration_sec)
