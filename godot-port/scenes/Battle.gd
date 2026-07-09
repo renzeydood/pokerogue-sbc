@@ -1252,7 +1252,9 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 		if active_turn_token != -1 and active_turn_token != turn_token:
 			return null
 
+	var next_biome_state = _advance_runtime_biome_state("capture_resolved")
 	battle_data["enemy"] = next_enemy
+	_apply_biome_state_to_battle_data(next_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
 	load_battle_sprites()
 	bind_battle_data()
@@ -1422,8 +1424,10 @@ func reset_battle_state(message: String):
 		active_player_species_id = "BLASTOISE"
 	selected_player_species_id = active_player_species_id
 
+	var initial_biome_state = _ensure_runtime_biome_state()
 	var next_enemy_species_id = pick_random_enemy_species_id("")
 	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member)
+	_apply_biome_state_to_battle_data(initial_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position
 	load_battle_sprites()
 	battle_ended = false
@@ -1476,6 +1480,31 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 		return catalog_loader.build_battle_seed(player_species_id, enemy_species_id)
 
 	return pokemon_data_script.create_battle_02_test_data(player_species_id)
+
+func _ensure_runtime_biome_state() -> Dictionary:
+	if runtime_state_script == null:
+		return {
+			"current_biome_id": "grass",
+			"previous_biome_id": "",
+			"transition_trigger": "battle_start",
+			"encounter_index": 0,
+			"seed": 0,
+			"source": "baseline_rotation",
+		}
+	return runtime_state_script.ensure_biome_state(get_tree())
+
+func _advance_runtime_biome_state(transition_trigger: String) -> Dictionary:
+	if runtime_state_script == null:
+		var fallback_biome_state = _ensure_runtime_biome_state()
+		fallback_biome_state["transition_trigger"] = transition_trigger.strip_edges().to_lower().replace(" ", "_")
+		fallback_biome_state["encounter_index"] = int(fallback_biome_state.get("encounter_index", 0)) + 1
+		return fallback_biome_state
+	return runtime_state_script.advance_biome_state(get_tree(), transition_trigger)
+
+func _apply_biome_state_to_battle_data(biome_state: Dictionary) -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	battle_data["biome_state"] = biome_state.duplicate(true)
 
 func get_enemy_species_pool() -> Array:
 	if not enemy_species_pool.empty():
@@ -1546,7 +1575,9 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		end_battle(true, fainted_species_id)
 		return
 
+	var next_biome_state = _advance_runtime_biome_state("enemy_defeated")
 	battle_data["enemy"] = next_enemy
+	_apply_biome_state_to_battle_data(next_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
 	load_battle_sprites()
 	bind_battle_data()

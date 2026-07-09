@@ -14,6 +14,7 @@ ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets"
 POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
 MOVES_CATALOG_FILE = OUT_DIR / "data" / "moves-catalog.v1.json"
+ARENA_IMAGE_SUFFIXES = ("_a", "_b", "_b_1", "_b_2", "_bg")
 
 
 def _find_ffmpeg_executable() -> str:
@@ -265,6 +266,31 @@ def _collect_move_assets(attack_slug: str, pokerogue_root: Path, name_index: dic
     return assets
 
 
+def _normalize_arena_id(value: str) -> str:
+    return value.strip().lower().replace("_", "-").replace(" ", "-")
+
+
+def _collect_arena_assets(arena_id: str, pokerogue_root: Path) -> list[str]:
+    assets: list[str] = []
+    normalized_arena_id = _normalize_arena_id(arena_id)
+    if not normalized_arena_id:
+        return assets
+
+    image_paths = [
+        f"assets/images/arenas/{normalized_arena_id}{suffix}.png"
+        for suffix in ARENA_IMAGE_SUFFIXES
+    ]
+    bgm_path = f"assets/audio/bgm/{normalized_arena_id}.mp3"
+
+    for rel in image_paths + [bgm_path]:
+        if (pokerogue_root / rel).exists():
+            assets.append(rel)
+        else:
+            print(f"Warning: arena asset not found for '{normalized_arena_id}': {rel}")
+
+    return assets
+
+
 def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
     # Legacy format: ["assets/path/a.png", "assets/path/b.json", ...]
     if isinstance(raw_data, list):
@@ -279,7 +305,7 @@ def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
     if not isinstance(raw_data, dict):
         raise ValueError("minimal-asset-list.json must be an array or an object")
 
-    known_fields = {"pokemon", "attacks", "general_assets"}
+    known_fields = {"pokemon", "attacks", "arenas", "general_assets"}
     unknown_fields = sorted(set(raw_data.keys()) - known_fields)
     if unknown_fields:
         print(f"Warning: unknown fields in minimal-asset-list.json: {', '.join(unknown_fields)}")
@@ -294,6 +320,11 @@ def load_asset_paths(raw_data: Any, pokerogue_root: Path) -> list[str]:
         if not pid:
             continue
         assets.extend(_collect_pokemon_assets(pid, pokerogue_root))
+
+    for arena_id in _coerce_str_list(raw_data.get("arenas", []), "arenas"):
+        if not arena_id.strip():
+            continue
+        assets.extend(_collect_arena_assets(arena_id, pokerogue_root))
 
     attacks, attack_count_selector = _parse_attack_selector(raw_data.get("attacks", []))
     attack_slugs: list[str] = []
