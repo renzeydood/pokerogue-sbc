@@ -2,6 +2,7 @@ tool
 extends Control
 
 signal close_requested
+signal switch_slot_requested
 
 export(int) var slot_count := 6
 export(bool) var editor_preview_enabled := true
@@ -17,6 +18,7 @@ export(int) var right_column_separation := 10
 export(Vector2) var active_slot_size := Vector2(110, 49)
 export(Vector2) var side_slot_size := Vector2(175, 24)
 export(float) var icon_bob_interval_sec := 0.2
+export(float) var action_menu_vertical_padding_px := 4.0
 
 const PARTY_SLOT_TEXTURE_PATH := "res://godot-minimal-assets/assets/images/ui/party_slot.png"
 const PARTY_SLOT_ATLAS_PATH := "res://godot-minimal-assets/assets/images/ui/party_slot.json"
@@ -49,9 +51,22 @@ onready var ui_scale_root = $Backdrop/Panel/UiScaleRoot
 onready var slot_list = $Backdrop/Panel/UiScaleRoot/SlotList
 onready var left_slots_anchor = slot_list.get_node_or_null("LeftSlotsAnchor") if slot_list != null else null
 onready var right_slots_anchor = slot_list.get_node_or_null("RightSlotsAnchor") if slot_list != null else null
+onready var footer_container = $Backdrop/Panel/UiScaleRoot/Footer
 onready var footer_text_label = $Backdrop/Panel/UiScaleRoot/Footer/MessageWindowSprite/MessageMargin/FooterTextLabel
 onready var back_button = $Backdrop/Panel/UiScaleRoot/Footer/Control/BackButton
 onready var cancel_sprite = $Backdrop/Panel/UiScaleRoot/Footer/Control/BackButtonSprite
+onready var action_menu_container = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer
+onready var message_action_window_sprite = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/MessageActionWindowSprite
+onready var message_action_margin = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/MessageActionWindowSprite/MessageActionMargin
+onready var action_text_label = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/MessageActionWindowSprite/MessageActionMargin/ActionTextLabel
+onready var action_window_sprite = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite
+onready var action_content_margin = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin
+onready var action_button_list = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList
+onready var action_switch_in_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/SwitchInButton
+onready var action_summary_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/SummaryButton
+onready var action_pokedex_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/PokedexButton
+onready var action_rename_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/RenameButton
+onready var action_cancel_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/CancelButton
 
 var party_members: Array = []
 var active_slot_index := -1
@@ -71,6 +86,10 @@ var slot_icon_base_positions: Array = []
 var _catalog_loader = null
 var _icon_bob_elapsed := 0.0
 var _icon_bob_toggled := false
+var action_menu_visible := false
+var action_menu_slot_index := -1
+var _action_window_base_bottom := 0.0
+var _message_action_window_base_bottom := 0.0
 
 func _ready():
 	visible = Engine.editor_hint and editor_preview_enabled
@@ -79,6 +98,7 @@ func _ready():
 		_apply_layout_scale_defaults()
 	_setup_slot_layout()
 	_setup_footer_controls()
+	_setup_action_menu_controls()
 	if Engine.editor_hint:
 		if editor_preview_enabled:
 			_apply_editor_preview_state()
@@ -91,6 +111,10 @@ func _ready():
 		back_button.connect("focus_entered", self, "_on_back_button_focus_entered")
 	if back_button != null and not back_button.is_connected("focus_exited", self, "_on_back_button_focus_exited"):
 		back_button.connect("focus_exited", self, "_on_back_button_focus_exited")
+	if action_switch_in_button != null and not action_switch_in_button.is_connected("pressed", self, "_on_action_switch_in_button_pressed"):
+		action_switch_in_button.connect("pressed", self, "_on_action_switch_in_button_pressed")
+	if action_cancel_button != null and not action_cancel_button.is_connected("pressed", self, "_on_action_cancel_button_pressed"):
+		action_cancel_button.connect("pressed", self, "_on_action_cancel_button_pressed")
 
 func _apply_editor_preview_state() -> void:
 	party_members = [
@@ -104,7 +128,7 @@ func _apply_editor_preview_state() -> void:
 	active_slot_index = 0
 	selected_slot_index = 0
 	_refresh_slot_buttons()
-	_update_footer_prompt()
+	_close_action_menu()
 	_update_cancel_sprite(false)
 
 func _apply_layout_scale_defaults() -> void:
@@ -130,7 +154,7 @@ func _process(_delta: float) -> void:
 			not party_members.empty(),
 			"_apply_editor_preview_state",
 			"_refresh_slot_buttons",
-			"_update_footer_prompt"
+			"_close_action_menu"
 		)
 
 	if not visible:
@@ -149,18 +173,23 @@ func open_menu(members: Array, active_index: int) -> void:
 	party_members = members.duplicate(true)
 	active_slot_index = active_index
 	selected_slot_index = _find_initial_selected_index()
-	visible = true
 	_refresh_slot_buttons()
-	_update_footer_prompt()
+	_close_action_menu()
 	_update_cancel_sprite(false)
+	visible = true
 	focus_default()
 
 func close_menu() -> void:
 	visible = false
+	_close_action_menu()
 	_update_cancel_sprite(false)
 
 func focus_default() -> void:
 	if not visible:
+		return
+
+	if action_menu_visible:
+		_focus_first_action_button()
 		return
 
 	if selected_slot_index >= 0 and selected_slot_index < slot_buttons.size() and not slot_buttons[selected_slot_index].disabled:
@@ -183,6 +212,10 @@ func focus_default() -> void:
 
 func move_focus(action_name: String) -> void:
 	if not visible:
+		return
+
+	if action_menu_visible:
+		_move_action_menu_focus(action_name)
 		return
 
 	if get_focus_owner() == back_button:
@@ -227,7 +260,16 @@ func is_overlay_focus_owner(focus_owner) -> bool:
 		return false
 	if focus_owner == back_button:
 		return true
+	if _get_action_menu_buttons().has(focus_owner):
+		return true
 	return slot_buttons.has(focus_owner)
+
+func handle_back_action() -> bool:
+	if action_menu_visible:
+		_close_action_menu()
+		_focus_slot_button(selected_slot_index)
+		return true
+	return false
 
 func _setup_slot_layout() -> void:
 	slot_buttons.clear()
@@ -283,11 +325,36 @@ func _sort_nodes_by_name(a: Node, b: Node) -> bool:
 func _setup_footer_controls() -> void:
 	if back_button != null:
 		back_button.text = ""
+	if footer_text_label != null:
+		footer_text_label.text = "Choose a Pokemon."
 	if cancel_sprite != null:
 		cancel_sprite.centered = false
 		cancel_sprite.region_enabled = true
 		cancel_sprite.scale = Vector2(1, 1)
 		_set_sprite_frame(cancel_sprite, PARTY_CANCEL_TEXTURE_PATH, PARTY_CANCEL_ATLAS_PATH, PARTY_CANCEL_NORMAL_FRAME)
+
+func _setup_action_menu_controls() -> void:
+	if action_menu_container != null:
+		action_menu_container.visible = false
+	if action_window_sprite != null:
+		_action_window_base_bottom = action_window_sprite.margin_bottom
+	if message_action_window_sprite != null:
+		_message_action_window_base_bottom = message_action_window_sprite.margin_bottom
+	if action_text_label != null:
+		action_text_label.text = "What to do with this Pokemon?"
+	if action_summary_button != null:
+		action_summary_button.text = "Summary"
+		action_summary_button.disabled = true
+	if action_pokedex_button != null:
+		action_pokedex_button.text = "Pokedex"
+		action_pokedex_button.disabled = true
+	if action_rename_button != null:
+		action_rename_button.text = "Rename"
+		action_rename_button.visible = false
+		action_rename_button.disabled = true
+	if action_cancel_button != null:
+		action_cancel_button.text = "Cancel"
+	_refresh_action_menu_layout()
 
 func _register_slot_node(slot_node) -> void:
 	if slot_node == null:
@@ -637,16 +704,19 @@ func _find_initial_selected_index() -> int:
 func _on_slot_button_pressed(slot_index: int) -> void:
 	selected_slot_index = slot_index
 	_refresh_slot_buttons()
-	_update_footer_prompt()
 	_update_cancel_sprite(false)
+	_open_action_menu_for_slot(slot_index)
 
 func _on_slot_button_focus_entered(slot_index: int) -> void:
 	selected_slot_index = slot_index
 	_refresh_slot_buttons()
-	_update_footer_prompt()
 	_update_cancel_sprite(false)
 
 func _on_back_button_pressed() -> void:
+	if action_menu_visible:
+		_close_action_menu()
+		_focus_slot_button(selected_slot_index)
+		return
 	emit_signal("close_requested")
 
 func _on_back_button_focus_entered() -> void:
@@ -727,7 +797,6 @@ func _focus_slot_button(slot_index: int) -> void:
 	selected_slot_index = slot_index
 	slot_buttons[slot_index].grab_focus()
 	_refresh_slot_buttons()
-	_update_footer_prompt()
 	_update_cancel_sprite(false)
 
 func _update_slot_background(slot_index: int) -> void:
@@ -746,22 +815,95 @@ func _update_slot_background(slot_index: int) -> void:
 
 	_set_slot_sprite(sprite_node, PARTY_SLOT_TEXTURE_PATH, PARTY_SLOT_ATLAS_PATH, PARTY_SLOT_SELECTED_FRAME if slot_is_selected else PARTY_SLOT_NORMAL_FRAME)
 
-func _update_footer_prompt() -> void:
-	if footer_text_label == null:
+func _open_action_menu_for_slot(slot_index: int) -> void:
+	if slot_index < 0 or slot_index >= party_members.size():
+		return
+	if typeof(party_members[slot_index]) != TYPE_DICTIONARY:
 		return
 
-	if selected_slot_index < 0 or selected_slot_index >= party_members.size():
-		footer_text_label.text = "Choose a Pokemon."
+	action_menu_visible = true
+	action_menu_slot_index = slot_index
+	if footer_container != null:
+		footer_container.visible = false
+	if action_menu_container != null:
+		action_menu_container.visible = true
+
+	if action_switch_in_button != null:
+		var can_switch_in = slot_index != active_slot_index
+		action_switch_in_button.visible = can_switch_in
+		action_switch_in_button.disabled = not can_switch_in
+
+	if action_text_label != null:
+		action_text_label.text = "Do what with this Pokemon?"
+
+	_refresh_action_menu_layout()
+	_focus_first_action_button()
+
+func _close_action_menu() -> void:
+	action_menu_visible = false
+	action_menu_slot_index = -1
+	if action_menu_container != null:
+		action_menu_container.visible = false
+	if footer_container != null:
+		footer_container.visible = true
+
+func _refresh_action_menu_layout() -> void:
+	if action_window_sprite == null or action_content_margin == null or action_button_list == null:
 		return
 
-	var member = party_members[selected_slot_index]
-	if typeof(member) != TYPE_DICTIONARY:
-		footer_text_label.text = "Choose a Pokemon."
+	if _action_window_base_bottom == 0.0:
+		_action_window_base_bottom = action_window_sprite.margin_bottom
+
+	var content_min_size = action_content_margin.get_combined_minimum_size()
+	var padded_height = content_min_size.y + max(0.0, action_menu_vertical_padding_px) * 2.0
+	var window_height = max(38.0, padded_height)
+	action_window_sprite.rect_min_size.y = window_height
+	action_window_sprite.margin_bottom = _action_window_base_bottom
+	action_window_sprite.margin_top = _action_window_base_bottom - window_height
+
+func _focus_first_action_button() -> void:
+	for button in _get_action_menu_buttons():
+		if button == null or not button.visible or button.disabled:
+			continue
+		button.grab_focus()
 		return
 
-	var species_id = String(member.get("species_id", "UNKNOWN"))
-	var level = int(member.get("level", 1))
-	footer_text_label.text = "%s Lv.%d" % [species_id, level]
+func _move_action_menu_focus(action_name: String) -> void:
+	var buttons = _get_action_menu_buttons()
+	if buttons.empty():
+		return
+
+	var current = get_focus_owner()
+	var current_index = buttons.find(current)
+	if current_index == -1:
+		_focus_first_action_button()
+		return
+
+	if action_name == "ui_up" or action_name == "ui_left":
+		buttons[(current_index - 1 + buttons.size()) % buttons.size()].grab_focus()
+		return
+
+	if action_name == "ui_down" or action_name == "ui_right":
+		buttons[(current_index + 1) % buttons.size()].grab_focus()
+
+func _get_action_menu_buttons() -> Array:
+	var result := []
+	var candidates = [action_switch_in_button, action_summary_button, action_pokedex_button, action_cancel_button]
+	for button in candidates:
+		if button == null or not button.visible or button.disabled:
+			continue
+		result.append(button)
+	return result
+
+func _on_action_switch_in_button_pressed() -> void:
+	if action_menu_slot_index < 0:
+		return
+	emit_signal("switch_slot_requested", action_menu_slot_index)
+	_close_action_menu()
+
+func _on_action_cancel_button_pressed() -> void:
+	_close_action_menu()
+	_focus_slot_button(selected_slot_index)
 
 func _update_cancel_sprite(is_selected: bool) -> void:
 	if cancel_sprite == null:

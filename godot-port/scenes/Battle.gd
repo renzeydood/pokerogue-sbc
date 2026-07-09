@@ -16,12 +16,15 @@ export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
+export(float) var player_panel_switch_slide_distance_px := 180.0
+export(float) var player_panel_switch_slide_duration_sec := 0.24
 export(int) var biome_switch_every_levels := 3
 export(float) var arena_switch_blend_duration_sec := 0.22
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
 export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
 export(bool) var debug_open_party_menu_on_ready := false
+export(float) var party_menu_overlay_fade_duration_sec := 0.12
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
 export(float) var player_trainer_reveal_delay_sec := 0.1
@@ -235,6 +238,7 @@ var biome_bgm_primary_player: AudioStreamPlayer = null
 var biome_bgm_secondary_player: AudioStreamPlayer = null
 var biome_bgm_active_player: AudioStreamPlayer = null
 var biome_bgm_crossfade_tween: Tween = null
+var party_menu_fade_tween: Tween = null
 var current_bgm_arena_asset_id := ""
 var hp_overlay_frames := {}
 var move_anim_textures := {}
@@ -259,10 +263,12 @@ var enemy_anim_index := 0
 var player_anim_elapsed := 0.0
 var enemy_anim_elapsed := 0.0
 var enemy_layer_home_position := Vector2.ZERO
+var player_panel_home_position := Vector2.ZERO
 var player_sprite_home_position := Vector2.ZERO
 var player_sprite_home_scale := Vector2.ONE
 var enemy_sprite_home_position := Vector2.ZERO
 var enemy_sprite_home_scale := Vector2.ONE
+var player_panel_switch_tween: Tween = null
 var player_trainer_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
@@ -308,6 +314,7 @@ func _ready():
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
 	update_run_button_label()
 	enemy_layer_home_position = enemy_layer.rect_position
+	player_panel_home_position = player_panel.rect_position
 	player_sprite_home_position = player_pokemon_sprite.position
 	player_sprite_home_scale = player_pokemon_sprite.scale
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
@@ -408,10 +415,34 @@ func setup_party_menu_overlay():
 		return
 
 	party_menu_overlay.visible = false
+	party_menu_overlay.modulate = Color(1, 1, 1, 1)
 	party_menu_visible = false
 	_connect_once(party_menu_overlay, "close_requested", "_on_PartyMenu_close_requested")
+	_connect_once(party_menu_overlay, "switch_slot_requested", "_on_PartyMenu_switch_slot_requested")
 	add_child(party_menu_overlay)
 	party_menu_overlay.raise()
+
+func _stop_party_menu_fade_tween() -> void:
+	if party_menu_fade_tween != null and is_instance_valid(party_menu_fade_tween):
+		party_menu_fade_tween.stop_all()
+		party_menu_fade_tween.queue_free()
+	party_menu_fade_tween = null
+
+func _set_party_menu_overlay_alpha(alpha: float) -> void:
+	if party_menu_overlay == null:
+		return
+	var current = party_menu_overlay.modulate
+	party_menu_overlay.modulate = Color(current.r, current.g, current.b, clamp(alpha, 0.0, 1.0))
+
+func _on_party_menu_fade_in_completed() -> void:
+	_set_party_menu_overlay_alpha(1.0)
+	_stop_party_menu_fade_tween()
+
+func _on_party_menu_fade_out_completed() -> void:
+	if party_menu_overlay != null:
+		party_menu_overlay.close_menu()
+		_set_party_menu_overlay_alpha(1.0)
+	_stop_party_menu_fade_tween()
 
 func bind_battle_data():
 	var enemy_data = battle_data["enemy"]
@@ -932,6 +963,9 @@ func _input(event):
 		return
 
 	if event.is_action_pressed("ui_back"):
+		if party_menu_overlay != null and party_menu_overlay.handle_back_action():
+			accept_event()
+			return
 		close_party_menu()
 		accept_event()
 		return
@@ -1745,6 +1779,9 @@ func reset_battle_state(message: String):
 	turn_token += 1
 	capture_in_progress = false
 	sendout_controls_locked = false
+	_stop_player_panel_switch_tween()
+	if player_panel != null:
+		player_panel.rect_position = player_panel_home_position
 	_close_party_menu_internal()
 	hide_ball_menu(false)
 	ball_inventory = BALL_DEFAULT_COUNTS.duplicate(true)
@@ -1987,6 +2024,45 @@ func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, activ
 		return null
 
 	enemy_layer.rect_position = target_position
+	return null
+
+func _stop_player_panel_switch_tween() -> void:
+	if player_panel_switch_tween != null and is_instance_valid(player_panel_switch_tween):
+		player_panel_switch_tween.stop_all()
+		player_panel_switch_tween.queue_free()
+	player_panel_switch_tween = null
+
+func _animate_player_panel_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
+	if player_panel == null:
+		return null
+
+	_stop_player_panel_switch_tween()
+	if duration_sec <= 0.0:
+		player_panel.rect_position = target_position
+		return null
+
+	player_panel_switch_tween = Tween.new()
+	add_child(player_panel_switch_tween)
+	player_panel_switch_tween.interpolate_property(
+		player_panel,
+		"rect_position",
+		player_panel.rect_position,
+		target_position,
+		duration_sec,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	player_panel_switch_tween.start()
+	yield(player_panel_switch_tween, "tween_all_completed")
+
+	if player_panel_switch_tween != null and is_instance_valid(player_panel_switch_tween):
+		player_panel_switch_tween.queue_free()
+	player_panel_switch_tween = null
+
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
+
+	player_panel.rect_position = target_position
 	return null
 
 func consume_selected_species_id() -> String:
@@ -2272,7 +2348,26 @@ func open_party_menu():
 			active_index = party.get_active_slot_index()
 
 	hide_all_command_menus()
+	_stop_party_menu_fade_tween()
 	party_menu_overlay.open_menu(members, active_index)
+	var fade_duration = max(0.0, party_menu_overlay_fade_duration_sec)
+	if fade_duration <= 0.0:
+		_set_party_menu_overlay_alpha(1.0)
+	else:
+		_set_party_menu_overlay_alpha(0.0)
+		party_menu_fade_tween = Tween.new()
+		add_child(party_menu_fade_tween)
+		party_menu_fade_tween.interpolate_property(
+			party_menu_overlay,
+			"modulate:a",
+			party_menu_overlay.modulate.a,
+			1.0,
+			fade_duration,
+			Tween.TRANS_SINE,
+			Tween.EASE_OUT
+		)
+		_connect_once(party_menu_fade_tween, "tween_all_completed", "_on_party_menu_fade_in_completed")
+		party_menu_fade_tween.start()
 	party_menu_visible = true
 	set_battle_text("Party menu open.")
 
@@ -2329,6 +2424,229 @@ func sync_active_party_member_from_battle() -> void:
 		"move_ids": move_ids,
 	})
 
+func _build_player_data_from_party_member(member: Dictionary):
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if species_id.empty():
+		return null
+
+	var level = max(1, int(member.get("level", 5)))
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) != TYPE_ARRAY:
+		move_ids = []
+
+	var player_data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
+	if player_data == null:
+		return null
+
+	var saved_hp = int(member.get("current_hp", -1))
+	if saved_hp >= 0:
+		var max_hp = max(1, int(player_data.get_base_stat("hp")))
+		player_data.current_hp = int(clamp(saved_hp, 0, max_hp))
+
+	return player_data
+
+func _play_player_switch_withdraw_animation(active_turn_token: int):
+	if player_pokemon_sprite == null:
+		return null
+	_animate_player_panel_to(
+		player_panel_home_position + Vector2(player_panel_switch_slide_distance_px, 0),
+		max(0.0, player_panel_switch_slide_duration_sec),
+		active_turn_token
+	)
+
+	if not battle_fx_enabled:
+		player_pokemon_sprite.visible = false
+		return null
+
+	if not _apply_pokeball_frame(POKEBALL_FRAME_CLOSED):
+		player_pokemon_sprite.visible = false
+		return null
+
+	var ball_target_pos = player_sprite_home_position + Vector2(player_pokeball_target_offset_x, player_pokeball_target_offset_y)
+	player_pokeball_sprite.visible = true
+	player_pokeball_sprite.rotation_degrees = 0.0
+	player_pokeball_sprite.position = ball_target_pos
+
+	var start_pos = player_pokemon_sprite.position
+	var start_scale = player_pokemon_sprite.scale
+	var target_scale = start_scale * max(0.1, player_pokemon_reveal_start_scale)
+	var start_modulate = player_pokemon_sprite.modulate
+	var duration = max(0.01, player_pokemon_reveal_scale_duration_sec)
+
+	var recall_tween = Tween.new()
+	add_child(recall_tween)
+	recall_tween.interpolate_property(player_pokemon_sprite, "position", start_pos, ball_target_pos, duration, Tween.TRANS_SINE, Tween.EASE_IN)
+	recall_tween.interpolate_property(player_pokemon_sprite, "scale", start_scale, target_scale, duration, Tween.TRANS_SINE, Tween.EASE_IN)
+	recall_tween.interpolate_property(player_pokemon_sprite, "modulate:a", start_modulate.a, 0.0, duration, Tween.TRANS_SINE, Tween.EASE_IN)
+	recall_tween.start()
+	yield(recall_tween, "tween_all_completed")
+	recall_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+
+	player_pokemon_sprite.visible = false
+	player_pokemon_sprite.position = player_sprite_home_position
+	player_pokemon_sprite.scale = player_sprite_home_scale
+	player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+	return null
+
+func _play_player_switch_sendout_animation(active_turn_token: int):
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.visible = false
+	if not _apply_pokeball_frame(POKEBALL_FRAME_CLOSED):
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = true
+			player_pokemon_sprite.position = player_sprite_home_position
+			player_pokemon_sprite.scale = player_sprite_home_scale
+			player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+			_play_player_sendout_cry_once()
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
+		return null
+
+	var sprite = player_pokeball_sprite
+	sprite.visible = true
+	sprite.rotation_degrees = 0.0
+	var target_pos = player_sprite_home_position + Vector2(player_pokeball_target_offset_x, player_pokeball_target_offset_y)
+	var start_pos = Vector2(-24.0, target_pos.y + player_pokeball_start_offset_y)
+	var arc_peak_y = min(start_pos.y, target_pos.y) - abs(player_pokeball_arc_height_px)
+	var total_duration = max(0.08, player_pokeball_lob_duration_sec)
+	var up_duration = clamp(player_pokeball_lob_up_duration_sec, 0.04, total_duration - 0.04)
+	var down_duration = max(0.04, total_duration - up_duration)
+	sprite.position = start_pos
+
+	var throw_tween = Tween.new()
+	add_child(throw_tween)
+	throw_tween.interpolate_property(sprite, "position:x", start_pos.x, target_pos.x, total_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	throw_tween.interpolate_property(sprite, "rotation_degrees", 0.0, player_pokeball_spin_degrees, total_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	throw_tween.interpolate_property(sprite, "position:y", start_pos.y, arc_peak_y, up_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	throw_tween.interpolate_property(sprite, "position:y", arc_peak_y, target_pos.y, down_duration, Tween.TRANS_CUBIC, Tween.EASE_IN, up_duration)
+	throw_tween.start()
+	yield(throw_tween, "tween_all_completed")
+	throw_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+
+	var _opening_frame_applied = _apply_pokeball_frame(POKEBALL_FRAME_OPENING)
+	yield(get_tree().create_timer(max(0.01, player_pokeball_opening_hold_sec)), "timeout")
+	if active_turn_token != turn_token:
+		return null
+
+	var _open_frame_applied = _apply_pokeball_frame(POKEBALL_FRAME_OPEN)
+	_play_player_pokeball_release_sfx()
+	_spawn_player_pokeball_open_particles(target_pos + Vector2(0, -2))
+
+	if player_pokemon_sprite == null:
+		_hide_player_pokeball_sprite()
+		return null
+
+	if not battle_fx_enabled:
+		player_pokemon_sprite.visible = true
+		player_pokemon_sprite.position = player_sprite_home_position
+		player_pokemon_sprite.scale = player_sprite_home_scale
+		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
+		_play_player_sendout_cry_once()
+		yield(get_tree().create_timer(max(0.01, player_pokeball_open_hold_sec)), "timeout")
+		_hide_player_pokeball_sprite()
+		return null
+
+	var start_scale_mul = max(0.1, player_pokemon_reveal_start_scale)
+	var target_scale = player_sprite_home_scale
+	var start_scale = Vector2(target_scale.x * start_scale_mul, target_scale.y * start_scale_mul)
+	var tint = player_pokemon_reveal_tint_color
+	var flash_mul = max(0.1, player_pokemon_reveal_flash_mul)
+	tint.r = clamp(tint.r * flash_mul, 0.0, 2.0)
+	tint.g = clamp(tint.g * flash_mul, 0.0, 2.0)
+	tint.b = clamp(tint.b * flash_mul, 0.0, 2.0)
+	tint.a = clamp(player_pokemon_reveal_alpha_start, 0.0, 1.0)
+	player_pokemon_sprite.position = player_sprite_home_position
+	player_pokemon_sprite.scale = start_scale
+	player_pokemon_sprite.modulate = tint
+	player_pokemon_sprite.visible = true
+	_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
+
+	var reveal_tween = Tween.new()
+	add_child(reveal_tween)
+	reveal_tween.interpolate_property(
+		player_pokemon_sprite,
+		"scale",
+		start_scale,
+		target_scale,
+		max(0.01, player_pokemon_reveal_scale_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.interpolate_property(
+		player_pokemon_sprite,
+		"modulate",
+		player_pokemon_sprite.modulate,
+		Color(1, 1, 1, 1),
+		max(0.01, player_pokemon_reveal_flash_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.start()
+	yield(reveal_tween, "tween_all_completed")
+	reveal_tween.queue_free()
+	if active_turn_token != turn_token:
+		return null
+
+	_play_player_sendout_cry_once()
+	yield(get_tree().create_timer(max(0.01, player_pokeball_open_hold_sec)), "timeout")
+	_hide_player_pokeball_sprite()
+	return null
+
+func _run_enemy_action_after_player_switch(player_data, active_turn_token: int):
+	if battle_data == null or not battle_data.has("enemy"):
+		return null
+
+	var enemy = battle_data["enemy"]
+	if enemy == null or enemy.moves.empty():
+		return null
+
+	var enemy_move = enemy.moves[0]
+	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
+	if enemy_move_anim is GDScriptFunctionState:
+		yield(enemy_move_anim, "completed")
+		if active_turn_token != turn_token:
+			return null
+
+	var enemy_damage = int(battle_calc_script.calc_damage(enemy, enemy_move, player_data))
+	player_data.current_hp = max(0, player_data.current_hp - enemy_damage)
+	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, player_data)
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
+
+	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
+	if enemy_hit_feedback is GDScriptFunctionState:
+		yield(enemy_hit_feedback, "completed")
+		if active_turn_token != turn_token:
+			return null
+
+	var enemy_message = "%s used %s! %d damage." % [enemy.species_id, enemy_move.move_id, enemy_damage]
+	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
+	set_battle_text(enemy_message)
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return null
+
+	if player_data.is_fainted():
+		var player_faint_anim = play_faint_animation(player_pokemon_sprite, true, active_turn_token)
+		if player_faint_anim is GDScriptFunctionState:
+			yield(player_faint_anim, "completed")
+			if active_turn_token != turn_token:
+				return null
+		end_battle(false, player_data.species_id)
+
+	return null
+
 func close_party_menu():
 	if not party_menu_visible:
 		return
@@ -2340,11 +2658,147 @@ func close_party_menu():
 
 func _close_party_menu_internal():
 	party_menu_visible = false
-	if party_menu_overlay != null:
+	if party_menu_overlay == null:
+		return
+
+	_stop_party_menu_fade_tween()
+	if not party_menu_overlay.visible:
 		party_menu_overlay.close_menu()
+		_set_party_menu_overlay_alpha(1.0)
+		return
+
+	var fade_duration = max(0.0, party_menu_overlay_fade_duration_sec)
+	if fade_duration <= 0.0:
+		party_menu_overlay.close_menu()
+		_set_party_menu_overlay_alpha(1.0)
+		return
+
+	var start_alpha = party_menu_overlay.modulate.a
+	if start_alpha <= 0.0:
+		party_menu_overlay.close_menu()
+		_set_party_menu_overlay_alpha(1.0)
+		return
+
+	party_menu_fade_tween = Tween.new()
+	add_child(party_menu_fade_tween)
+	party_menu_fade_tween.interpolate_property(
+		party_menu_overlay,
+		"modulate:a",
+		start_alpha,
+		0.0,
+		fade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	_connect_once(party_menu_fade_tween, "tween_all_completed", "_on_party_menu_fade_out_completed")
+	party_menu_fade_tween.start()
 
 func _on_PartyMenu_close_requested():
 	close_party_menu()
+
+func _on_PartyMenu_switch_slot_requested(slot_index: int) -> void:
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball to restart.")
+		return
+	if turn_in_progress or capture_in_progress:
+		return
+	if runtime_state_script == null:
+		set_battle_text("Switch unavailable: runtime missing.")
+		return
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		set_battle_text("Switch unavailable: party state missing.")
+		return
+
+	var members = party.get_members_copy()
+	if slot_index < 0 or slot_index >= members.size():
+		set_battle_text("Invalid switch target.")
+		return
+
+	var member = members[slot_index]
+	if typeof(member) != TYPE_DICTIONARY or member.empty():
+		set_battle_text("Invalid switch target.")
+		return
+
+	var active_index = party.get_active_slot_index()
+	if slot_index == active_index:
+		set_battle_text("That Pokemon is already active.")
+		return
+
+	var current_hp = int(member.get("current_hp", 0))
+	if current_hp <= 0:
+		set_battle_text("That Pokemon cannot battle.")
+		return
+
+	var species_label = String(member.get("species_id", "POKEMON")).strip_edges().to_upper()
+	if species_label.empty():
+		species_label = "POKEMON"
+	var outgoing_species_label = "POKEMON"
+	if battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		outgoing_species_label = String(battle_data["player"].species_id).strip_edges().to_upper()
+		if outgoing_species_label.empty():
+			outgoing_species_label = "POKEMON"
+
+	turn_in_progress = true
+	_enter_action_locked_state()
+	var active_turn_token = turn_token
+
+	sync_active_party_member_from_battle()
+	set_battle_text("Come back! %s!" % outgoing_species_label)
+	var recall_anim = _play_player_switch_withdraw_animation(active_turn_token)
+	if recall_anim is GDScriptFunctionState:
+		yield(recall_anim, "completed")
+		if active_turn_token != turn_token:
+			return
+
+	var incoming_player_data = _build_player_data_from_party_member(member)
+	if incoming_player_data == null:
+		set_battle_text("Switch failed: could not load %s." % species_label)
+		_finish_turn()
+		return
+
+	var set_active_result = party.swap_active_with_slot(slot_index)
+	if not bool(set_active_result.get("ok", false)):
+		set_battle_text("Switch failed: invalid party slot.")
+		_finish_turn()
+		return
+
+	battle_data["player"] = incoming_player_data
+	_close_party_menu_internal()
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.visible = false
+		player_pokemon_sprite.position = player_sprite_home_position
+		player_pokemon_sprite.scale = player_sprite_home_scale
+		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+	player_sendout_cry_played = false
+	set_battle_text("Go! %s!" % species_label)
+	var sendout_anim = _play_player_switch_sendout_animation(active_turn_token)
+	if sendout_anim is GDScriptFunctionState:
+		yield(sendout_anim, "completed")
+		if active_turn_token != turn_token:
+			return
+
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return
+
+	var enemy_action = _run_enemy_action_after_player_switch(incoming_player_data, active_turn_token)
+	if enemy_action is GDScriptFunctionState:
+		yield(enemy_action, "completed")
+		if active_turn_token != turn_token:
+			return
+
+	if not battle_ended:
+		set_main_command_prompt()
+	_finish_turn()
 
 func set_main_command_prompt():
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:

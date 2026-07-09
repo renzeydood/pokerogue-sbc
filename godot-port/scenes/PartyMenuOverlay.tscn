@@ -490,7 +490,7 @@ margin_top = 5.0
 margin_right = 212.0
 margin_bottom = 19.0
 custom_fonts/font = SubResource( 4 )
-text = "BULBASAUR Lv.5"
+text = "Choose a Pokemon."
 autowrap = true
 
 [node name="Control" type="Control" parent="Backdrop/Panel/UiScaleRoot/Footer"]
@@ -521,3 +521,103 @@ margin_right = 22.0
 margin_bottom = 8.0
 custom_fonts/font = SubResource( 8 )
 text = "Cancel"
+
+[node name="ActionMenuContainer" type="Control" parent="Backdrop/Panel/UiScaleRoot"]
+visible = false
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = -38.0
+
+[node name="MessageActionWindowSprite" type="NinePatchRect" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer"]
+margin_left = 1.0
+margin_right = 227.0
+margin_bottom = 38.0
+rect_min_size = Vector2( 220, 38 )
+theme = ExtResource( 14 )
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="MessageActionMargin" type="MarginContainer" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/MessageActionWindowSprite"]
+margin_left = 9.0
+margin_top = 7.0
+margin_right = 217.0
+margin_bottom = 32.0
+
+[node name="ActionTextLabel" type="Label" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/MessageActionWindowSprite/MessageActionMargin"]
+margin_top = 5.0
+margin_right = 208.0
+margin_bottom = 19.0
+custom_fonts/font = SubResource( 4 )
+text = "What to do with this Pokemon?"
+autowrap = true
+
+[node name="ActionWindowSprite" type="NinePatchRect" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer"]
+margin_left = 228.0
+margin_top = -56.0
+margin_right = 318.0
+margin_bottom = 38.0
+rect_min_size = Vector2( 90, 94 )
+theme = ExtResource( 14 )
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="ActionContentMargin" type="MarginContainer" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite"]
+margin_left = 9.0
+margin_top = 4.0
+margin_right = 78.0
+margin_bottom = 112.0
+
+[node name="ActionButtonList" type="VBoxContainer" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin"]
+margin_right = 69.0
+margin_bottom = 108.0
+custom_constants/separation = 2
+
+[node name="SwitchInButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+margin_right = 69.0
+margin_bottom = 20.0
+text = "Switch In"
+flat = true
+align = 0
+
+[node name="SummaryButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+disabled = true
+text = "Summary"
+flat = true
+align = 0
+
+[node name="PokedexButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+disabled = true
+text = "Pokedex"
+flat = true
+align = 0
+
+[node name="RenameButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 44.0
+margin_right = 69.0
+margin_bottom = 64.0
+disabled = true
+text = "Rename"
+flat = true
+align = 0
+
+[node name="CancelButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+margin_top = 44.0
+margin_right = 69.0
+margin_bottom = 64.0
+text = "Cancel"
+flat = true
+align = 0
