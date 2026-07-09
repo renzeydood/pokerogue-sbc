@@ -1,39 +1,130 @@
+tool
 extends Control
 
 const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v1.json"
-const BATTLE_SCENE_PATH := "res://scenes/Battle.tscn"
+const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
+const EditorPreviewSync = preload("res://logic/EditorPreviewSync.gd")
+const EDITOR_PREVIEW_LIST_SPECIES := [
+	"BULBASAUR",
+	"IVYSAUR",
+	"VENUSAUR",
+	"CHARMANDER",
+	"CHARMELEON",
+	"CHARIZARD",
+]
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 
-export(int) var ui_font_size := 17
-export(int) var control_button_font_size := 12
-export(float) var ui_font_scale := 2.0
+export(float) var ui_scale := 2.0
 export(float) var preview_anim_frame_sec := 0.1
 export(String, "center", "bottom") var preview_sprite_anchor_mode := "bottom"
-export(float) var preview_sprite_scale := 2.0
+export(float) var preview_sprite_scale := 1.0
+export(bool) var editor_preview_enabled := true
+export(int) var editor_preview_pokedex_number := 1
+export(String) var editor_preview_species_name := "BULBASAUR"
+export(String) var editor_preview_type1 := "grass"
+export(String) var editor_preview_type2 := "poison"
 
-onready var starter_list = $MenuRoot/MenuCard/StarterScroll/StarterList
-onready var current_pokemon_sprite = $MenuRoot/CurrentPokemonSprite
-onready var pokemon_number_label = $MenuRoot/MenuCard/PokemonNumberLabel
-onready var pokemon_label = $MenuRoot/MenuCard/PokemonLabel
-onready var details_type1_sprite = $MenuRoot/MenuCard/DetailsType1Sprite
-onready var details_type2_sprite = $MenuRoot/MenuCard/DetailsType2Sprite
-onready var start_button = $MenuRoot/MenuCard/FooterRow/StartButton
-onready var refresh_button = $MenuRoot/MenuCard/FooterRow/RefreshButton
-onready var quit_button = $MenuRoot/MenuCard/FooterRow/QuitButton
-onready var status_label = $MenuRoot/MenuCard/StatusLabel
+var ui_scale_root = null
+var starter_list = null
+var current_pokemon_sprite = null
+var pokemon_number_label = null
+var pokemon_label = null
+var details_type1_sprite = null
+var details_type2_sprite = null
+var start_button = null
+var refresh_button = null
+var quit_button = null
+var status_label = null
 
 var minimal_assets_path = "res://godot-minimal-assets/"
-var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
 var selected_species_entry = null
 var species_entries := []
 var preview_sprite_frames := []
 var preview_anim_index := 0
 var preview_anim_elapsed := 0.0
+var preview_sprite_base_scale := Vector2.ONE
+var editor_preview_seeded := false
+var editor_preview_last_pokedex := -1
+var editor_preview_list_seeded := false
+
+func _resolve_first_existing(paths: Array):
+	for path in paths:
+		var candidate = get_node_or_null(String(path))
+		if candidate != null:
+			return candidate
+	return null
 
 func _ready():
-	apply_fonts()
+	ui_scale_root = _resolve_first_existing([
+		"UiScaleRoot",
+	])
+	starter_list = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/StarterScroll/StarterList",
+		"UiScaleRoot/MenuRoot@MenuCard@StarterScroll@StarterList",
+		"MenuRoot@MenuCard@StarterScroll@StarterList",
+	])
+	current_pokemon_sprite = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/CurrentPokemonSprite",
+		"UiScaleRoot/MenuRoot@CurrentPokemonSprite",
+		"MenuRoot@CurrentPokemonSprite",
+	])
+	pokemon_number_label = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/PokemonNumberLabel",
+		"UiScaleRoot/MenuRoot@MenuCard@PokemonNumberLabel",
+		"MenuRoot@MenuCard@PokemonNumberLabel",
+	])
+	pokemon_label = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/PokemonLabel",
+		"UiScaleRoot/MenuRoot@MenuCard@PokemonLabel",
+		"MenuRoot@MenuCard@PokemonLabel",
+	])
+	details_type1_sprite = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/DetailsType1Sprite",
+		"UiScaleRoot/MenuRoot@MenuCard@DetailsType1Sprite",
+		"MenuRoot@MenuCard@DetailsType1Sprite",
+	])
+	details_type2_sprite = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/DetailsType2Sprite",
+		"UiScaleRoot/MenuRoot@MenuCard@DetailsType2Sprite",
+		"MenuRoot@MenuCard@DetailsType2Sprite",
+	])
+	status_label = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/StatusLabel",
+		"UiScaleRoot/MenuRoot@MenuCard@StatusLabel",
+		"MenuRoot@MenuCard@StatusLabel",
+	])
+	start_button = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/FooterRow/StartButton",
+		"UiScaleRoot/MenuRoot@MenuCard@FooterRow@StartButton",
+		"MenuRoot@MenuCard@FooterRow@StartButton",
+	])
+	refresh_button = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/FooterRow/RefreshButton",
+		"UiScaleRoot/MenuRoot@MenuCard@FooterRow@RefreshButton",
+		"MenuRoot@MenuCard@FooterRow@RefreshButton",
+	])
+	quit_button = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/FooterRow/QuitButton",
+		"UiScaleRoot/MenuRoot@MenuCard@FooterRow@QuitButton",
+		"MenuRoot@MenuCard@FooterRow@QuitButton",
+	])
+
+	if ui_scale_root != null:
+		ui_scale_root.rect_scale = Vector2(ui_scale, ui_scale)
+
+	if starter_list == null or current_pokemon_sprite == null or pokemon_number_label == null or pokemon_label == null or status_label == null:
+		push_error("PokemonSelect scene is missing required UI nodes. Check MenuRoot/MenuCard structure in PokemonSelectScreen.tscn.")
+		return
+	preview_sprite_base_scale = current_pokemon_sprite.scale
+	if Engine.editor_hint:
+		if editor_preview_enabled:
+			_apply_editor_preview_state()
+		return
+	if start_button == null or refresh_button == null or quit_button == null:
+		push_error("PokemonSelect scene is missing footer buttons. Check UiScaleRoot/MenuRoot/MenuCard/FooterRow paths in PokemonSelectScreen.tscn.")
+		return
 	start_button.disabled = true
 	start_button.connect("pressed", self, "_on_StartButton_pressed")
 	refresh_button.connect("pressed", self, "_on_RefreshButton_pressed")
@@ -56,48 +147,70 @@ func _ready():
 	status_label.text = "Select a starter Pokemon to continue."
 	_select_species_entry(species_entries[0])
 
+func _apply_editor_preview_state() -> void:
+	if current_pokemon_sprite == null or pokemon_number_label == null or pokemon_label == null:
+		return
+	if ui_scale_root != null:
+		ui_scale_root.rect_scale = Vector2(ui_scale, ui_scale)
+	if status_label != null:
+		status_label.visible = false
+	if start_button != null:
+		start_button.disabled = false
+	_apply_editor_preview_list_state()
+
+	var preview_number = max(1, editor_preview_pokedex_number)
+	pokemon_number_label.text = "%03d" % preview_number
+	pokemon_label.text = editor_preview_species_name.strip_edges()
+	if pokemon_label.text.empty():
+		pokemon_label.text = "Pokemon"
+
+	configure_type_sprite(details_type1_sprite)
+	configure_type_sprite(details_type2_sprite)
+	apply_type_badge(details_type1_sprite, editor_preview_type1)
+	if editor_preview_type2.strip_edges().empty():
+		if details_type2_sprite != null:
+			details_type2_sprite.visible = false
+	else:
+		apply_type_badge(details_type2_sprite, editor_preview_type2)
+
+	if (not editor_preview_seeded) or editor_preview_last_pokedex != preview_number:
+		load_preview_sprite(preview_number)
+		editor_preview_seeded = true
+		editor_preview_last_pokedex = preview_number
+
+func _apply_editor_preview_list_state() -> void:
+	if starter_list == null:
+		return
+	_clear_starter_buttons()
+	for species_id in EDITOR_PREVIEW_LIST_SPECIES:
+		var button = Button.new()
+		button.rect_min_size = Vector2(0, 24)
+		button.text = String(species_id)
+		button.disabled = true
+		starter_list.add_child(button)
+	editor_preview_list_seeded = true
+
+func _refresh_editor_preview_state() -> void:
+	if ui_scale_root != null:
+		ui_scale_root.rect_scale = Vector2(ui_scale, ui_scale)
+	if starter_list != null and (not editor_preview_list_seeded or starter_list.get_child_count() == 0):
+		_apply_editor_preview_list_state()
+	if current_pokemon_sprite != null:
+		var scale_mul = max(0.01, preview_sprite_scale)
+		current_pokemon_sprite.scale = Vector2(preview_sprite_base_scale.x * scale_mul, preview_sprite_base_scale.y * scale_mul)
+	if details_type1_sprite != null:
+		apply_type_badge(details_type1_sprite, editor_preview_type1)
+	if details_type2_sprite != null:
+		if editor_preview_type2.strip_edges().empty():
+			details_type2_sprite.visible = false
+		else:
+			apply_type_badge(details_type2_sprite, editor_preview_type2)
+
 func resource_exists(path: String) -> bool:
 	if ResourceLoader.exists(path):
 		return true
 	var f = File.new()
 	return f.file_exists(path)
-
-func make_font(path: String, size: int) -> DynamicFont:
-	var font = DynamicFont.new()
-	var font_data = DynamicFontData.new()
-	font_data.font_path = path
-	font.font_data = font_data
-	font.size = size
-	return font
-
-func apply_fonts():
-	if not resource_exists(ui_font_path):
-		return
-
-	var scaled_ui_size = max(1, int(round(float(ui_font_size) * ui_font_scale)))
-	var scaled_button_size = max(1, int(round(float(control_button_font_size) * ui_font_scale)))
-
-	var ui_font = make_font(ui_font_path, scaled_ui_size)
-	title_apply_font(ui_font)
-	pokemon_number_label.add_font_override("font", ui_font)
-	pokemon_label.add_font_override("font", ui_font)
-	status_label.add_font_override("font", ui_font)
-	var subtitle_label = get_node_or_null("MenuRoot/MenuCard/SubtitleLabel")
-	if subtitle_label != null:
-		subtitle_label.add_font_override("font", ui_font)
-
-	var button_font = make_font(ui_font_path, scaled_button_size)
-	start_button.add_font_override("font", button_font)
-	refresh_button.add_font_override("font", button_font)
-	quit_button.add_font_override("font", button_font)
-	for child in starter_list.get_children():
-		if child is Button:
-			child.add_font_override("font", button_font)
-
-func title_apply_font(font_res: DynamicFont):
-	var title_label = get_node_or_null("MenuRoot/MenuCard/TitleLabel")
-	if title_label != null:
-		title_label.add_font_override("font", font_res)
 
 func configure_type_sprite(type_sprite):
 	if type_sprite == null:
@@ -148,9 +261,6 @@ func _add_species_button(species_entry):
 	button.text = _format_species_button_text(species_entry)
 	button.connect("pressed", self, "_on_species_button_pressed", [species_entry])
 	starter_list.add_child(button)
-	if resource_exists(ui_font_path):
-		var scaled_button_size = max(1, int(round(float(control_button_font_size) * ui_font_scale)))
-		button.add_font_override("font", make_font(ui_font_path, scaled_button_size))
 
 func _clear_starter_buttons():
 	for child in starter_list.get_children():
@@ -160,8 +270,6 @@ func _sort_species_by_pokedex(a, b):
 	return int(a.get("pokedex_number", 99999)) < int(b.get("pokedex_number", 99999))
 
 func _format_species_button_text(species_entry: Dictionary) -> String:
-	var pokedex_number = int(species_entry.get("pokedex_number", 0))
-	var species_name = String(species_entry.get("name", species_entry.get("species_id", "Unknown")))
 	var species_id = String(species_entry.get("species_id", "UNKNOWN"))
 	return species_id
 
@@ -240,7 +348,8 @@ func load_preview_sprite(pokedex_number: int):
 	current_pokemon_sprite.centered = true
 	current_pokemon_sprite.region_enabled = true
 	current_pokemon_sprite.offset = Vector2.ZERO
-	current_pokemon_sprite.scale = Vector2(preview_sprite_scale, preview_sprite_scale)
+	var scale_mul = max(0.01, preview_sprite_scale)
+	current_pokemon_sprite.scale = Vector2(preview_sprite_base_scale.x * scale_mul, preview_sprite_base_scale.y * scale_mul)
 
 	preview_sprite_frames = get_all_numeric_frames(json_path)
 	if preview_sprite_frames.empty():
@@ -351,6 +460,16 @@ func apply_preview_sprite_frame(sprite_node: Sprite, sprite_info: Dictionary):
 		sprite_node.offset = Vector2.ZERO
 
 func _process(delta):
+	if Engine.editor_hint:
+		EditorPreviewSync.sync_scene(
+			self,
+			editor_preview_enabled,
+			editor_preview_seeded,
+			"_apply_editor_preview_state",
+			"_refresh_editor_preview_state"
+		)
+		return
+
 	if preview_anim_frame_sec <= 0.0:
 		return
 	if preview_sprite_frames.size() <= 1:

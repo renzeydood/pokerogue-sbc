@@ -1,7 +1,7 @@
 extends Control
 
-export(int) var ui_font_size := 12
-export(int) var control_button_font_size := 16
+# Tunable gameplay and presentation exports.
+export(float) var ui_scale := 2.0
 export(float) var turn_step_delay_sec := 0.6
 export(bool) var battle_fx_enabled := true
 export(float) var pokemon_anim_frame_sec := 0.1
@@ -40,7 +40,7 @@ export(float) var player_pokemon_reveal_flash_duration_sec := 0.18
 export(Color) var player_pokemon_reveal_tint_color := Color(1.0, 0.75, 0.75, 1.0)
 export(float) var player_pokemon_reveal_alpha_start := 0.0
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
-const SELECTION_SCENE_PATH := "res://scenes/PokemonSelect.tscn"
+const SELECTION_SCENE_PATH := "res://scenes/PokemonSelectScreen.tscn"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
 const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
@@ -109,56 +109,89 @@ export(float) var player_pokeball_particle_travel_duration_sec := 0.575
 export(float) var player_pokeball_particle_fade_delay_sec := 0.5
 export(float) var player_pokeball_particle_fade_duration_sec := 0.075
 
+# Data and helper script dependencies.
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 
-onready var enemy_name_label = $UILayer/EnemyPanel/EnemyNameLabel
-onready var enemy_level_label = $UILayer/EnemyPanel/EnemyLevelLabel
-onready var enemy_hp_bar = get_node_or_null("UILayer/EnemyPanel/EnemyHpBar")
-onready var enemy_hp_value_label = get_node_or_null("UILayer/EnemyPanel/EnemyHpValueLabel")
-onready var enemy_type1_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType1Sprite")
-onready var enemy_type2_sprite = get_node_or_null("UILayer/EnemyPanel/EnemyType2Sprite")
-onready var enemy_layer = $BattlefieldLayer/EnemyLayer
-onready var enemy_pokemon_sprite = $BattlefieldLayer/EnemyLayer/EnemyPokemonSpriteBattle
-onready var effects_layer = $BattlefieldLayer/EffectsLayer
-onready var player_name_label = $UILayer/PlayerPanel/PlayerNameLabel
-onready var player_level_label = $UILayer/PlayerPanel/PlayerLevelLabel
-onready var player_hp_bar = get_node_or_null("UILayer/PlayerPanel/PlayerHpBar")
-onready var player_hp_value_label = $UILayer/PlayerPanel/PlayerHpValueLabel
-onready var player_type1_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType1Sprite")
-onready var player_type2_sprite = get_node_or_null("UILayer/PlayerPanel/PlayerType2Sprite")
-onready var player_trainer_sprite = get_node_or_null("BattlefieldLayer/PlayerLayer/PlayerTrainerSprite")
-onready var player_pokemon_sprite = $BattlefieldLayer/PlayerLayer/PlayerPokemonSprite
-onready var battle_text_label = $UILayer/MessagePanel/MessageMargin/BattleTextLabel
-onready var controls_container = $UILayer/ControlsContainer
-onready var move_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1/MoveButton
-onready var ball_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel1/RestartButton
-onready var pokemon_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2/MoveButton
-onready var run_button = $UILayer/ControlsContainer/ControlWindowSprite/ContentMargin/VBoxContainer/ControlsPanel2/RestartButton
-onready var attack_menu_container = $UILayer/AttackMenuContainer
-onready var attack_move_button_1 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton1
-onready var attack_move_button_2 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton2
-onready var attack_move_button_3 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton3
-onready var attack_move_button_4 = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite/AttackMovesGrid/AttackMoveButton4
-onready var attack_type_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackTypeSprite
-onready var attack_power_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPowerLabel
-onready var attack_category_sprite = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackCategorySprite
-onready var attack_pp_label = $UILayer/AttackMenuContainer/HBoxContainer/AttackWindowSprite2/AttackMoveDetails/AttackPpLabel
-onready var ball_menu_container = $UILayer/BallMenuContainer
-onready var ball_window_sprite = $UILayer/BallMenuContainer/BallWindowSprite
-onready var ball_content_margin = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin
-onready var ball_button_list = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList
-onready var ball_pokeball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/PokeballButton
-onready var ball_greatball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/GreatballButton
-onready var ball_masterball_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/MasterballButton
-onready var ball_cancel_button = $UILayer/BallMenuContainer/BallWindowSprite/BallContentMargin/BallButtonList/BallCancelButton
+func _resolve_first_existing(paths: Array):
+	for path in paths:
+		var candidate = get_node_or_null(String(path))
+		if candidate != null:
+			return candidate
+	return null
 
+func _connect_once(emitter, signal_name: String, method_name: String, binds: Array = []) -> void:
+	if emitter == null:
+		return
+	if not emitter.is_connected(signal_name, self, method_name):
+		emitter.connect(signal_name, self, method_name, binds)
+
+# Cached node references resolved from stable scene anchors.
+onready var ui_scale_root = _resolve_first_existing([
+	"UiScaleRoot",
+])
+onready var ui_layer = _resolve_first_existing([
+	"UiScaleRoot/UILayer",
+	"UILayer",
+])
+onready var battlefield_layer = _resolve_first_existing([
+	"UiScaleRoot/BattlefieldLayer",
+	"BattlefieldLayer",
+])
+onready var enemy_panel = ui_layer.get_node_or_null("EnemyPanel") if ui_layer != null else null
+onready var player_panel = ui_layer.get_node_or_null("PlayerPanel") if ui_layer != null else null
+onready var controls_container = ui_layer.get_node_or_null("ControlsContainer") if ui_layer != null else null
+onready var controls_vbox = controls_container.get_node_or_null("ControlWindowSprite/ContentMargin/VBoxContainer") if controls_container != null else null
+onready var attack_menu_container = ui_layer.get_node_or_null("AttackMenuContainer") if ui_layer != null else null
+onready var attack_move_grid = attack_menu_container.get_node_or_null("HBoxContainer/AttackWindowSprite/AttackMovesGrid") if attack_menu_container != null else null
+onready var attack_move_details = attack_menu_container.get_node_or_null("HBoxContainer/AttackWindowSprite2/AttackMoveDetails") if attack_menu_container != null else null
+onready var ball_menu_container = ui_layer.get_node_or_null("BallMenuContainer") if ui_layer != null else null
+onready var ball_button_list = ball_menu_container.get_node_or_null("BallWindowSprite/BallContentMargin/BallButtonList") if ball_menu_container != null else null
+
+onready var enemy_name_label = enemy_panel.get_node_or_null("EnemyNameLabel") if enemy_panel != null else null
+onready var enemy_level_label = enemy_panel.get_node_or_null("EnemyLevelLabel") if enemy_panel != null else null
+onready var enemy_hp_bar = enemy_panel.get_node_or_null("EnemyHpBar") if enemy_panel != null else null
+onready var enemy_hp_value_label = enemy_panel.get_node_or_null("EnemyHpValueLabel") if enemy_panel != null else null
+onready var enemy_type1_sprite = enemy_panel.get_node_or_null("EnemyType1Sprite") if enemy_panel != null else null
+onready var enemy_type2_sprite = enemy_panel.get_node_or_null("EnemyType2Sprite") if enemy_panel != null else null
+onready var enemy_layer = battlefield_layer.get_node_or_null("EnemyLayer") if battlefield_layer != null else null
+onready var enemy_pokemon_sprite = enemy_layer.get_node_or_null("EnemyPokemonSpriteBattle") if enemy_layer != null else null
+onready var effects_layer = battlefield_layer.get_node_or_null("EffectsLayer") if battlefield_layer != null else null
+onready var player_name_label = player_panel.get_node_or_null("PlayerNameLabel") if player_panel != null else null
+onready var player_level_label = player_panel.get_node_or_null("PlayerLevelLabel") if player_panel != null else null
+onready var player_hp_bar = player_panel.get_node_or_null("PlayerHpBar") if player_panel != null else null
+onready var player_hp_value_label = player_panel.get_node_or_null("PlayerHpValueLabel") if player_panel != null else null
+onready var player_type1_sprite = player_panel.get_node_or_null("PlayerType1Sprite") if player_panel != null else null
+onready var player_type2_sprite = player_panel.get_node_or_null("PlayerType2Sprite") if player_panel != null else null
+onready var player_layer = battlefield_layer.get_node_or_null("PlayerLayer") if battlefield_layer != null else null
+onready var player_trainer_sprite = player_layer.get_node_or_null("PlayerTrainerSprite") if player_layer != null else null
+onready var player_pokemon_sprite = player_layer.get_node_or_null("PlayerPokemonSprite") if player_layer != null else null
+onready var battle_text_label = ui_layer.get_node_or_null("MessagePanel/MessageMargin/BattleTextLabel") if ui_layer != null else null
+onready var move_button = controls_vbox.get_node_or_null("ControlsPanel1/FightButton") if controls_vbox != null else null
+onready var ball_button = controls_vbox.get_node_or_null("ControlsPanel1/BallButton") if controls_vbox != null else null
+onready var pokemon_button = controls_vbox.get_node_or_null("ControlsPanel2/PokemonButton") if controls_vbox != null else null
+onready var run_button = controls_vbox.get_node_or_null("ControlsPanel2/RunButton") if controls_vbox != null else null
+onready var attack_move_button_1 = attack_move_grid.get_node_or_null("AttackMoveButton1") if attack_move_grid != null else null
+onready var attack_move_button_2 = attack_move_grid.get_node_or_null("AttackMoveButton2") if attack_move_grid != null else null
+onready var attack_move_button_3 = attack_move_grid.get_node_or_null("AttackMoveButton3") if attack_move_grid != null else null
+onready var attack_move_button_4 = attack_move_grid.get_node_or_null("AttackMoveButton4") if attack_move_grid != null else null
+onready var attack_type_sprite = attack_move_details.get_node_or_null("AttackTypeSprite") if attack_move_details != null else null
+onready var attack_power_label = attack_move_details.get_node_or_null("AttackPowerLabel") if attack_move_details != null else null
+onready var attack_category_sprite = attack_move_details.get_node_or_null("AttackCategorySprite") if attack_move_details != null else null
+onready var attack_pp_label = attack_move_details.get_node_or_null("AttackPpLabel") if attack_move_details != null else null
+onready var ball_window_sprite = ball_menu_container.get_node_or_null("BallWindowSprite") if ball_menu_container != null else null
+onready var ball_content_margin = ball_menu_container.get_node_or_null("BallWindowSprite/BallContentMargin") if ball_menu_container != null else null
+onready var ball_pokeball_button = ball_button_list.get_node_or_null("PokeballButton") if ball_button_list != null else null
+onready var ball_greatball_button = ball_button_list.get_node_or_null("GreatballButton") if ball_button_list != null else null
+onready var ball_masterball_button = ball_button_list.get_node_or_null("MasterballButton") if ball_button_list != null else null
+onready var ball_cancel_button = ball_button_list.get_node_or_null("BallCancelButton") if ball_button_list != null else null
+
+# Runtime state and asset metadata.
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
-var ui_font_path = "res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf"
 var debug_log_path = "user://battle_debug.log"
 var type_ui_assets := {
 	"enemy": {
@@ -239,12 +272,15 @@ var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
 var sendout_controls_locked := false
 
+# Lifecycle and diagnostics.
 func _ready():
+	if ui_scale_root != null:
+		ui_scale_root.rect_scale = Vector2(ui_scale, ui_scale)
+	if not _validate_required_refs():
+		return
 	randomize()
 	log_debug("Battle scene ready")
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
-	ensure_ui_signal_connections()
-	apply_fonts()
 	update_run_button_label()
 	enemy_layer_home_position = enemy_layer.rect_position
 	player_sprite_home_position = player_pokemon_sprite.position
@@ -274,19 +310,6 @@ func _open_party_menu_on_ready():
 		return
 	open_party_menu()
 
-func ensure_ui_signal_connections():
-	if move_button != null and not move_button.is_connected("pressed", self, "_on_MoveButton_pressed"):
-		move_button.connect("pressed", self, "_on_MoveButton_pressed")
-
-	if ball_button != null and not ball_button.is_connected("pressed", self, "_on_RestartButton_pressed"):
-		ball_button.connect("pressed", self, "_on_RestartButton_pressed")
-
-	if pokemon_button != null and not pokemon_button.is_connected("pressed", self, "_on_PokemonButton_pressed"):
-		pokemon_button.connect("pressed", self, "_on_PokemonButton_pressed")
-
-	if run_button != null and not run_button.is_connected("pressed", self, "_on_RunButton_pressed"):
-		run_button.connect("pressed", self, "_on_RunButton_pressed")
-
 func log_debug(message: String):
 	var f = File.new()
 	# Ensure the log file exists before opening in append mode.
@@ -312,51 +335,45 @@ func resource_exists(path: String) -> bool:
 	var f = File.new()
 	return f.file_exists(path)
 
-func make_font(path: String, size: int) -> DynamicFont:
-	var font = DynamicFont.new()
-	var font_data = DynamicFontData.new()
-	font_data.font_path = path
-	font.font_data = font_data
-	font.size = size
-	return font
+func _validate_required_refs() -> bool:
+	var required_refs = {
+		"ui_layer": ui_layer,
+		"battlefield_layer": battlefield_layer,
+		"enemy_layer": enemy_layer,
+		"player_layer": player_layer,
+		"enemy_panel": enemy_panel,
+		"player_panel": player_panel,
+		"enemy_name_label": enemy_name_label,
+		"enemy_level_label": enemy_level_label,
+		"enemy_hp_bar": enemy_hp_bar,
+		"player_name_label": player_name_label,
+		"player_level_label": player_level_label,
+		"player_hp_bar": player_hp_bar,
+		"enemy_pokemon_sprite": enemy_pokemon_sprite,
+		"player_pokemon_sprite": player_pokemon_sprite,
+		"battle_text_label": battle_text_label,
+		"move_button": move_button,
+		"ball_button": ball_button,
+		"pokemon_button": pokemon_button,
+		"run_button": run_button,
+		"attack_move_button_1": attack_move_button_1,
+		"attack_move_button_2": attack_move_button_2,
+		"attack_move_button_3": attack_move_button_3,
+		"attack_move_button_4": attack_move_button_4,
+		"attack_type_sprite": attack_type_sprite,
+		"attack_category_sprite": attack_category_sprite,
+		"attack_power_label": attack_power_label,
+		"attack_pp_label": attack_pp_label,
+	}
 
-func apply_fonts():
-	if not resource_exists(ui_font_path):
-		log_debug("Missing UI font resource: %s" % ui_font_path)
-		return
+	for ref_name in required_refs.keys():
+		if required_refs[ref_name] == null:
+			push_error("Battle scene is missing required node reference: %s" % ref_name)
+			return false
 
-	var ui_font = make_font(ui_font_path, ui_font_size)
-	enemy_name_label.add_font_override("font", ui_font)
-	enemy_level_label.add_font_override("font", ui_font)
-	if enemy_hp_value_label != null:
-		enemy_hp_value_label.add_font_override("font", ui_font)
-	player_name_label.add_font_override("font", ui_font)
-	player_level_label.add_font_override("font", ui_font)
-	if player_hp_value_label != null:
-		player_hp_value_label.add_font_override("font", ui_font)
-	var button_font = make_font(ui_font_path, control_button_font_size)
-	battle_text_label.add_font_override("font", button_font)
-	move_button.add_font_override("font", button_font)
-	ball_button.add_font_override("font", button_font)
-	pokemon_button.add_font_override("font", button_font)
-	run_button.add_font_override("font", button_font)
-	attack_move_button_1.add_font_override("font", button_font)
-	attack_move_button_2.add_font_override("font", button_font)
-	attack_move_button_3.add_font_override("font", button_font)
-	attack_move_button_4.add_font_override("font", button_font)
-	if ball_pokeball_button != null:
-		ball_pokeball_button.add_font_override("font", button_font)
-	if ball_greatball_button != null:
-		ball_greatball_button.add_font_override("font", button_font)
-	if ball_masterball_button != null:
-		ball_masterball_button.add_font_override("font", button_font)
-	if ball_cancel_button != null:
-		ball_cancel_button.add_font_override("font", button_font)
-	attack_power_label.add_font_override("font", ui_font)
-	attack_pp_label.add_font_override("font", ui_font)
-	if party_menu_overlay != null and party_menu_overlay.has_method("apply_fonts"):
-		party_menu_overlay.apply_fonts(ui_font_path, ui_font_size, control_button_font_size)
+	return true
 
+# Scene setup and data binding.
 func setup_party_menu_overlay():
 	if party_menu_scene == null:
 		return
@@ -367,12 +384,9 @@ func setup_party_menu_overlay():
 
 	party_menu_overlay.visible = false
 	party_menu_visible = false
-	if not party_menu_overlay.is_connected("close_requested", self, "_on_PartyMenu_close_requested"):
-		party_menu_overlay.connect("close_requested", self, "_on_PartyMenu_close_requested")
+	_connect_once(party_menu_overlay, "close_requested", "_on_PartyMenu_close_requested")
 	add_child(party_menu_overlay)
 	party_menu_overlay.raise()
-	if party_menu_overlay.has_method("apply_fonts"):
-		party_menu_overlay.apply_fonts(ui_font_path, ui_font_size, control_button_font_size)
 
 func bind_battle_data():
 	var enemy_data = battle_data["enemy"]
@@ -528,6 +542,7 @@ func _process(_delta):
 	if Input.is_action_just_pressed("ui_accept") and get_focus_owner() == null and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
 
+# Input and command dispatch.
 func _input(event):
 	if not (event is InputEventKey):
 		return
@@ -668,8 +683,7 @@ func execute_player_move(move):
 		return
 
 	turn_in_progress = true
-	hide_all_command_menus()
-	set_action_lock(true)
+	_enter_action_locked_state()
 	var active_turn_token = turn_token
 
 	var attacker = battle_data["player"]
@@ -761,7 +775,7 @@ func execute_player_move(move):
 
 	_finish_turn()
 
-func _on_RestartButton_pressed():
+func _on_BallButton_pressed():
 	if battle_ended:
 		reset_battle_state("Battle reset.")
 		return
@@ -811,6 +825,7 @@ func _on_RunButton_pressed():
 	var state_text = "ON" if battle_fx_enabled else "OFF"
 	set_battle_text("Battle FX toggled %s." % state_text)
 
+# Capture flow and ball handling.
 func attempt_capture_with_ball(ball_key: String) -> void:
 	if battle_ended or turn_in_progress or capture_in_progress:
 		return
@@ -827,11 +842,10 @@ func attempt_capture_with_ball(ball_key: String) -> void:
 
 	ball_inventory[ball_key] = max(0, available - 1)
 	refresh_ball_menu_labels()
-	hide_all_command_menus()
+	_enter_action_locked_state()
 
 	turn_in_progress = true
 	capture_in_progress = true
-	set_action_lock(true)
 	var active_turn_token = turn_token
 	var enemy = battle_data["enemy"]
 	var capture_flow = _run_capture_sequence(ball_key, enemy, active_turn_token)
@@ -1315,6 +1329,19 @@ func _play_capture_sfx(file_name: String) -> void:
 	$UIAudioStreamPlayer.stream = load(sfx_path)
 	$UIAudioStreamPlayer.play()
 
+# Turn state and battle transitions.
+func _show_main_controls_unlocked() -> void:
+	show_main_controls()
+	set_action_lock(false)
+
+func _show_main_controls_locked() -> void:
+	show_main_controls()
+	set_action_lock(true)
+
+func _enter_action_locked_state() -> void:
+	hide_all_command_menus()
+	set_action_lock(true)
+
 func set_action_lock(locked: bool):
 	move_button.disabled = locked
 	pokemon_button.disabled = locked
@@ -1327,25 +1354,22 @@ func set_action_lock(locked: bool):
 func _finish_turn():
 	turn_in_progress = false
 	if not battle_ended:
-		show_main_controls()
-		set_action_lock(false)
+		_show_main_controls_unlocked()
 
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
 	if player_won:
-		show_main_controls()
-		set_action_lock(true)
+		_show_main_controls_locked()
 		ball_button.disabled = false
 		ball_button.grab_focus()
 		set_battle_text("%s fainted! You win! Press Ball to restart." % fainted_species_id)
 		return
 
 	# Defeat recovery path: return to starter selection.
-	hide_all_command_menus()
-	set_action_lock(true)
+	_enter_action_locked_state()
 	set_battle_text("%s fainted! You lose! Returning to selection..." % fainted_species_id)
 	var timer = get_tree().create_timer(max(0.0, defeat_return_delay_sec))
-	timer.connect("timeout", self, "_return_to_selection_scene")
+	_connect_once(timer, "timeout", "_return_to_selection_scene")
 
 func _return_to_selection_scene():
 	var tree = get_tree()
@@ -1577,6 +1601,7 @@ func consume_selected_species_id() -> String:
 	tree.remove_meta(SELECTED_SPECIES_META_KEY)
 	return raw_species_id
 
+# Navigation and focus handling.
 func setup_keyboard_controls():
 	ensure_input_action_key("ui_left", KEY_LEFT)
 	ensure_input_action_key("ui_right", KEY_RIGHT)
@@ -1593,14 +1618,9 @@ func setup_keyboard_controls():
 	attack_move_button_2.focus_mode = Control.FOCUS_ALL
 	attack_move_button_3.focus_mode = Control.FOCUS_ALL
 	attack_move_button_4.focus_mode = Control.FOCUS_ALL
-	if ball_pokeball_button != null:
-		ball_pokeball_button.focus_mode = Control.FOCUS_ALL
-	if ball_greatball_button != null:
-		ball_greatball_button.focus_mode = Control.FOCUS_ALL
-	if ball_masterball_button != null:
-		ball_masterball_button.focus_mode = Control.FOCUS_ALL
-	if ball_cancel_button != null:
-		ball_cancel_button.focus_mode = Control.FOCUS_ALL
+	for button in _get_ball_menu_buttons():
+		if button != null:
+			button.focus_mode = Control.FOCUS_ALL
 
 func ensure_input_action_key(action_name: String, key_code: int):
 	if not InputMap.has_action(action_name):
@@ -1661,85 +1681,67 @@ func move_button_focus(action_name: String):
 		move_attack_menu_focus(action_name, focus_owner)
 		return
 
-	if action_name == "ui_left":
-		if focus_owner == ball_button:
-			move_button.grab_focus()
-		elif focus_owner == run_button:
-			pokemon_button.grab_focus()
+	_move_focus_in_2x2_grid(action_name, focus_owner, [move_button, ball_button, pokemon_button, run_button])
+
+func _move_focus_in_2x2_grid(action_name: String, focus_owner, ordered_buttons: Array) -> void:
+	if focus_owner == null or ordered_buttons.size() != 4:
 		return
 
-	if action_name == "ui_right":
-		if focus_owner == move_button:
-			ball_button.grab_focus()
-		elif focus_owner == pokemon_button:
-			run_button.grab_focus()
+	var current_index = ordered_buttons.find(focus_owner)
+	if current_index == -1:
 		return
 
-	if action_name == "ui_up":
-		if focus_owner == pokemon_button:
-			move_button.grab_focus()
-		elif focus_owner == run_button:
-			ball_button.grab_focus()
+	var d_row = 0
+	var d_col = 0
+	match action_name:
+		"ui_left":
+			d_col = -1
+		"ui_right":
+			d_col = 1
+		"ui_up":
+			d_row = -1
+		"ui_down":
+			d_row = 1
+		_:
+			return
+
+	var row = int(current_index / 2)
+	var col = current_index % 2
+	var next_row = row + d_row
+	var next_col = col + d_col
+	if next_row < 0 or next_row > 1 or next_col < 0 or next_col > 1:
 		return
 
-	if action_name == "ui_down":
-		if focus_owner == move_button:
-			pokemon_button.grab_focus()
-		elif focus_owner == ball_button:
-			run_button.grab_focus()
+	var next_button = ordered_buttons[next_row * 2 + next_col]
+	if next_button == null:
 		return
+
+	next_button.grab_focus()
+	return
 
 func move_attack_menu_focus(action_name: String, focus_owner):
-	if action_name == "ui_left":
-		if focus_owner == attack_move_button_2:
-			attack_move_button_1.grab_focus()
-		elif focus_owner == attack_move_button_4:
-			attack_move_button_3.grab_focus()
-		return
-
-	if action_name == "ui_right":
-		if focus_owner == attack_move_button_1:
-			attack_move_button_2.grab_focus()
-		elif focus_owner == attack_move_button_3:
-			attack_move_button_4.grab_focus()
-		return
-
-	if action_name == "ui_up":
-		if focus_owner == attack_move_button_3:
-			attack_move_button_1.grab_focus()
-		elif focus_owner == attack_move_button_4:
-			attack_move_button_2.grab_focus()
-		return
-
-	if action_name == "ui_down":
-		if focus_owner == attack_move_button_1:
-			attack_move_button_3.grab_focus()
-		elif focus_owner == attack_move_button_2:
-			attack_move_button_4.grab_focus()
-		return
+	_move_focus_in_2x2_grid(action_name, focus_owner, _get_attack_move_buttons())
 
 func is_ball_menu_button(focus_owner) -> bool:
-	return focus_owner == ball_pokeball_button or focus_owner == ball_greatball_button or focus_owner == ball_masterball_button or focus_owner == ball_cancel_button
+	for button in _get_ball_menu_buttons():
+		if focus_owner == button:
+			return true
+	return false
 
 func focus_first_ball_menu_button() -> void:
-	if ball_pokeball_button != null and not ball_pokeball_button.disabled:
-		ball_pokeball_button.grab_focus()
-		return
-	if ball_greatball_button != null and not ball_greatball_button.disabled:
-		ball_greatball_button.grab_focus()
-		return
-	if ball_masterball_button != null and not ball_masterball_button.disabled:
-		ball_masterball_button.grab_focus()
-		return
-	if ball_cancel_button != null:
-		ball_cancel_button.grab_focus()
+	for button in _get_ball_menu_buttons():
+		if button == null:
+			continue
+		if button == ball_cancel_button or not button.disabled:
+			button.grab_focus()
+			return
 
 func move_ball_menu_focus(action_name: String, focus_owner):
 	if focus_owner == null or not is_ball_menu_button(focus_owner):
 		focus_first_ball_menu_button()
 		return
 
-	var focus_order = [ball_pokeball_button, ball_greatball_button, ball_masterball_button, ball_cancel_button]
+	var focus_order = _get_ball_menu_buttons()
 	var enabled_order := []
 	for button in focus_order:
 		if button == null:
@@ -1781,11 +1783,10 @@ func update_run_button_label():
 	# Keep this short so the fixed two-column controls window does not resize at runtime.
 	run_button.text = "FX ON" if battle_fx_enabled else "FX OFF"
 
+# Command menu visibility and panel layout.
 func show_attack_menu():
 	refresh_attack_menu()
-	attack_menu_visible = true
-	attack_menu_container.visible = true
-	controls_container.visible = false
+	_set_command_menu_visibility(false, true, false)
 	refresh_attack_move_details(0)
 	focus_first_attack_move_button()
 
@@ -1793,22 +1794,22 @@ func hide_attack_menu():
 	show_main_controls()
 
 func show_main_controls():
-	attack_menu_visible = false
-	attack_menu_container.visible = false
-	if ball_menu_container != null:
-		ball_menu_container.visible = false
-	ball_menu_visible = false
-	controls_container.visible = true
+	_set_command_menu_visibility(true, false, false)
 	set_main_command_prompt()
 
 func hide_all_command_menus():
-	attack_menu_visible = false
-	attack_menu_container.visible = false
-	if ball_menu_container != null:
-		ball_menu_container.visible = false
-	ball_menu_visible = false
-	controls_container.visible = false
+	_set_command_menu_visibility(false, false, false)
 	_close_party_menu_internal()
+
+func _set_command_menu_visibility(show_controls: bool, show_attack: bool, show_ball: bool) -> void:
+	attack_menu_visible = show_attack
+	ball_menu_visible = show_ball
+	if attack_menu_container != null:
+		attack_menu_container.visible = show_attack
+	if ball_menu_container != null:
+		ball_menu_container.visible = show_ball
+	if controls_container != null:
+		controls_container.visible = show_controls
 
 func show_ball_menu() -> void:
 	if ball_menu_container == null:
@@ -1818,33 +1819,27 @@ func show_ball_menu() -> void:
 	hide_all_command_menus()
 	refresh_ball_menu_labels()
 	refresh_ball_menu_layout()
-	ball_menu_visible = true
-	ball_menu_container.visible = true
+	_set_command_menu_visibility(false, false, true)
 	focus_first_ball_menu_button()
 	set_battle_text("Choose a Ball.")
 
 func hide_ball_menu(show_controls: bool) -> void:
-	ball_menu_visible = false
-	if ball_menu_container != null:
-		ball_menu_container.visible = false
+	_set_command_menu_visibility(show_controls, false, false)
 	if show_controls and not battle_ended and not turn_in_progress and not capture_in_progress:
-		show_main_controls()
-		set_action_lock(false)
+		_show_main_controls_unlocked()
 	ensure_button_focus()
 
 func refresh_ball_menu_labels() -> void:
 	if ball_pokeball_button == null or ball_greatball_button == null or ball_masterball_button == null or ball_cancel_button == null:
 		return
 
-	var pokeball_count = int(ball_inventory.get(BALL_KEY_POKEBALL, 0))
-	var greatball_count = int(ball_inventory.get(BALL_KEY_GREATBALL, 0))
-	var masterball_count = int(ball_inventory.get(BALL_KEY_MASTERBALL, 0))
-	ball_pokeball_button.text = "%d x Pokeball" % max(0, pokeball_count)
-	ball_greatball_button.text = "%d x Greatball" % max(0, greatball_count)
-	ball_masterball_button.text = "%d x Masterball" % max(0, masterball_count)
-	ball_pokeball_button.disabled = pokeball_count <= 0
-	ball_greatball_button.disabled = greatball_count <= 0
-	ball_masterball_button.disabled = masterball_count <= 0
+	for ball_entry in _get_ball_action_entries():
+		var button = ball_entry["button"]
+		var key = ball_entry["key"]
+		var label = ball_entry["label"]
+		var count = int(ball_inventory.get(key, 0))
+		button.text = "%d x %s" % [max(0, count), label]
+		button.disabled = count <= 0
 	ball_cancel_button.disabled = false
 	refresh_ball_menu_layout()
 
@@ -1943,8 +1938,7 @@ func close_party_menu():
 
 	_close_party_menu_internal()
 	if not battle_ended and not turn_in_progress:
-		show_main_controls()
-		set_action_lock(false)
+		_show_main_controls_unlocked()
 	ensure_button_focus()
 
 func _close_party_menu_internal():
@@ -1963,21 +1957,19 @@ func set_main_command_prompt():
 	var player_species = String(battle_data["player"].species_id)
 	set_battle_text("What will %s do?" % player_species)
 
+# Attack menu and detail presentation.
 func refresh_attack_menu():
 	var attacker = battle_data["player"] if battle_data != null and battle_data.has("player") else null
 	var moves = []
 	if attacker != null:
 		moves = attacker.moves
 
-	var move_buttons = [
-		attack_move_button_1,
-		attack_move_button_2,
-		attack_move_button_3,
-		attack_move_button_4,
-	]
+	var move_buttons = _get_attack_move_buttons()
 
 	for i in range(move_buttons.size()):
 		var button = move_buttons[i]
+		if button == null:
+			continue
 		if i < moves.size():
 			var move = moves[i]
 			button.disabled = false
@@ -1989,10 +1981,10 @@ func refresh_attack_menu():
 	refresh_attack_move_details(0)
 
 func set_attack_menu_enabled(enabled: bool):
-	attack_move_button_1.disabled = (not enabled) or attack_move_button_1.text == "-"
-	attack_move_button_2.disabled = (not enabled) or attack_move_button_2.text == "-"
-	attack_move_button_3.disabled = (not enabled) or attack_move_button_3.text == "-"
-	attack_move_button_4.disabled = (not enabled) or attack_move_button_4.text == "-"
+	for button in _get_attack_move_buttons():
+		if button == null:
+			continue
+		button.disabled = (not enabled) or button.text == "-"
 
 func refresh_attack_move_details(move_slot: int):
 	var attacker = battle_data["player"] if battle_data != null and battle_data.has("player") else null
@@ -2067,25 +2059,40 @@ func build_move_pp_text(move) -> String:
 
 	return "-/-"
 
+func _get_attack_move_buttons() -> Array:
+	return [
+		attack_move_button_1,
+		attack_move_button_2,
+		attack_move_button_3,
+		attack_move_button_4,
+	]
+
+func _get_ball_action_entries() -> Array:
+	return [
+		{"button": ball_pokeball_button, "key": BALL_KEY_POKEBALL, "label": "Pokeball"},
+		{"button": ball_greatball_button, "key": BALL_KEY_GREATBALL, "label": "Greatball"},
+		{"button": ball_masterball_button, "key": BALL_KEY_MASTERBALL, "label": "Masterball"},
+	]
+
+func _get_ball_menu_buttons() -> Array:
+	return [
+		ball_pokeball_button,
+		ball_greatball_button,
+		ball_masterball_button,
+		ball_cancel_button,
+	]
+
 func focus_first_attack_move_button():
-	if not attack_move_button_1.disabled:
-		attack_move_button_1.grab_focus()
-		return
-	if not attack_move_button_2.disabled:
-		attack_move_button_2.grab_focus()
-		return
-	if not attack_move_button_3.disabled:
-		attack_move_button_3.grab_focus()
-		return
-	if not attack_move_button_4.disabled:
-		attack_move_button_4.grab_focus()
-		return
+	for button in _get_attack_move_buttons():
+		if button != null and not button.disabled:
+			button.grab_focus()
+			return
 
 func is_attack_menu_button(focus_owner) -> bool:
-	return focus_owner == attack_move_button_1 \
-		or focus_owner == attack_move_button_2 \
-		or focus_owner == attack_move_button_3 \
-		or focus_owner == attack_move_button_4
+	for button in _get_attack_move_buttons():
+		if focus_owner == button:
+			return true
+	return false
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
@@ -2098,6 +2105,7 @@ func build_type_effectiveness_text(type_multiplier: float) -> String:
 		return " It's not very effective..."
 	return ""
 
+# Move animation asset loading and playback.
 func _move_id_to_anim_slug(move_id: String) -> String:
 	return move_id.strip_edges().to_lower().replace("_", "-")
 
@@ -2482,6 +2490,7 @@ func play_move_sfx(move_id: String):
 	$UIAudioStreamPlayer.stream = load(sfx_path)
 	$UIAudioStreamPlayer.play()
 
+# Hit/faint feedback helpers.
 func play_hit_feedback(target_sprite: Sprite, active_turn_token: int):
 	if not battle_fx_enabled:
 		return null
@@ -2560,6 +2569,7 @@ func restore_battler_sprite_state(target_sprite: Sprite, home_pos: Vector2):
 		target_sprite.scale = enemy_sprite_home_scale
 	target_sprite.modulate = Color(1, 1, 1, 1)
 
+# Sprite atlas parsing helpers.
 func parse_sprite_frame(json_path: String, frame_name: String):
 	var frames = parse_all_sprite_frames(json_path)
 	if frames.empty():
@@ -2644,6 +2654,7 @@ func _extract_numeric_frame_index(filename: String) -> int:
 
 	return -1
 
+# Sprite loading and trainer/sendout choreography.
 func load_battle_sprites():
 	var enemy_species_id = "BULBASAUR"
 	var player_species_id = "CHARMANDER"
@@ -2840,8 +2851,7 @@ func _start_player_trainer_exit_tween() -> void:
 		Tween.EASE_IN_OUT
 	)
 	exit_tween.start()
-	if not exit_tween.is_connected("tween_all_completed", self, "_on_player_trainer_exit_tween_completed"):
-		exit_tween.connect("tween_all_completed", self, "_on_player_trainer_exit_tween_completed", [exit_tween])
+	_connect_once(exit_tween, "tween_all_completed", "_on_player_trainer_exit_tween_completed", [exit_tween])
 
 func update_player_trainer_choreography(delta: float) -> void:
 	if not player_trainer_choreo_playing:
@@ -2950,7 +2960,7 @@ func _play_player_pokemon_sendout_reveal_fx() -> void:
 		Tween.EASE_IN
 	)
 	reveal_tween.start()
-	reveal_tween.connect("tween_all_completed", self, "_on_player_pokemon_reveal_tween_completed", [reveal_tween])
+	_connect_once(reveal_tween, "tween_all_completed", "_on_player_pokemon_reveal_tween_completed", [reveal_tween])
 
 func _on_player_pokemon_reveal_tween_completed(reveal_tween: Tween) -> void:
 	_play_player_sendout_cry_once()
@@ -3062,19 +3072,19 @@ func _start_player_pokeball_lob() -> void:
 	add_child(x_tween)
 	x_tween.interpolate_property(player_pokeball_sprite, "position:x", start_pos.x, target_pos.x, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
 	x_tween.start()
-	x_tween.connect("tween_all_completed", self, "_on_player_pokeball_tween_completed", [x_tween])
+	_connect_once(x_tween, "tween_all_completed", "_on_player_pokeball_tween_completed", [x_tween])
 
 	var rotate_tween = Tween.new()
 	add_child(rotate_tween)
 	rotate_tween.interpolate_property(player_pokeball_sprite, "rotation_degrees", 0.0, player_pokeball_spin_degrees, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
 	rotate_tween.start()
-	rotate_tween.connect("tween_all_completed", self, "_on_player_pokeball_tween_completed", [rotate_tween])
+	_connect_once(rotate_tween, "tween_all_completed", "_on_player_pokeball_tween_completed", [rotate_tween])
 
 	var up_tween = Tween.new()
 	add_child(up_tween)
 	up_tween.interpolate_property(player_pokeball_sprite, "position:y", start_pos.y, arc_peak_y, lob_up_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	up_tween.start()
-	up_tween.connect("tween_all_completed", self, "_on_player_pokeball_up_completed", [target_pos.y, lob_down_duration, up_tween])
+	_connect_once(up_tween, "tween_all_completed", "_on_player_pokeball_up_completed", [target_pos.y, lob_down_duration, up_tween])
 
 func _on_player_pokeball_up_completed(target_y: float, down_duration: float, up_tween: Tween) -> void:
 	if up_tween != null:
@@ -3086,7 +3096,7 @@ func _on_player_pokeball_up_completed(target_y: float, down_duration: float, up_
 	add_child(down_tween)
 	down_tween.interpolate_property(player_pokeball_sprite, "position:y", player_pokeball_sprite.position.y, target_y, max(0.01, down_duration), Tween.TRANS_CUBIC, Tween.EASE_IN)
 	down_tween.start()
-	down_tween.connect("tween_all_completed", self, "_on_player_pokeball_down_completed", [down_tween])
+	_connect_once(down_tween, "tween_all_completed", "_on_player_pokeball_down_completed", [down_tween])
 
 func _on_player_pokeball_down_completed(down_tween: Tween) -> void:
 	if down_tween != null:
@@ -3101,7 +3111,7 @@ func _on_player_pokeball_down_completed(down_tween: Tween) -> void:
 		return
 
 	var timer_open = get_tree().create_timer(max(0.01, player_pokeball_opening_hold_sec))
-	timer_open.connect("timeout", self, "_on_player_pokeball_open_timeout")
+	_connect_once(timer_open, "timeout", "_on_player_pokeball_open_timeout")
 
 func _on_player_pokeball_open_timeout() -> void:
 	if player_pokeball_sprite != null:
@@ -3110,7 +3120,7 @@ func _on_player_pokeball_open_timeout() -> void:
 	player_pokeball_release_done = true
 	_spawn_player_pokeball_open_particles()
 	var timer_hide = get_tree().create_timer(max(0.01, player_pokeball_open_hold_sec))
-	timer_hide.connect("timeout", self, "_on_player_pokeball_hide_timeout")
+	_connect_once(timer_hide, "timeout", "_on_player_pokeball_hide_timeout")
 
 func _on_player_pokeball_hide_timeout() -> void:
 	_hide_player_pokeball_sprite()
@@ -3184,12 +3194,7 @@ func _spawn_player_pokeball_open_particles(origin_override = null) -> void:
 
 	for i in range(count):
 		var timer = get_tree().create_timer(spawn_interval * i)
-		timer.connect(
-			"timeout",
-			self,
-			"_spawn_player_pokeball_open_particle_step",
-			[i + 1, origin, radius, travel_duration, fade_delay, fade_duration]
-		)
+		_connect_once(timer, "timeout", "_spawn_player_pokeball_open_particle_step", [i + 1, origin, radius, travel_duration, fade_delay, fade_duration])
 
 func _spawn_player_pokeball_open_particle_step(index: int, origin: Vector2, radius: float, travel_duration: float, fade_delay: float, fade_duration: float) -> void:
 	if effects_layer == null:
@@ -3217,7 +3222,7 @@ func _spawn_player_pokeball_open_particle_step(index: int, origin: Vector2, radi
 	tween.interpolate_property(particle, "position", particle.position, target, travel_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
 	tween.interpolate_property(particle, "modulate:a", 1.0, 0.0, fade_duration, Tween.TRANS_SINE, Tween.EASE_IN, fade_delay)
 	tween.start()
-	tween.connect("tween_all_completed", self, "_on_player_pokeball_particle_tween_completed", [particle, tween])
+	_connect_once(tween, "tween_all_completed", "_on_player_pokeball_particle_tween_completed", [particle, tween])
 
 func _on_player_pokeball_particle_tween_completed(particle: Node, tween_node: Tween) -> void:
 	if particle != null:

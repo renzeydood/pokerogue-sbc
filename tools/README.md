@@ -7,46 +7,46 @@ This folder contains the minimal Python asset pipeline for extracting a small su
 Run from the repository root:
 
 ```powershell
-python .\asset-tooling\export_minimal_assets.py
+python .\tools\export_minimal_assets.py
 ```
 
 This will:
 
 - copy the files listed in `minimal-asset-list.json`
-- create `godot-minimal-assets/`
-- write `godot-minimal-assets/asset-list.json`
+- create `godot-port/godot-minimal-assets/`
+- write `godot-port/godot-minimal-assets/asset-list.json`
 
 ## Python minimal data export
 
 Run from the repository root:
 
 ```powershell
-python .\asset-tooling\export_minimal_data.py
+python .\tools\export_minimal_data.py
 ```
 
 This will read `minimal-asset-list.json` selectors (`pokemon`, `attacks`) and generate:
 
-- `godot-minimal-assets/data/species-catalog.v1.json`
-- `godot-minimal-assets/data/moves-catalog.v1.json`
+- `godot-port/godot-minimal-assets/data/species-catalog.v1.json`
+- `godot-port/godot-minimal-assets/data/moves-catalog.v1.json`
 
 ## Asset pipeline wrapper
 
 A small wrapper script is provided to optionally run upstream preprocessing scripts and then execute the Python exporter. This keeps the Godot port cleanup simple while allowing reuse of existing `pokerogue` asset tooling when needed.
 
-Usage (from the future `godot-port` root you mentioned):
+Usage (from repository root):
 
 ```powershell
-py asset-tooling\asset_pipeline.py --preprocess --export
+py tools\asset_pipeline.py --preprocess --export
 ```
 
 Useful export modes:
 
 ```powershell
-py asset-tooling\asset_pipeline.py --export
-py asset-tooling\asset_pipeline.py --export-data
-py asset-tooling\asset_pipeline.py --export-all
-py asset-tooling\asset_pipeline.py --validate-data
-py asset-tooling\asset_pipeline.py --validate-data --refresh-fixtures
+py tools\asset_pipeline.py --export
+py tools\asset_pipeline.py --export-data
+py tools\asset_pipeline.py --export-all
+py tools\asset_pipeline.py --validate-data
+py tools\asset_pipeline.py --validate-data --refresh-fixtures
 ```
 
 The tooling is now pinned to `dependency/pokerogue` inside this workspace.
@@ -54,7 +54,7 @@ The tooling is now pinned to `dependency/pokerogue` inside this workspace.
 A dry run is available to print the planned pipeline steps without executing them:
 
 ```powershell
-py asset-tooling\asset_pipeline.py --preprocess --export --dry-run
+py tools\asset_pipeline.py --preprocess --export --dry-run
 ```
 
 ## Asset list format
@@ -105,7 +105,7 @@ Expansion rules used by the exporter:
 	- `graphic` -> assets from `assets/images/battle_anims/` (png/json/webp)
 	- `resourceName` -> audio from `assets/audio/battle_anims/` (with filename fallback search under `assets/`)
 	- in count mode (`attacks: [N]`), attack slugs are sourced from `godot-minimal-assets/data/moves-catalog.v1.json` and then expanded the same way
-	- if that moves catalog does not exist yet, run `py asset-tooling/asset_pipeline.py --export-data` (or `--export-all`) first
+	- if that moves catalog does not exist yet, run `py tools/asset_pipeline.py --export-data` (or `--export-all`) first
 - `general_assets`: copied as-is
 
 This keeps minimal export focused while allowing a single reference list to drive both selected entities and shared assets.
@@ -127,12 +127,12 @@ Fixture files:
 Typical workflow:
 
 ```powershell
-py asset-tooling\asset_pipeline.py --export-data --validate-data
+py tools\asset_pipeline.py --export-data --validate-data
 ```
 
 When changes are intentional, refresh fixtures:
 
 ```powershell
-py asset-tooling\asset_pipeline.py --export-data --validate-data --refresh-fixtures
+py tools\asset_pipeline.py --export-data --validate-data --refresh-fixtures
 ```
 
