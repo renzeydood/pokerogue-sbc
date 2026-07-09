@@ -88,6 +88,30 @@ func set_active_slot(slot_index: int) -> Dictionary:
 	active_slot_index = slot_index
 	return {"ok": true, "reason": "ok", "index": active_slot_index}
 
+func swap_active_with_slot(slot_index: int) -> Dictionary:
+	if slot_index < 0 or slot_index >= members.size():
+		return {"ok": false, "reason": "invalid_index", "index": active_slot_index}
+	if active_slot_index < 0 or active_slot_index >= members.size():
+		return {"ok": false, "reason": "invalid_active_index", "index": active_slot_index}
+
+	if slot_index == active_slot_index:
+		return {"ok": true, "reason": "ok", "index": active_slot_index}
+
+	var original_active_index = active_slot_index
+	var incoming_member = members[slot_index]
+	members[slot_index] = members[active_slot_index]
+	members[original_active_index] = incoming_member
+	active_slot_index = original_active_index
+
+	# Keep party ordering invariant: slot 0 is always the active battler.
+	if active_slot_index != 0 and members.size() > 0:
+		var front_member = members[0]
+		members[0] = members[active_slot_index]
+		members[active_slot_index] = front_member
+		active_slot_index = 0
+
+	return {"ok": true, "reason": "ok", "index": active_slot_index}
+
 func update_member_at(slot_index: int, patch: Dictionary) -> Dictionary:
 	if slot_index < 0 or slot_index >= members.size():
 		return {"ok": false, "reason": "invalid_index", "index": -1}

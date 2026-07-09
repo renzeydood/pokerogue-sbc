@@ -173,10 +173,10 @@ func open_menu(members: Array, active_index: int) -> void:
 	party_members = members.duplicate(true)
 	active_slot_index = active_index
 	selected_slot_index = _find_initial_selected_index()
-	visible = true
 	_refresh_slot_buttons()
 	_close_action_menu()
 	_update_cancel_sprite(false)
+	visible = true
 	focus_default()
 
 func close_menu() -> void:
@@ -834,9 +834,7 @@ func _open_action_menu_for_slot(slot_index: int) -> void:
 		action_switch_in_button.disabled = not can_switch_in
 
 	if action_text_label != null:
-		var member = party_members[slot_index]
-		var species_id = String(member.get("species_id", "POKEMON"))
-		action_text_label.text = "%s" % species_id
+		action_text_label.text = "Do what with this Pokemon?"
 
 	_refresh_action_menu_layout()
 	_focus_first_action_button()
