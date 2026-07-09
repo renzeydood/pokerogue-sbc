@@ -505,6 +505,14 @@ text = "Cancel"
 flat = true
 align = 0
 
+[node name="CurrentArenaLabel" type="Label" parent="UiScaleRoot/UILayer"]
+margin_left = 242.0
+margin_top = 3.5
+margin_right = 295.0
+margin_bottom = 14.5
+text = "arena - 00"
+align = 2
+
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 
 [node name="UIAudioStreamPlayer" type="AudioStreamPlayer" parent="."]

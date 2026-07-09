@@ -110,6 +110,24 @@ static func advance_biome_state(tree, transition_trigger: String, next_biome_id:
 	set_biome_state(tree, biome_state)
 	return biome_state.duplicate(true)
 
+static func advance_biome_for_level(tree, transition_trigger: String, switch_every_levels: int = 3, next_biome_id: String = "") -> Dictionary:
+	var interval = max(1, switch_every_levels)
+	var biome_state = get_biome_state(tree)
+	var current_level = max(1, int(biome_state.get("encounter_index", 0)) + 1)
+	biome_state["encounter_index"] = int(biome_state.get("encounter_index", 0)) + 1
+	biome_state["transition_trigger"] = _normalize_transition_trigger(transition_trigger)
+
+	if current_level % interval == 0:
+		var current_biome_id = String(biome_state.get("current_biome_id", DEFAULT_BIOME_ID))
+		var resolved_next_biome_id = _normalize_biome_id(next_biome_id)
+		if resolved_next_biome_id.empty():
+			resolved_next_biome_id = _pick_next_biome_id(current_biome_id)
+		biome_state["previous_biome_id"] = current_biome_id
+		biome_state["current_biome_id"] = resolved_next_biome_id
+
+	set_biome_state(tree, biome_state)
+	return biome_state.duplicate(true)
+
 static func get_current_biome_id(tree) -> String:
 	return String(get_biome_state(tree).get("current_biome_id", DEFAULT_BIOME_ID))
 
