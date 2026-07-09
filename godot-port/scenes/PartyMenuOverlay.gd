@@ -47,8 +47,8 @@ const EditorPreviewSync = preload("res://logic/EditorPreviewSync.gd")
 
 onready var ui_scale_root = $Backdrop/Panel/UiScaleRoot
 onready var slot_list = $Backdrop/Panel/UiScaleRoot/SlotList
-onready var left_slots_anchor = get_node_or_null("Backdrop/Panel/UiScaleRoot/SlotList/LeftSlotsAnchor")
-onready var right_slots_anchor = get_node_or_null("Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor")
+onready var left_slots_anchor = slot_list.get_node_or_null("LeftSlotsAnchor") if slot_list != null else null
+onready var right_slots_anchor = slot_list.get_node_or_null("RightSlotsAnchor") if slot_list != null else null
 onready var footer_text_label = $Backdrop/Panel/UiScaleRoot/Footer/MessageWindowSprite/MessageMargin/FooterTextLabel
 onready var back_button = $Backdrop/Panel/UiScaleRoot/Footer/Control/BackButton
 onready var cancel_sprite = $Backdrop/Panel/UiScaleRoot/Footer/Control/BackButtonSprite
@@ -72,14 +72,6 @@ var _catalog_loader = null
 var _icon_bob_elapsed := 0.0
 var _icon_bob_toggled := false
 
-const LEFT_SLOT_PATH := "Backdrop/Panel/UiScaleRoot/SlotList/LeftSlot"
-const RIGHT_SLOT_PATHS := [
-	"Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot1",
-	"Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot2",
-	"Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot3",
-	"Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot4",
-	"Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot5",
-]
 func _ready():
 	visible = Engine.editor_hint and editor_preview_enabled
 	set_process(true)
@@ -251,26 +243,24 @@ func _setup_slot_layout() -> void:
 	slot_level_labels.clear()
 	slot_hp_labels.clear()
 
-	var left_slot = get_node_or_null(LEFT_SLOT_PATH)
-	if left_slot == null and slot_list != null:
-		left_slot = slot_list.get_node_or_null("LeftSlot")
+	var left_slot = slot_list.get_node_or_null("LeftSlot") if slot_list != null else null
 	_register_slot_node(left_slot)
 
-	var right_parent = get_node_or_null("Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor")
-	if right_parent == null and slot_list != null:
-		right_parent = slot_list.get_node_or_null("RightSlotsAnchor")
+	var right_parent = right_slots_anchor if right_slots_anchor != null else (slot_list.get_node_or_null("RightSlotsAnchor") if slot_list != null else null)
 
+	var right_slot_nodes := []
 	if right_parent != null:
-		var right_slot_nodes := []
 		for child in right_parent.get_children():
 			if child is Control and child.get_node_or_null("SlotButton") != null:
 				right_slot_nodes.append(child)
-		right_slot_nodes.sort_custom(self, "_sort_nodes_by_name")
-		for right_slot in right_slot_nodes:
-			_register_slot_node(right_slot)
-	else:
-		for slot_path in RIGHT_SLOT_PATHS:
-			_register_slot_node(get_node_or_null(slot_path))
+	elif slot_list != null:
+		for child in slot_list.get_children():
+			if child is Control and String(child.name).begins_with("RightSlot") and child.get_node_or_null("SlotButton") != null:
+				right_slot_nodes.append(child)
+
+	right_slot_nodes.sort_custom(self, "_sort_nodes_by_name")
+	for right_slot in right_slot_nodes:
+		_register_slot_node(right_slot)
 
 	# Respect the configured slot cap while keeping scene-authored fixed slots.
 	while slot_buttons.size() > max(1, slot_count):

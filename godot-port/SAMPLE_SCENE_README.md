@@ -15,7 +15,7 @@ This is a minimal test scene for validating the Godot port architecture targetin
 3. **Open the project** in Godot:
    - Launch Godot 3.5
    - Open the `godot-port/` directory as a project
-   - Press Play (the project is configured to open `scenes/Main.tscn`)
+   - Press Play (the project is configured to open `scenes/MainScreen.tscn`)
 
 ## Controls
 

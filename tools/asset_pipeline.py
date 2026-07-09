@@ -49,11 +49,11 @@ def main():
     parser.add_argument("--export-all", action="store_true", help="Run both minimal asset and minimal data exporters")
     parser.add_argument("--skip-missing-scripts", action="store_true", default=True, help="Skip preprocessing scripts if source files don't exist (default: True)")
     parser.add_argument("--dry-run", action="store_true", help="Print the preprocessing/export steps without executing them")
-    parser.add_argument("--scripts", nargs="*", help="Specific preprocessing script names to run (relative to asset-tooling). Example: sprites/convert.ps1")
+    parser.add_argument("--scripts", nargs="*", help="Specific preprocessing script names to run (relative to pokerogue/scripts/asset-tooling). Example: sprites/convert.ps1")
 
     args = parser.parse_args()
 
-    asset_tooling_root = repo_root / "asset-tooling"
+    tools_root = repo_root / "tools"
 
     if args.export_all:
         args.export = True
@@ -98,19 +98,19 @@ def main():
                 run_command([str(script_path)], cwd=script_cwd, dry_run=args.dry_run)
 
     if args.export:
-        exporter = asset_tooling_root / "export_minimal_assets.py"
+        exporter = tools_root / "export_minimal_assets.py"
         if not exporter.exists():
             raise SystemExit(f"Exporter not found: {exporter}")
         run_exporter(exporter, dry_run=args.dry_run)
 
     if args.export_data:
-        exporter = asset_tooling_root / "export_minimal_data.py"
+        exporter = tools_root / "export_minimal_data.py"
         if not exporter.exists():
             raise SystemExit(f"Exporter not found: {exporter}")
         run_exporter(exporter, dry_run=args.dry_run)
 
     if args.validate_data:
-        validator = asset_tooling_root / "validate_minimal_data.py"
+        validator = tools_root / "validate_minimal_data.py"
         if not validator.exists():
             raise SystemExit(f"Validator not found: {validator}")
         if args.refresh_fixtures:
@@ -120,7 +120,7 @@ def main():
             run_exporter(validator, dry_run=args.dry_run)
 
     if args.validate_regression:
-        regression_validator = asset_tooling_root / "validate_data_regression.py"
+        regression_validator = tools_root / "validate_data_regression.py"
         if not regression_validator.exists():
             raise SystemExit(f"Regression validator not found: {regression_validator}")
         if args.refresh_regression_fixtures:

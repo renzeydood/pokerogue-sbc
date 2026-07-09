@@ -38,11 +38,6 @@ _global_script_classes=[ {
 "class": "RuntimeState",
 "language": "GDScript",
 "path": "res://logic/RuntimeState.gd"
-}, {
-"base": "Control",
-"class": "UiScaledModalTemplate",
-"language": "GDScript",
-"path": "res://scenes/templates/UiScaledModalTemplate.gd"
 } ]
 _global_script_class_icons={
 "BattleCalc": "",
@@ -50,14 +45,13 @@ _global_script_class_icons={
 "EditorPreviewSync": "",
 "MoveData": "",
 "PartyModel": "",
-"RuntimeState": "",
-"UiScaledModalTemplate": ""
+"RuntimeState": ""
 }
 
 [application]
 
 config/name="PokeRogue Godot Port"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/MainScreen.tscn"
 config/version="0.1.0"
 
 [display]
