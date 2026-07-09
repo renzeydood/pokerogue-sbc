@@ -16,6 +16,11 @@ export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
+export(int) var biome_switch_every_levels := 3
+export(float) var arena_switch_blend_duration_sec := 0.22
+export(float) var biome_bgm_crossfade_duration_sec := 0.75
+export(float) var biome_bgm_volume_db := 0.0
+export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
 export(bool) var debug_open_party_menu_on_ready := false
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
@@ -61,7 +66,7 @@ const BALL_KEY_MASTERBALL := "masterball"
 const BALL_DEFAULT_COUNTS := {
 	BALL_KEY_POKEBALL: 5,
 	BALL_KEY_GREATBALL: 4,
-	BALL_KEY_MASTERBALL: 3,
+	BALL_KEY_MASTERBALL: 10,
 }
 const BALL_DEFS := {
 	BALL_KEY_POKEBALL: {
@@ -150,6 +155,7 @@ onready var attack_move_grid = attack_menu_container.get_node_or_null("HBoxConta
 onready var attack_move_details = attack_menu_container.get_node_or_null("HBoxContainer/AttackWindowSprite2/AttackMoveDetails") if attack_menu_container != null else null
 onready var ball_menu_container = ui_layer.get_node_or_null("BallMenuContainer") if ui_layer != null else null
 onready var ball_button_list = ball_menu_container.get_node_or_null("BallWindowSprite/BallContentMargin/BallButtonList") if ball_menu_container != null else null
+onready var arena_backdrop = get_node_or_null("ArenaBackdrop")
 
 onready var enemy_name_label = enemy_panel.get_node_or_null("EnemyNameLabel") if enemy_panel != null else null
 onready var enemy_level_label = enemy_panel.get_node_or_null("EnemyLevelLabel") if enemy_panel != null else null
@@ -158,6 +164,10 @@ onready var enemy_hp_value_label = enemy_panel.get_node_or_null("EnemyHpValueLab
 onready var enemy_type1_sprite = enemy_panel.get_node_or_null("EnemyType1Sprite") if enemy_panel != null else null
 onready var enemy_type2_sprite = enemy_panel.get_node_or_null("EnemyType2Sprite") if enemy_panel != null else null
 onready var enemy_layer = battlefield_layer.get_node_or_null("EnemyLayer") if battlefield_layer != null else null
+onready var enemy_arena_sprite = enemy_layer.get_node_or_null("EnemyArenaSprite") if enemy_layer != null else null
+onready var enemy_arena_sprite_1 = enemy_layer.get_node_or_null("EnemyArenaSprite1") if enemy_layer != null else null
+onready var enemy_arena_sprite_2 = enemy_layer.get_node_or_null("EnemyArenaSprite2") if enemy_layer != null else null
+onready var enemy_arena_sprite_3 = enemy_layer.get_node_or_null("EnemyArenaSprite3") if enemy_layer != null else null
 onready var enemy_pokemon_sprite = enemy_layer.get_node_or_null("EnemyPokemonSpriteBattle") if enemy_layer != null else null
 onready var effects_layer = battlefield_layer.get_node_or_null("EffectsLayer") if battlefield_layer != null else null
 onready var player_name_label = player_panel.get_node_or_null("PlayerNameLabel") if player_panel != null else null
@@ -167,9 +177,15 @@ onready var player_hp_value_label = player_panel.get_node_or_null("PlayerHpValue
 onready var player_type1_sprite = player_panel.get_node_or_null("PlayerType1Sprite") if player_panel != null else null
 onready var player_type2_sprite = player_panel.get_node_or_null("PlayerType2Sprite") if player_panel != null else null
 onready var player_layer = battlefield_layer.get_node_or_null("PlayerLayer") if battlefield_layer != null else null
+onready var player_arena_sprite = player_layer.get_node_or_null("PlayerArenaSprite") if player_layer != null else null
 onready var player_trainer_sprite = player_layer.get_node_or_null("PlayerTrainerSprite") if player_layer != null else null
 onready var player_pokemon_sprite = player_layer.get_node_or_null("PlayerPokemonSprite") if player_layer != null else null
 onready var battle_text_label = ui_layer.get_node_or_null("MessagePanel/MessageMargin/BattleTextLabel") if ui_layer != null else null
+onready var current_arena_label = _resolve_first_existing([
+	"UiScaleRoot/UILayer/CurrentArenaLabel",
+	"UILayer/CurrentArenaLabel",
+	"CurrentArenaLabel",
+])
 onready var move_button = controls_vbox.get_node_or_null("ControlsPanel1/FightButton") if controls_vbox != null else null
 onready var ball_button = controls_vbox.get_node_or_null("ControlsPanel1/BallButton") if controls_vbox != null else null
 onready var pokemon_button = controls_vbox.get_node_or_null("ControlsPanel2/PokemonButton") if controls_vbox != null else null
@@ -213,6 +229,13 @@ var type_ui_assets := {
 }
 
 var battle_data = null
+var last_applied_arena_asset_id := ""
+var arena_blend_tween: Tween = null
+var biome_bgm_primary_player: AudioStreamPlayer = null
+var biome_bgm_secondary_player: AudioStreamPlayer = null
+var biome_bgm_active_player: AudioStreamPlayer = null
+var biome_bgm_crossfade_tween: Tween = null
+var current_bgm_arena_asset_id := ""
 var hp_overlay_frames := {}
 var move_anim_textures := {}
 var move_anim_configs := {}
@@ -258,6 +281,8 @@ var player_pokeball_release_done := false
 var player_sendout_cry_played := false
 var player_sendout_cry_key := ""
 var player_cry_audio_player: AudioStreamPlayer = null
+var enemy_sendout_cry_key := ""
+var enemy_cry_audio_player: AudioStreamPlayer = null
 var pokeball_particles_texture = null
 var pokeball_particles_frames := []
 var pokeball_open_particle_sprite_frames: SpriteFrames = null
@@ -401,6 +426,334 @@ func bind_battle_data():
 	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
 	refresh_type_ui(enemy_data, "enemy", enemy_type1_sprite, enemy_type2_sprite)
 	refresh_type_ui(player_data, "player", player_type1_sprite, player_type2_sprite)
+	_apply_arena_visuals_from_biome_state()
+	_refresh_current_arena_label()
+
+func _refresh_current_arena_label() -> void:
+	if current_arena_label == null:
+		return
+	var biome_state = _get_battle_biome_state()
+	var arena_name = String(battle_data.get("arena_asset_id", biome_state.get("current_biome_id", "grass"))).strip_edges().to_lower()
+	if arena_name.empty():
+		arena_name = "grass"
+	var current_level = max(1, int(biome_state.get("encounter_index", 0)) + 1)
+	current_arena_label.text = "%s - %02d" % [arena_name, current_level]
+
+func _get_battle_biome_state() -> Dictionary:
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("biome_state") and typeof(battle_data["biome_state"]) == TYPE_DICTIONARY:
+		return battle_data["biome_state"]
+	return {
+		"current_biome_id": "grass",
+		"encounter_index": 0,
+	}
+
+func _format_biome_name(biome_id: String) -> String:
+	var raw = biome_id.strip_edges().replace("_", " ").replace("-", " ")
+	if raw.empty():
+		return "Unknown"
+	var words = raw.split(" ", false)
+	for i in range(words.size()):
+		var word = String(words[i]).strip_edges()
+		if word.empty():
+			continue
+		words[i] = word.substr(0, 1).to_upper() + word.substr(1)
+	return " ".join(words)
+
+func _normalize_arena_asset_id(raw_id: String) -> String:
+	return raw_id.strip_edges().to_lower().replace("_", "-").replace(" ", "-")
+
+func _build_arena_texture_path(arena_id: String, suffix: String) -> String:
+	return "%sassets/images/arenas/%s%s.png" % [minimal_assets_path, arena_id, suffix]
+
+func _build_bgm_path(track_id: String) -> String:
+	return "%sassets/audio/bgm/%s.mp3" % [minimal_assets_path, track_id]
+
+func _load_arena_texture(arena_id: String, suffix: String):
+	var path = _build_arena_texture_path(arena_id, suffix)
+	if not resource_exists(path):
+		return null
+	return load(path)
+
+func _has_any_arena_asset(arena_id: String) -> bool:
+	for suffix in ["_bg", "_a", "_b", "_b_1", "_b_2", "_b_3"]:
+		if resource_exists(_build_arena_texture_path(arena_id, suffix)):
+			return true
+	return false
+
+func _resolve_arena_asset_id(preferred_id: String) -> String:
+	var normalized_preferred = _normalize_arena_asset_id(preferred_id)
+	if normalized_preferred.empty():
+		normalized_preferred = "grass"
+	if _has_any_arena_asset(normalized_preferred):
+		return normalized_preferred
+	if normalized_preferred != "grass" and _has_any_arena_asset("grass"):
+		return "grass"
+	return normalized_preferred
+
+func _pick_next_test_arena_id(current_biome_id: String) -> String:
+	var rotation: Array = biome_test_arena_rotation
+	if rotation.empty():
+		return ""
+
+	var normalized_entries := []
+	for entry in rotation:
+		var normalized_entry = _normalize_arena_asset_id(String(entry))
+		if normalized_entry.empty():
+			continue
+		normalized_entries.append(normalized_entry)
+
+	if normalized_entries.empty():
+		return ""
+
+	var normalized_current = _normalize_arena_asset_id(current_biome_id)
+	var current_index = normalized_entries.find(normalized_current)
+	if current_index == -1:
+		return String(normalized_entries[0])
+	return String(normalized_entries[(current_index + 1) % normalized_entries.size()])
+
+func _set_arena_texture(target_node, texture) -> void:
+	if target_node == null:
+		return
+	if target_node is TextureRect:
+		target_node.texture = texture
+		target_node.visible = texture != null
+		return
+	if target_node is Sprite:
+		target_node.texture = texture
+		target_node.visible = texture != null
+
+func _ensure_biome_bgm_players() -> void:
+	if biome_bgm_primary_player == null:
+		biome_bgm_primary_player = get_node_or_null("AudioStreamPlayer")
+
+	if biome_bgm_primary_player == null:
+		return
+
+	if biome_bgm_secondary_player == null:
+		biome_bgm_secondary_player = AudioStreamPlayer.new()
+		biome_bgm_secondary_player.name = "AudioStreamPlayerBiomeCrossfade"
+		biome_bgm_secondary_player.bus = biome_bgm_primary_player.bus
+		add_child(biome_bgm_secondary_player)
+
+	if biome_bgm_active_player == null:
+		biome_bgm_active_player = biome_bgm_primary_player
+
+func _configure_bgm_stream_loop(stream) -> void:
+	if stream == null:
+		return
+	if stream is AudioStreamMP3:
+		stream.loop = true
+	elif stream is AudioStreamOGGVorbis:
+		stream.loop = true
+	elif stream is AudioStreamSample:
+		stream.loop_mode = AudioStreamSample.LOOP_FORWARD
+
+func _resolve_biome_bgm_stream(arena_asset_id: String) -> Dictionary:
+	var normalized_id = _normalize_arena_asset_id(arena_asset_id)
+	if normalized_id.empty():
+		normalized_id = "grass"
+
+	var candidates = [normalized_id, "grass", "title"]
+	var tried := {}
+	for candidate in candidates:
+		var track_id = String(candidate)
+		if tried.has(track_id):
+			continue
+		tried[track_id] = true
+		var path = _build_bgm_path(track_id)
+		if resource_exists(path):
+			return {"stream": load(path), "track_id": track_id}
+
+	return {"stream": null, "track_id": ""}
+
+func _get_inactive_bgm_player() -> AudioStreamPlayer:
+	if biome_bgm_primary_player == null:
+		return null
+	if biome_bgm_secondary_player == null:
+		return biome_bgm_primary_player
+	if biome_bgm_active_player == biome_bgm_primary_player:
+		return biome_bgm_secondary_player
+	return biome_bgm_primary_player
+
+func _stop_biome_bgm_crossfade_tween() -> void:
+	if biome_bgm_crossfade_tween != null and is_instance_valid(biome_bgm_crossfade_tween):
+		biome_bgm_crossfade_tween.stop_all()
+		biome_bgm_crossfade_tween.queue_free()
+	biome_bgm_crossfade_tween = null
+
+func _on_biome_bgm_crossfade_completed(outgoing_player: AudioStreamPlayer) -> void:
+	if outgoing_player != null and is_instance_valid(outgoing_player):
+		outgoing_player.stop()
+		outgoing_player.volume_db = biome_bgm_volume_db
+	_stop_biome_bgm_crossfade_tween()
+
+func _play_biome_bgm_for_arena(arena_asset_id: String, force_restart: bool = false) -> void:
+	_ensure_biome_bgm_players()
+	if biome_bgm_primary_player == null:
+		return
+
+	var stream_data = _resolve_biome_bgm_stream(arena_asset_id)
+	var bgm_stream = stream_data.get("stream", null)
+	var resolved_track_id = String(stream_data.get("track_id", ""))
+	if bgm_stream == null:
+		log_debug("Missing biome BGM for arena '%s'" % arena_asset_id)
+		return
+
+	if not force_restart and resolved_track_id == current_bgm_arena_asset_id:
+		if biome_bgm_active_player != null and not biome_bgm_active_player.playing:
+			biome_bgm_active_player.play()
+		biome_bgm_active_player.volume_db = biome_bgm_volume_db
+		return
+
+	_configure_bgm_stream_loop(bgm_stream)
+	var incoming_player = _get_inactive_bgm_player()
+	var outgoing_player = biome_bgm_active_player
+	if incoming_player == null:
+		incoming_player = biome_bgm_primary_player
+
+	incoming_player.stop()
+	incoming_player.stream = bgm_stream
+
+	var crossfade_duration = max(0.0, biome_bgm_crossfade_duration_sec)
+	if outgoing_player == null or force_restart:
+		_stop_biome_bgm_crossfade_tween()
+		incoming_player.volume_db = biome_bgm_volume_db
+		incoming_player.play()
+		biome_bgm_active_player = incoming_player
+		current_bgm_arena_asset_id = resolved_track_id
+		return
+
+	incoming_player.volume_db = -80.0
+	incoming_player.play()
+
+	if crossfade_duration <= 0.0:
+		_stop_biome_bgm_crossfade_tween()
+		outgoing_player.stop()
+		outgoing_player.volume_db = biome_bgm_volume_db
+		incoming_player.volume_db = biome_bgm_volume_db
+		biome_bgm_active_player = incoming_player
+		current_bgm_arena_asset_id = resolved_track_id
+		return
+
+	_stop_biome_bgm_crossfade_tween()
+	biome_bgm_crossfade_tween = Tween.new()
+	add_child(biome_bgm_crossfade_tween)
+	biome_bgm_crossfade_tween.interpolate_property(
+		incoming_player,
+		"volume_db",
+		-80.0,
+		biome_bgm_volume_db,
+		crossfade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	biome_bgm_crossfade_tween.interpolate_property(
+		outgoing_player,
+		"volume_db",
+		outgoing_player.volume_db,
+		-80.0,
+		crossfade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	_connect_once(
+		biome_bgm_crossfade_tween,
+		"tween_all_completed",
+		"_on_biome_bgm_crossfade_completed",
+		[outgoing_player]
+	)
+	biome_bgm_crossfade_tween.start()
+
+	biome_bgm_active_player = incoming_player
+	current_bgm_arena_asset_id = resolved_track_id
+
+func _get_arena_visual_nodes() -> Array:
+	return [
+		arena_backdrop,
+		player_arena_sprite,
+		enemy_arena_sprite,
+		enemy_arena_sprite_1,
+		enemy_arena_sprite_2,
+		enemy_arena_sprite_3,
+	]
+
+func _set_arena_visual_alpha(node, alpha: float) -> void:
+	if node == null:
+		return
+	var current = node.modulate
+	node.modulate = Color(current.r, current.g, current.b, clamp(alpha, 0.0, 1.0))
+
+func _stop_arena_blend_tween() -> void:
+	if arena_blend_tween != null and is_instance_valid(arena_blend_tween):
+		arena_blend_tween.stop_all()
+		arena_blend_tween.queue_free()
+	arena_blend_tween = null
+
+func _set_all_arena_visual_alpha(alpha: float) -> void:
+	for node in _get_arena_visual_nodes():
+		if node == null or not node.visible:
+			continue
+		_set_arena_visual_alpha(node, alpha)
+
+func _on_arena_blend_tween_completed() -> void:
+	_stop_arena_blend_tween()
+
+func _start_arena_visual_fade_in() -> void:
+	_stop_arena_blend_tween()
+	var duration = max(0.01, arena_switch_blend_duration_sec)
+	var has_targets := false
+	arena_blend_tween = Tween.new()
+	add_child(arena_blend_tween)
+	for node in _get_arena_visual_nodes():
+		if node == null or not node.visible:
+			continue
+		has_targets = true
+		_set_arena_visual_alpha(node, 0.0)
+		arena_blend_tween.interpolate_property(
+			node,
+			"modulate:a",
+			0.0,
+			1.0,
+			duration,
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+
+	if not has_targets:
+		_stop_arena_blend_tween()
+		return
+
+	_connect_once(arena_blend_tween, "tween_all_completed", "_on_arena_blend_tween_completed")
+	arena_blend_tween.start()
+
+func _apply_arena_visuals_from_biome_state() -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	var biome_state = _get_battle_biome_state()
+	var requested_arena_id = String(biome_state.get("current_biome_id", "grass"))
+	var resolved_arena_id = _resolve_arena_asset_id(requested_arena_id)
+	var should_blend = (
+		not last_applied_arena_asset_id.empty()
+		and last_applied_arena_asset_id != resolved_arena_id
+		and arena_switch_blend_duration_sec > 0.0
+	)
+	battle_data["arena_asset_id"] = resolved_arena_id
+
+	_set_arena_texture(arena_backdrop, _load_arena_texture(resolved_arena_id, "_bg"))
+	_set_arena_texture(player_arena_sprite, _load_arena_texture(resolved_arena_id, "_a"))
+	_set_arena_texture(enemy_arena_sprite, _load_arena_texture(resolved_arena_id, "_b"))
+	_set_arena_texture(enemy_arena_sprite_1, _load_arena_texture(resolved_arena_id, "_b_1"))
+	_set_arena_texture(enemy_arena_sprite_2, _load_arena_texture(resolved_arena_id, "_b_2"))
+	_set_arena_texture(enemy_arena_sprite_3, _load_arena_texture(resolved_arena_id, "_b_3"))
+	_play_biome_bgm_for_arena(resolved_arena_id)
+
+	if should_blend:
+		_start_arena_visual_fade_in()
+	else:
+		_stop_arena_blend_tween()
+		_set_all_arena_visual_alpha(1.0)
+
+	last_applied_arena_asset_id = resolved_arena_id
 
 func refresh_hp_ui(pokemon_data, hp_bar, hp_label):
 	var max_hp = pokemon_data.get_base_stat("hp")
@@ -523,11 +876,13 @@ func update_hp_bar_sprite(hp_bar, hp_ratio: float):
 	hp_bar.region_rect = Rect2(frame_rect.position.x, frame_rect.position.y, visible_width, frame_rect.size.y)
 
 func load_audio_assets():
-	var bgm_path = minimal_assets_path + "assets/audio/bgm/title.mp3"
-	if resource_exists(bgm_path):
-		$AudioStreamPlayer.stream = load(bgm_path)
+	_ensure_biome_bgm_players()
+	if biome_bgm_primary_player == null:
+		log_debug("Missing BGM player node: AudioStreamPlayer")
 	else:
-		log_debug("Missing BGM resource: %s" % bgm_path)
+		biome_bgm_primary_player.volume_db = biome_bgm_volume_db
+	if biome_bgm_secondary_player != null:
+		biome_bgm_secondary_player.volume_db = -80.0
 
 	var select_path = minimal_assets_path + "assets/audio/ui/select.wav"
 	if resource_exists(select_path):
@@ -1252,7 +1607,9 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 		if active_turn_token != -1 and active_turn_token != turn_token:
 			return null
 
+	var next_biome_state = _advance_runtime_biome_state("capture_resolved")
 	battle_data["enemy"] = next_enemy
+	_apply_biome_state_to_battle_data(next_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
 	load_battle_sprites()
 	bind_battle_data()
@@ -1268,6 +1625,7 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 			return null
 
 	set_battle_text("A wild %s appeared!" % String(next_enemy.species_id))
+	_play_enemy_sendout_cry_once()
 	return null
 
 func _try_add_captured_enemy_to_party(enemy) -> Dictionary:
@@ -1422,8 +1780,10 @@ func reset_battle_state(message: String):
 		active_player_species_id = "BLASTOISE"
 	selected_player_species_id = active_player_species_id
 
+	var initial_biome_state = _ensure_runtime_biome_state()
 	var next_enemy_species_id = pick_random_enemy_species_id("")
 	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member)
+	_apply_biome_state_to_battle_data(initial_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position
 	load_battle_sprites()
 	battle_ended = false
@@ -1442,6 +1802,7 @@ func reset_battle_state(message: String):
 	start_player_trainer_summon_choreography()
 	ensure_button_focus()
 	set_battle_text(message)
+	_play_enemy_sendout_cry_once()
 
 func set_sendout_controls_locked(locked: bool) -> void:
 	sendout_controls_locked = locked
@@ -1476,6 +1837,39 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 		return catalog_loader.build_battle_seed(player_species_id, enemy_species_id)
 
 	return pokemon_data_script.create_battle_02_test_data(player_species_id)
+
+func _ensure_runtime_biome_state() -> Dictionary:
+	if runtime_state_script == null:
+		return {
+			"current_biome_id": "grass",
+			"previous_biome_id": "",
+			"transition_trigger": "battle_start",
+			"encounter_index": 0,
+			"seed": 0,
+			"source": "baseline_rotation",
+		}
+	return runtime_state_script.ensure_biome_state(get_tree())
+
+func _advance_runtime_biome_state(transition_trigger: String) -> Dictionary:
+	if runtime_state_script == null:
+		var fallback_biome_state = _ensure_runtime_biome_state()
+		fallback_biome_state["transition_trigger"] = transition_trigger.strip_edges().to_lower().replace(" ", "_")
+		fallback_biome_state["encounter_index"] = int(fallback_biome_state.get("encounter_index", 0)) + 1
+		return fallback_biome_state
+	var current_state = runtime_state_script.get_biome_state(get_tree())
+	var current_biome_id = String(current_state.get("current_biome_id", "grass"))
+	var next_test_arena_id = _pick_next_test_arena_id(current_biome_id)
+	return runtime_state_script.advance_biome_for_level(
+		get_tree(),
+		transition_trigger,
+		biome_switch_every_levels,
+		next_test_arena_id
+	)
+
+func _apply_biome_state_to_battle_data(biome_state: Dictionary) -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	battle_data["biome_state"] = biome_state.duplicate(true)
 
 func get_enemy_species_pool() -> Array:
 	if not enemy_species_pool.empty():
@@ -1546,7 +1940,9 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		end_battle(true, fainted_species_id)
 		return
 
+	var next_biome_state = _advance_runtime_biome_state("enemy_defeated")
 	battle_data["enemy"] = next_enemy
+	_apply_biome_state_to_battle_data(next_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
 	load_battle_sprites()
 	bind_battle_data()
@@ -1562,6 +1958,7 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 			return
 	show_main_controls()
 	set_battle_text("%s fainted! %s appeared!" % [fainted_species_id, next_enemy.species_id])
+	_play_enemy_sendout_cry_once()
 
 func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
 	if enemy_layer == null:
@@ -2680,13 +3077,16 @@ func load_battle_sprites():
 
 	enemy_sprite_frames = load_sprite_for_node(enemy_pokemon_sprite, String(enemy_paths["texture_rel"]), String(enemy_paths["atlas_rel"]))
 	player_sprite_frames = load_sprite_for_node(player_pokemon_sprite, String(player_paths["texture_rel"]), String(player_paths["atlas_rel"]))
-	player_sendout_cry_key = _resolve_player_sendout_cry_key(player_species_id, player_paths)
+	player_sendout_cry_key = _resolve_species_sendout_cry_key(player_species_id, player_paths)
+	enemy_sendout_cry_key = _resolve_species_sendout_cry_key(enemy_species_id, enemy_paths)
 	if player_sendout_cry_key.empty():
 		log_debug("Player sendout cry key unresolved for species %s" % player_species_id)
+	if enemy_sendout_cry_key.empty():
+		log_debug("Enemy sendout cry key unresolved for species %s" % enemy_species_id)
 	load_player_trainer_sprite()
 
-func _resolve_player_sendout_cry_key(player_species_id: String, player_paths: Dictionary) -> String:
-	var normalized_species_id = player_species_id.strip_edges().to_upper()
+func _resolve_species_sendout_cry_key(species_id: String, species_paths: Dictionary) -> String:
+	var normalized_species_id = species_id.strip_edges().to_upper()
 	if not normalized_species_id.empty():
 		if catalog_loader == null:
 			catalog_loader = catalog_loader_script.new()
@@ -2695,9 +3095,9 @@ func _resolve_player_sendout_cry_key(player_species_id: String, player_paths: Di
 			if dex_number > 0:
 				return str(dex_number)
 
-	var sprite_key = String(player_paths.get("sprite_key", "")).strip_edges().to_lower()
+	var sprite_key = String(species_paths.get("sprite_key", "")).strip_edges().to_lower()
 	if sprite_key.empty():
-		var texture_rel = String(player_paths.get("texture_rel", "")).strip_edges().to_lower()
+		var texture_rel = String(species_paths.get("texture_rel", "")).strip_edges().to_lower()
 		if not texture_rel.empty():
 			sprite_key = texture_rel.get_file().get_basename()
 
@@ -3013,6 +3413,50 @@ func _play_player_sendout_cry_once() -> void:
 	log_debug("Played player cry: %s" % cry_path)
 	print("[Battle] Played player cry: %s" % cry_path)
 	player_sendout_cry_played = true
+
+func _play_enemy_sendout_cry_once() -> void:
+	if enemy_sendout_cry_key.empty():
+		log_debug("Skipping enemy cry: no resolved cry key")
+		print("[Battle] Skipping enemy cry: no resolved cry key")
+		return
+
+	var cry_candidates = [
+		minimal_assets_path + "assets/audio/cry/%s.ogg" % enemy_sendout_cry_key,
+		minimal_assets_path + "assets/audio/cry/%s.wav" % enemy_sendout_cry_key,
+	]
+
+	var cry_path = ""
+	for candidate in cry_candidates:
+		if resource_exists(candidate):
+			cry_path = candidate
+			break
+
+	if cry_path.empty():
+		log_debug("Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
+		print("[Battle] Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
+		return
+
+	var cry_stream = load(cry_path)
+	if cry_stream == null:
+		log_debug("Skipping enemy cry: failed to load stream %s" % cry_path)
+		print("[Battle] Skipping enemy cry: failed to load stream %s" % cry_path)
+		return
+
+	# Some imported streams may carry loop metadata. Force one-shot behavior.
+	if cry_stream is AudioStreamOGGVorbis:
+		cry_stream.loop = false
+	elif cry_stream is AudioStreamSample:
+		cry_stream.loop_mode = AudioStreamSample.LOOP_DISABLED
+
+	if enemy_cry_audio_player == null:
+		enemy_cry_audio_player = AudioStreamPlayer.new()
+		enemy_cry_audio_player.name = "EnemyCryAudioPlayer"
+		add_child(enemy_cry_audio_player)
+
+	enemy_cry_audio_player.stream = cry_stream
+	enemy_cry_audio_player.play()
+	log_debug("Played enemy cry: %s" % cry_path)
+	print("[Battle] Played enemy cry: %s" % cry_path)
 
 func _ensure_player_pokeball_sprite() -> bool:
 	if player_pokeball_sprite != null:

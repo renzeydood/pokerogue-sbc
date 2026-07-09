@@ -1,6 +1,7 @@
 {
   "pokemon": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
   "attacks": [4],
+  "arenas": ["abyss", "grass", "metropolis"],
   "general_assets": [
     "assets/images/pokemon_icons_0.png",
     "assets/images/pokemon_icons_0.json",
@@ -19,12 +20,6 @@
     "assets/images/trainer/player_f.png",
     "assets/images/trainer/player_m.png",
     "assets/images/trainer/player_m.json",
-    "assets/images/arenas/abyss_a.png",
-    "assets/images/arenas/abyss_b_1.png",
-    "assets/images/arenas/abyss_b_2.png",
-    "assets/images/arenas/abyss_b_3.png",
-    "assets/images/arenas/abyss_b.png",
-    "assets/images/arenas/abyss_bg.png",
     "assets/images/inputs/keyboard.png",
     "assets/images/ui/windows/window_1.png",
     "assets/images/ui/windows/window_5.png",
