@@ -410,6 +410,7 @@ func setup_party_menu_overlay():
 	party_menu_overlay.visible = false
 	party_menu_visible = false
 	_connect_once(party_menu_overlay, "close_requested", "_on_PartyMenu_close_requested")
+	_connect_once(party_menu_overlay, "switch_slot_requested", "_on_PartyMenu_switch_slot_requested")
 	add_child(party_menu_overlay)
 	party_menu_overlay.raise()
 
@@ -932,6 +933,9 @@ func _input(event):
 		return
 
 	if event.is_action_pressed("ui_back"):
+		if party_menu_overlay != null and party_menu_overlay.handle_back_action():
+			accept_event()
+			return
 		close_party_menu()
 		accept_event()
 		return
@@ -2329,6 +2333,78 @@ func sync_active_party_member_from_battle() -> void:
 		"move_ids": move_ids,
 	})
 
+func _build_player_data_from_party_member(member: Dictionary):
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if species_id.empty():
+		return null
+
+	var level = max(1, int(member.get("level", 5)))
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) != TYPE_ARRAY:
+		move_ids = []
+
+	var player_data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
+	if player_data == null:
+		return null
+
+	var saved_hp = int(member.get("current_hp", -1))
+	if saved_hp >= 0:
+		var max_hp = max(1, int(player_data.get_base_stat("hp")))
+		player_data.current_hp = int(clamp(saved_hp, 0, max_hp))
+
+	return player_data
+
+func _run_enemy_action_after_player_switch(player_data, active_turn_token: int):
+	if battle_data == null or not battle_data.has("enemy"):
+		return null
+
+	var enemy = battle_data["enemy"]
+	if enemy == null or enemy.moves.empty():
+		return null
+
+	var enemy_move = enemy.moves[0]
+	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
+	if enemy_move_anim is GDScriptFunctionState:
+		yield(enemy_move_anim, "completed")
+		if active_turn_token != turn_token:
+			return null
+
+	var enemy_damage = int(battle_calc_script.calc_damage(enemy, enemy_move, player_data))
+	player_data.current_hp = max(0, player_data.current_hp - enemy_damage)
+	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, player_data)
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
+
+	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
+	if enemy_hit_feedback is GDScriptFunctionState:
+		yield(enemy_hit_feedback, "completed")
+		if active_turn_token != turn_token:
+			return null
+
+	var enemy_message = "%s used %s! %d damage." % [enemy.species_id, enemy_move.move_id, enemy_damage]
+	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
+	set_battle_text(enemy_message)
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return null
+
+	if player_data.is_fainted():
+		var player_faint_anim = play_faint_animation(player_pokemon_sprite, true, active_turn_token)
+		if player_faint_anim is GDScriptFunctionState:
+			yield(player_faint_anim, "completed")
+			if active_turn_token != turn_token:
+				return null
+		end_battle(false, player_data.species_id)
+
+	return null
+
 func close_party_menu():
 	if not party_menu_visible:
 		return
@@ -2345,6 +2421,88 @@ func _close_party_menu_internal():
 
 func _on_PartyMenu_close_requested():
 	close_party_menu()
+
+func _on_PartyMenu_switch_slot_requested(slot_index: int) -> void:
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball to restart.")
+		return
+	if turn_in_progress or capture_in_progress:
+		return
+	if runtime_state_script == null:
+		set_battle_text("Switch unavailable: runtime missing.")
+		return
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		set_battle_text("Switch unavailable: party state missing.")
+		return
+
+	var members = party.get_members_copy()
+	if slot_index < 0 or slot_index >= members.size():
+		set_battle_text("Invalid switch target.")
+		return
+
+	var member = members[slot_index]
+	if typeof(member) != TYPE_DICTIONARY or member.empty():
+		set_battle_text("Invalid switch target.")
+		return
+
+	var active_index = party.get_active_slot_index()
+	if slot_index == active_index:
+		set_battle_text("That Pokemon is already active.")
+		return
+
+	var current_hp = int(member.get("current_hp", 0))
+	if current_hp <= 0:
+		set_battle_text("That Pokemon cannot battle.")
+		return
+
+	var species_label = String(member.get("species_id", "POKEMON")).strip_edges().to_upper()
+	if species_label.empty():
+		species_label = "POKEMON"
+
+	turn_in_progress = true
+	_enter_action_locked_state()
+	var active_turn_token = turn_token
+
+	sync_active_party_member_from_battle()
+	var incoming_player_data = _build_player_data_from_party_member(member)
+	if incoming_player_data == null:
+		set_battle_text("Switch failed: could not load %s." % species_label)
+		_finish_turn()
+		return
+
+	var set_active_result = party.set_active_slot(slot_index)
+	if not bool(set_active_result.get("ok", false)):
+		set_battle_text("Switch failed: invalid party slot.")
+		_finish_turn()
+		return
+
+	battle_data["player"] = incoming_player_data
+	_close_party_menu_internal()
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+	set_battle_text("Go! %s!" % species_label)
+
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return
+
+	var enemy_action = _run_enemy_action_after_player_switch(incoming_player_data, active_turn_token)
+	if enemy_action is GDScriptFunctionState:
+		yield(enemy_action, "completed")
+		if active_turn_token != turn_token:
+			return
+
+	if not battle_ended:
+		set_main_command_prompt()
+	_finish_turn()
 
 func set_main_command_prompt():
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
