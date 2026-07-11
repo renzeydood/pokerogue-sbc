@@ -2,6 +2,7 @@ extends Reference
 class_name RuntimeState
 
 const PARTY_META_KEY := "runtime_party_v1"
+const ROSTER_META_KEY := "runtime_roster_v1"
 const BIOME_META_KEY := "runtime_biome_v1"
 const LEGACY_SELECTED_SPECIES_META_KEY := "selected_species_id"
 const PartyModel = preload("res://data/PartyModel.gd")
@@ -43,6 +44,66 @@ static func clear_party(tree) -> void:
 		return
 	if tree.has_meta(PARTY_META_KEY):
 		tree.remove_meta(PARTY_META_KEY)
+
+static func get_roster(tree) -> Dictionary:
+	if tree == null:
+		return _normalize_roster({})
+
+	if tree.has_meta(ROSTER_META_KEY):
+		var stored_roster = tree.get_meta(ROSTER_META_KEY)
+		if typeof(stored_roster) == TYPE_DICTIONARY:
+			var normalized_roster = _normalize_roster(stored_roster)
+			tree.set_meta(ROSTER_META_KEY, normalized_roster)
+			return normalized_roster.duplicate(true)
+		if typeof(stored_roster) == TYPE_ARRAY:
+			var legacy_roster = _normalize_roster({"caught_species_ids": stored_roster})
+			tree.set_meta(ROSTER_META_KEY, legacy_roster)
+			return legacy_roster.duplicate(true)
+
+	var roster = _normalize_roster({})
+	tree.set_meta(ROSTER_META_KEY, roster)
+	return roster.duplicate(true)
+
+static func set_roster(tree, roster: Dictionary) -> void:
+	if tree == null:
+		return
+	tree.set_meta(ROSTER_META_KEY, _normalize_roster(roster))
+
+static func clear_roster(tree) -> void:
+	if tree == null:
+		return
+	if tree.has_meta(ROSTER_META_KEY):
+		tree.remove_meta(ROSTER_META_KEY)
+
+static func get_caught_species_ids(tree) -> Array:
+	return get_roster(tree).get("caught_species_ids", []).duplicate(true)
+
+static func has_caught_species(tree, species_id: String) -> bool:
+	var normalized_species_id = species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return false
+	return get_caught_species_ids(tree).has(normalized_species_id)
+
+static func add_caught_species(tree, species_id: String) -> Dictionary:
+	if tree == null:
+		return {"ok": false, "reason": "tree_missing", "added": false}
+
+	var normalized_species_id = species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return {"ok": false, "reason": "invalid_species_id", "added": false}
+
+	var roster = get_roster(tree)
+	var caught_species_ids = roster.get("caught_species_ids", [])
+	if typeof(caught_species_ids) != TYPE_ARRAY:
+		caught_species_ids = []
+
+	if caught_species_ids.has(normalized_species_id):
+		return {"ok": true, "reason": "already_present", "added": false}
+
+	caught_species_ids.append(normalized_species_id)
+	roster["caught_species_ids"] = caught_species_ids
+	set_roster(tree, roster)
+	return {"ok": true, "reason": "ok", "added": true}
 
 static func get_biome_state(tree) -> Dictionary:
 	if tree == null:
@@ -139,6 +200,8 @@ static func ensure_party_with_starter(tree, starter_species_id: String, level: i
 	if normalized_species_id.empty():
 		return get_party(tree)
 
+	add_caught_species(tree, normalized_species_id)
+
 	var starter_party = PartyModel.new()
 	starter_party.add_member({
 		"species_id": normalized_species_id,
@@ -150,6 +213,22 @@ static func ensure_party_with_starter(tree, starter_species_id: String, level: i
 	set_party(tree, starter_party)
 	tree.set_meta(LEGACY_SELECTED_SPECIES_META_KEY, normalized_species_id)
 	return starter_party
+
+static func _normalize_roster(payload: Dictionary) -> Dictionary:
+	var caught_species_payload = payload.get("caught_species_ids", [])
+	if typeof(caught_species_payload) != TYPE_ARRAY:
+		caught_species_payload = []
+
+	var caught_species_ids := []
+	for raw_species_id in caught_species_payload:
+		var normalized_species_id = String(raw_species_id).strip_edges().to_upper()
+		if normalized_species_id.empty() or caught_species_ids.has(normalized_species_id):
+			continue
+		caught_species_ids.append(normalized_species_id)
+
+	return {
+		"caught_species_ids": caught_species_ids,
+	}
 
 static func _normalize_biome_state(payload: Dictionary) -> Dictionary:
 	var current_biome_id = _normalize_biome_id(String(payload.get("current_biome_id", DEFAULT_BIOME_ID)))

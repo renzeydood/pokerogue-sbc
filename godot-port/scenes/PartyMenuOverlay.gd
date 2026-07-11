@@ -3,6 +3,7 @@ extends Control
 
 signal close_requested
 signal switch_slot_requested
+signal pokedex_entry_requested
 
 export(int) var slot_count := 6
 export(bool) var editor_preview_enabled := true
@@ -113,6 +114,8 @@ func _ready():
 		back_button.connect("focus_exited", self, "_on_back_button_focus_exited")
 	if action_switch_in_button != null and not action_switch_in_button.is_connected("pressed", self, "_on_action_switch_in_button_pressed"):
 		action_switch_in_button.connect("pressed", self, "_on_action_switch_in_button_pressed")
+	if action_pokedex_button != null and not action_pokedex_button.is_connected("pressed", self, "_on_action_pokedex_button_pressed"):
+		action_pokedex_button.connect("pressed", self, "_on_action_pokedex_button_pressed")
 	if action_cancel_button != null and not action_cancel_button.is_connected("pressed", self, "_on_action_cancel_button_pressed"):
 		action_cancel_button.connect("pressed", self, "_on_action_cancel_button_pressed")
 
@@ -347,7 +350,7 @@ func _setup_action_menu_controls() -> void:
 		action_summary_button.disabled = true
 	if action_pokedex_button != null:
 		action_pokedex_button.text = "Pokedex"
-		action_pokedex_button.disabled = true
+		action_pokedex_button.disabled = false
 	if action_rename_button != null:
 		action_rename_button.text = "Rename"
 		action_rename_button.visible = false
@@ -904,6 +907,15 @@ func _on_action_switch_in_button_pressed() -> void:
 func _on_action_cancel_button_pressed() -> void:
 	_close_action_menu()
 	_focus_slot_button(selected_slot_index)
+
+func _on_action_pokedex_button_pressed() -> void:
+	var species_id := ""
+	if action_menu_slot_index >= 0 and action_menu_slot_index < party_members.size():
+		var member = party_members[action_menu_slot_index]
+		if typeof(member) == TYPE_DICTIONARY:
+			species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	emit_signal("pokedex_entry_requested", species_id)
+	_close_action_menu()
 
 func _update_cancel_sprite(is_selected: bool) -> void:
 	if cancel_sprite == null:
