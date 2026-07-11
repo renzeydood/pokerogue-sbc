@@ -5,6 +5,15 @@ const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v
 const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
+const DEFAULT_UNLOCKED_SPECIES_ID := "BULBASAUR"
+const TEMPORARY_SEED_SPECIES_IDS := [
+	"BULBASAUR",
+	"IVYSAUR",
+	"VENUSAUR",
+	"CHARMANDER",
+	"CHARMELEON",
+	"CHARIZARD",
+]
 const EditorPreviewSync = preload("res://logic/EditorPreviewSync.gd")
 const EDITOR_PREVIEW_LIST_SPECIES := [
 	"BULBASAUR",
@@ -25,6 +34,7 @@ export(int) var editor_preview_pokedex_number := 1
 export(String) var editor_preview_species_name := "BULBASAUR"
 export(String) var editor_preview_type1 := "grass"
 export(String) var editor_preview_type2 := "poison"
+export(bool) var use_temporary_seed_species := false
 
 var ui_scale_root = null
 var starter_list = null
@@ -221,6 +231,7 @@ func configure_type_sprite(type_sprite):
 
 func _load_species_catalog():
 	species_entries.clear()
+	selected_species_entry = null
 	_clear_starter_buttons()
 
 	var file := File.new()
@@ -252,8 +263,61 @@ func _load_species_catalog():
 			species_entries.append(item)
 
 	species_entries.sort_custom(self, "_sort_species_by_pokedex")
+	species_entries = _filter_species_entries_by_roster(species_entries)
 	for species_entry in species_entries:
 		_add_species_button(species_entry)
+
+func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
+	if all_species_entries.empty():
+		return []
+
+	var unlocked_species_ids = [DEFAULT_UNLOCKED_SPECIES_ID]
+	if runtime_state_script != null:
+		var roster_species_ids = runtime_state_script.get_caught_species_ids(get_tree())
+		if typeof(roster_species_ids) == TYPE_ARRAY and not roster_species_ids.empty():
+			unlocked_species_ids = roster_species_ids.duplicate(true)
+	if use_temporary_seed_species:
+		unlocked_species_ids = _merge_temporary_seed_species_ids(unlocked_species_ids)
+
+	var filtered_entries := []
+	for species_entry in all_species_entries:
+		if typeof(species_entry) != TYPE_DICTIONARY:
+			continue
+		var species_id = String(species_entry.get("species_id", "")).strip_edges().to_upper()
+		if species_id.empty() or not unlocked_species_ids.has(species_id):
+			continue
+		filtered_entries.append(species_entry)
+
+	if not filtered_entries.empty():
+		return filtered_entries
+
+	for species_entry in all_species_entries:
+		if String(species_entry.get("species_id", "")).strip_edges().to_upper() == DEFAULT_UNLOCKED_SPECIES_ID:
+			return [species_entry]
+
+	return [all_species_entries[0]]
+
+func _get_temporary_seed_species_ids() -> Array:
+	var seeded_species := []
+	for raw_species_id in TEMPORARY_SEED_SPECIES_IDS:
+		var species_id = String(raw_species_id).strip_edges().to_upper()
+		if species_id.empty() or seeded_species.has(species_id):
+			continue
+		seeded_species.append(species_id)
+	return seeded_species
+
+func _merge_temporary_seed_species_ids(unlocked_species_ids: Array) -> Array:
+	var merged_species := []
+	for species_id in _get_temporary_seed_species_ids():
+		if merged_species.has(species_id):
+			continue
+		merged_species.append(species_id)
+	for raw_species_id in unlocked_species_ids:
+		var species_id = String(raw_species_id).strip_edges().to_upper()
+		if species_id.empty() or merged_species.has(species_id):
+			continue
+		merged_species.append(species_id)
+	return merged_species
 
 func _add_species_button(species_entry):
 	var button = Button.new()

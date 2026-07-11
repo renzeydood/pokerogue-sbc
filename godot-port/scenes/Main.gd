@@ -1,6 +1,6 @@
 extends Control
 
-var entry_scene_path := "res://scenes/PokemonSelectScreen.tscn"
+var entry_scene_path := "res://scenes/BattleScreen.tscn"
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 const PartyModel = preload("res://data/PartyModel.gd")
 
@@ -32,6 +32,7 @@ func _seed_debug_full_party(tree) -> void:
 
 	var party = PartyModel.new()
 	for species_id in debug_seed_species_ids:
+		runtime_state_script.add_caught_species(tree, String(species_id).strip_edges().to_upper())
 		party.add_member({
 			"species_id": String(species_id).strip_edges().to_upper(),
 			"level": max(1, debug_seed_party_level),

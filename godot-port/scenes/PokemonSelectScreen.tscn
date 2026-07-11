@@ -1,13 +1,13 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://scenes/PokemonSelect.gd" type="Script" id=1]
-[ext_resource path="res://godot-minimal-assets/assets/images/ui/starter_select_bg.png" type="Texture" id=2]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/starter_container_bg.png" type="Texture" id=3]
 [ext_resource path="res://godot-minimal-assets/assets/images/types.png" type="Texture" id=4]
 [ext_resource path="res://themes/PokemonUiThemeFooter.tres" type="Theme" id=5]
 [ext_resource path="res://godot-minimal-assets/assets/images/pokemon/1.png" type="Texture" id=6]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/windows/window_1.png" type="Texture" id=7]
 
-[sub_resource type="Shader" id=1]
+[sub_resource type="Shader" id=3]
 code = "shader_type canvas_item;
 render_mode unshaded;
 
@@ -21,9 +21,13 @@ void fragment() {
 "
 
 [sub_resource type="ShaderMaterial" id=2]
-shader = SubResource( 1 )
+shader = SubResource( 3 )
 shader_param/crop_origin = Vector2( 0, 0 )
 shader_param/crop_size = Vector2( 0.75, 1 )
+
+[sub_resource type="StreamTexture" id=4]
+flags = 4
+load_path = "res://.import/starter_select_bg.png-7fccf4d824055af9586a5bb9ea349f13.stex"
 
 [node name="PokemonSelect" type="Control"]
 anchor_right = 1.0
@@ -39,7 +43,7 @@ anchor_bottom = 1.0
 material = SubResource( 2 )
 anchor_right = 1.0
 anchor_bottom = 1.0
-texture = ExtResource( 2 )
+texture = SubResource( 4 )
 expand = true
 stretch_mode = 1
 
@@ -53,8 +57,6 @@ rect_scale = Vector2( 2, 2 )
 [node name="MenuRoot" type="CenterContainer" parent="UiScaleRoot"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_right = 284.0
-margin_bottom = 212.0
 
 [node name="CurrentPokemonSprite" type="Sprite" parent="UiScaleRoot/MenuRoot"]
 position = Vector2( 72.5, 122.5 )
@@ -64,25 +66,62 @@ region_enabled = true
 region_rect = Rect2( 0, 109, 36, 34 )
 
 [node name="MenuCard" type="Control" parent="UiScaleRoot/MenuRoot"]
-margin_right = 604.0
-margin_bottom = 452.0
-rect_min_size = Vector2( 604, 452 )
+margin_right = 320.0
+margin_bottom = 240.0
+rect_min_size = Vector2( 320, 240 )
 
-[node name="TitleLabel" type="Label" parent="UiScaleRoot/MenuRoot/MenuCard"]
-margin_left = 135.0
+[node name="TitleWindow" type="NinePatchRect" parent="UiScaleRoot/MenuRoot/MenuCard"]
+anchor_right = 1.0
+margin_left = 143.0
+margin_top = 0.5
+margin_bottom = 22.5
+texture = ExtResource( 7 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="TitleLabel" type="Label" parent="UiScaleRoot/MenuRoot/MenuCard/TitleWindow"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
 margin_top = 3.5
-margin_right = 295.0
-margin_bottom = 17.5
-text = "Choose Your Starter"
+margin_right = -8.0
+margin_bottom = -4.5
+text = "Pokemon Selection Screen"
 align = 1
+
+[node name="TitleWindow2" type="NinePatchRect" parent="UiScaleRoot/MenuRoot/MenuCard"]
+anchor_right = 1.0
+margin_left = 275.0
+margin_top = 23.5
+margin_right = -1.0
+margin_bottom = 45.5
+texture = ExtResource( 7 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="TitleWindow3" type="NinePatchRect" parent="UiScaleRoot/MenuRoot/MenuCard"]
+anchor_right = 1.0
+margin_left = 275.0
+margin_top = 47.0
+margin_right = -1.0
+margin_bottom = 150.0
+texture = ExtResource( 7 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
 
 [node name="StarterScrollBackgroundSprite" type="NinePatchRect" parent="UiScaleRoot/MenuRoot/MenuCard"]
 anchor_right = 0.526
 anchor_bottom = 0.529
-margin_left = 147.0
-margin_top = 23.0
-margin_right = -56.704
-margin_bottom = -33.108
+margin_left = 144.0
+margin_top = 25.0
+margin_right = 105.68
+margin_bottom = 112.04
 texture = ExtResource( 3 )
 patch_margin_left = 8
 patch_margin_top = 8
@@ -133,19 +172,18 @@ region_enabled = true
 region_rect = Rect2( 0, 196, 32, 14 )
 
 [node name="StatusLabel" type="Label" parent="UiScaleRoot/MenuRoot/MenuCard"]
-visible = false
 margin_left = 22.0
-margin_top = 208.0
+margin_top = 207.0
 margin_right = 159.0
-margin_bottom = 239.0
+margin_bottom = 238.0
 text = "Waiting for species catalog..."
 autowrap = true
 
 [node name="FooterRow" type="VBoxContainer" parent="UiScaleRoot/MenuRoot/MenuCard"]
-margin_left = 269.0
-margin_top = 113.0
-margin_right = 325.0
-margin_bottom = 189.0
+margin_left = 276.0
+margin_top = 152.0
+margin_right = 332.0
+margin_bottom = 228.0
 rect_scale = Vector2( 0.75, 0.75 )
 custom_constants/separation = 8
 

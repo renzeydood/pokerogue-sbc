@@ -51,6 +51,7 @@ const SELECTED_SPECIES_META_KEY := "selected_species_id"
 const SELECTION_SCENE_PATH := "res://scenes/PokemonSelectScreen.tscn"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
+const OWNED_ICON_TEXTURE_REL := "assets/images/ui/icon_owned.png"
 const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
 const ATTACK_CATEGORY_ATLAS_REL := "assets/images/categories.json"
 const PLAYER_TRAINER_BACK_TEXTURE_REL := "assets/images/trainer/trainer_m_back.png"
@@ -123,6 +124,7 @@ var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
+var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
 func _resolve_first_existing(paths: Array):
 	for path in paths:
@@ -166,6 +168,7 @@ onready var enemy_hp_bar = enemy_panel.get_node_or_null("EnemyHpBar") if enemy_p
 onready var enemy_hp_value_label = enemy_panel.get_node_or_null("EnemyHpValueLabel") if enemy_panel != null else null
 onready var enemy_type1_sprite = enemy_panel.get_node_or_null("EnemyType1Sprite") if enemy_panel != null else null
 onready var enemy_type2_sprite = enemy_panel.get_node_or_null("EnemyType2Sprite") if enemy_panel != null else null
+onready var enemy_caught_badge_sprite = enemy_panel.get_node_or_null("EnemyCaughtBadgeSprite") if enemy_panel != null else null
 onready var enemy_layer = battlefield_layer.get_node_or_null("EnemyLayer") if battlefield_layer != null else null
 onready var enemy_arena_sprite = enemy_layer.get_node_or_null("EnemyArenaSprite") if enemy_layer != null else null
 onready var enemy_arena_sprite_1 = enemy_layer.get_node_or_null("EnemyArenaSprite1") if enemy_layer != null else null
@@ -298,6 +301,9 @@ var attack_menu_visible := false
 var ball_menu_visible := false
 var party_menu_visible := false
 var party_menu_overlay = null
+var pokedex_overlay = null
+var pokedex_overlay_visible := false
+var pokedex_return_to_party_menu := false
 var enemy_species_pool := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
@@ -326,6 +332,7 @@ func _ready():
 	setup_type_sprite_placeholders()
 	setup_attack_detail_sprites()
 	setup_party_menu_overlay()
+	setup_pokedex_overlay()
 	reset_battle_state("Battle ready.")
 	if ball_menu_container != null:
 		ball_menu_container.visible = false
@@ -419,8 +426,24 @@ func setup_party_menu_overlay():
 	party_menu_visible = false
 	_connect_once(party_menu_overlay, "close_requested", "_on_PartyMenu_close_requested")
 	_connect_once(party_menu_overlay, "switch_slot_requested", "_on_PartyMenu_switch_slot_requested")
+	_connect_once(party_menu_overlay, "pokedex_entry_requested", "_on_PartyMenu_pokedex_entry_requested")
 	add_child(party_menu_overlay)
 	party_menu_overlay.raise()
+
+func setup_pokedex_overlay() -> void:
+	if pokedex_overlay_scene == null:
+		return
+
+	pokedex_overlay = pokedex_overlay_scene.instance()
+	if pokedex_overlay == null:
+		return
+
+	pokedex_overlay.visible = false
+	pokedex_overlay_visible = false
+	pokedex_return_to_party_menu = false
+	_connect_once(pokedex_overlay, "close_requested", "_on_Pokedex_close_requested")
+	add_child(pokedex_overlay)
+	pokedex_overlay.raise()
 
 func _stop_party_menu_fade_tween() -> void:
 	if party_menu_fade_tween != null and is_instance_valid(party_menu_fade_tween):
@@ -450,6 +473,7 @@ func bind_battle_data():
 
 	enemy_name_label.text = enemy_data.species_id
 	enemy_level_label.text = "Lv. %d" % enemy_data.level
+	_refresh_enemy_caught_badge(String(enemy_data.species_id))
 	player_name_label.text = player_data.species_id
 	player_level_label.text = "Lv. %d" % player_data.level
 
@@ -459,6 +483,16 @@ func bind_battle_data():
 	refresh_type_ui(player_data, "player", player_type1_sprite, player_type2_sprite)
 	_apply_arena_visuals_from_biome_state()
 	_refresh_current_arena_label()
+
+func _refresh_enemy_caught_badge(species_id: String) -> void:
+	if enemy_caught_badge_sprite == null:
+		return
+	if enemy_caught_badge_sprite.texture == null:
+		enemy_caught_badge_sprite.texture = load(minimal_assets_path + OWNED_ICON_TEXTURE_REL)
+	var show_badge = false
+	if runtime_state_script != null:
+		show_badge = runtime_state_script.has_caught_species(get_tree(), species_id)
+	enemy_caught_badge_sprite.visible = show_badge
 
 func _refresh_current_arena_label() -> void:
 	if current_arena_label == null:
@@ -934,8 +968,41 @@ func _input(event):
 		return
 	if not event.pressed or event.echo:
 		return
+	if pokedex_overlay_visible:
+		if _is_back_input(event):
+			if pokedex_overlay != null and pokedex_overlay.handle_back_action():
+				accept_event()
+				return
+			close_pokedex_overlay()
+			accept_event()
+			return
+		if event.is_action_pressed("ui_up"):
+			if pokedex_overlay != null:
+				pokedex_overlay.move_focus("ui_up")
+			accept_event()
+			return
+		if event.is_action_pressed("ui_down"):
+			if pokedex_overlay != null:
+				pokedex_overlay.move_focus("ui_down")
+			accept_event()
+			return
+		if event.is_action_pressed("ui_left"):
+			if pokedex_overlay != null:
+				pokedex_overlay.move_focus("ui_left")
+			accept_event()
+			return
+		if event.is_action_pressed("ui_right"):
+			if pokedex_overlay != null:
+				pokedex_overlay.move_focus("ui_right")
+			accept_event()
+			return
+		if event.is_action_pressed("ui_accept"):
+			if pokedex_overlay != null:
+				pokedex_overlay.press_focused()
+			accept_event()
+			return
 	if ball_menu_visible:
-		if event.is_action_pressed("ui_back"):
+		if _is_back_input(event):
 			hide_ball_menu(true)
 			accept_event()
 			return
@@ -962,7 +1029,7 @@ func _input(event):
 	if not party_menu_visible:
 		return
 
-	if event.is_action_pressed("ui_back"):
+	if _is_back_input(event):
 		if party_menu_overlay != null and party_menu_overlay.handle_back_action():
 			accept_event()
 			return
@@ -998,6 +1065,8 @@ func _unhandled_input(event):
 
 	if party_menu_visible:
 		return
+	if pokedex_overlay_visible:
+		return
 	if ball_menu_visible:
 		return
 
@@ -1021,11 +1090,16 @@ func _unhandled_input(event):
 		press_focused_button()
 		accept_event()
 		return
-	if event.is_action_pressed("ui_back"):
+	if _is_back_input(event):
 		if attack_menu_visible:
 			close_attack_menu()
 			accept_event()
 		return
+
+func _is_back_input(event: InputEventKey) -> bool:
+	if event == null:
+		return false
+	return event.is_action_pressed("ui_back") or event.is_action_pressed("ui_cancel") or event.scancode == KEY_BACKSPACE or event.scancode == KEY_ESCAPE
 
 func _on_MoveButton_pressed():
 	if battle_ended:
@@ -1445,6 +1519,8 @@ func _play_capture_ball_drop_and_bounce(target_pos: Vector2, active_turn_token: 
 
 func _handle_capture_success(enemy, active_turn_token: int):
 	var enemy_species_id = String(enemy.species_id).strip_edges().to_upper()
+	if runtime_state_script != null:
+		runtime_state_script.add_caught_species(get_tree(), enemy_species_id)
 	set_battle_text("Gotcha! %s was caught!" % enemy_species_id)
 	var fade_anim = _fade_capture_ball_on_success(active_turn_token)
 	if fade_anim is GDScriptFunctionState:
@@ -1789,6 +1865,8 @@ func reset_battle_state(message: String):
 	var handoff_species_id = consume_selected_species_id()
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
+		if runtime_state_script != null:
+			runtime_state_script.add_caught_species(get_tree(), selected_player_species_id)
 
 	var active_party_member := {}
 	if runtime_state_script != null:
@@ -1811,6 +1889,11 @@ func reset_battle_state(message: String):
 			"current_hp": -1,
 			"move_ids": [],
 		}
+
+	if runtime_state_script != null and not active_party_member.empty():
+		var active_species_id = String(active_party_member.get("species_id", "")).strip_edges().to_upper()
+		if not active_species_id.empty():
+			runtime_state_script.add_caught_species(get_tree(), active_species_id)
 
 	var active_player_species_id = String(active_party_member.get("species_id", selected_player_species_id)).strip_edges().to_upper()
 	if active_player_species_id.empty():
@@ -2108,6 +2191,13 @@ func ensure_input_action_key(action_name: String, key_code: int):
 	InputMap.action_add_event(action_name, new_event)
 
 func ensure_button_focus():
+	if pokedex_overlay_visible and pokedex_overlay != null:
+		var pokedex_focus_owner = get_focus_owner()
+		if pokedex_overlay.is_overlay_focus_owner(pokedex_focus_owner):
+			return
+		pokedex_overlay.focus_default()
+		return
+
 	if party_menu_visible and party_menu_overlay != null:
 		var party_focus_owner = get_focus_owner()
 		if party_menu_overlay.is_overlay_focus_owner(party_focus_owner):
@@ -2138,6 +2228,9 @@ func ensure_button_focus():
 		move_button.grab_focus()
 
 func move_button_focus(action_name: String):
+	if pokedex_overlay_visible and pokedex_overlay != null:
+		pokedex_overlay.move_focus(action_name)
+		return
 	if party_menu_visible and party_menu_overlay != null:
 		party_menu_overlay.move_focus(action_name)
 		return
@@ -2238,6 +2331,9 @@ func move_ball_menu_focus(action_name: String, focus_owner):
 		return
 
 func press_focused_button():
+	if pokedex_overlay_visible and pokedex_overlay != null:
+		pokedex_overlay.press_focused()
+		return
 	if party_menu_visible and party_menu_overlay != null:
 		party_menu_overlay.press_focused()
 		return
@@ -2272,6 +2368,7 @@ func show_main_controls():
 
 func hide_all_command_menus():
 	_set_command_menu_visibility(false, false, false)
+	_close_pokedex_overlay_internal()
 	_close_party_menu_internal()
 
 func _set_command_menu_visibility(show_controls: bool, show_attack: bool, show_ball: bool) -> void:
@@ -2332,7 +2429,7 @@ func refresh_ball_menu_layout() -> void:
 	var container_height = window_min_height + 4.0
 	ball_menu_container.margin_top = ball_menu_container.margin_bottom - container_height
 
-func open_party_menu():
+func open_party_menu(skip_fade: bool = false):
 	if party_menu_overlay == null:
 		set_battle_text("Party menu scene is missing.")
 		return
@@ -2350,6 +2447,11 @@ func open_party_menu():
 	hide_all_command_menus()
 	_stop_party_menu_fade_tween()
 	party_menu_overlay.open_menu(members, active_index)
+	if skip_fade:
+		_set_party_menu_overlay_alpha(1.0)
+		party_menu_visible = true
+		set_battle_text("Party menu open.")
+		return
 	var fade_duration = max(0.0, party_menu_overlay_fade_duration_sec)
 	if fade_duration <= 0.0:
 		_set_party_menu_overlay_alpha(1.0)
@@ -2693,8 +2795,59 @@ func _close_party_menu_internal():
 	_connect_once(party_menu_fade_tween, "tween_all_completed", "_on_party_menu_fade_out_completed")
 	party_menu_fade_tween.start()
 
+func open_pokedex_overlay(species_id: String = "", return_to_party_menu: bool = false) -> void:
+	if pokedex_overlay == null:
+		set_battle_text("Pokedex entry scene is missing.")
+		return
+
+	hide_all_command_menus()
+	pokedex_return_to_party_menu = return_to_party_menu
+	var selected_species_id = species_id.strip_edges().to_upper()
+	if selected_species_id.empty() and typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") and battle_data["player"] != null:
+		selected_species_id = String(battle_data["player"].species_id).strip_edges().to_upper()
+
+	var is_caught = false
+	if runtime_state_script != null:
+		is_caught = runtime_state_script.has_caught_species(get_tree(), selected_species_id)
+
+	pokedex_overlay.open_menu(selected_species_id, is_caught)
+	pokedex_overlay_visible = true
+	set_battle_text("Pokedex entry open.")
+
+func _close_pokedex_overlay_internal() -> void:
+	pokedex_overlay_visible = false
+	pokedex_return_to_party_menu = false
+	if pokedex_overlay != null:
+		pokedex_overlay.close_menu()
+
+func close_pokedex_overlay() -> void:
+	if not pokedex_overlay_visible:
+		return
+
+	var should_return_to_party_menu = pokedex_return_to_party_menu
+	_close_pokedex_overlay_internal()
+
+	if should_return_to_party_menu and not battle_ended and not turn_in_progress and not capture_in_progress:
+		open_party_menu(true)
+		return
+
+	if not battle_ended and not turn_in_progress and not capture_in_progress:
+		_show_main_controls_unlocked()
+	ensure_button_focus()
+
 func _on_PartyMenu_close_requested():
 	close_party_menu()
+
+func _on_PartyMenu_pokedex_entry_requested(species_id: String) -> void:
+	if battle_ended:
+		set_battle_text("Battle has ended. Press Ball to restart.")
+		return
+	if turn_in_progress or capture_in_progress:
+		return
+	open_pokedex_overlay(species_id, true)
+
+func _on_Pokedex_close_requested() -> void:
+	close_pokedex_overlay()
 
 func _on_PartyMenu_switch_slot_requested(slot_index: int) -> void:
 	if battle_ended:

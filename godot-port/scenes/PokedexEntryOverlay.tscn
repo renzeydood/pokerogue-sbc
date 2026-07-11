@@ -1,0 +1,396 @@
+[gd_scene load_steps=12 format=2]
+
+[ext_resource path="res://scenes/PokedexEntryOverlay.gd" type="Script" id=1]
+[ext_resource path="res://godot-minimal-assets/assets/images/types.png" type="Texture" id=2]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/windows/window_1.png" type="Texture" id=3]
+[ext_resource path="res://godot-minimal-assets/assets/images/pokemon/1.png" type="Texture" id=4]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/pokedex_summary_bg.png" type="Texture" id=5]
+[ext_resource path="res://themes/PokemonUiThemeFooter.tres" type="Theme" id=6]
+[ext_resource path="res://godot-minimal-assets/assets/fonts/pokemon-emerald-pro.ttf" type="DynamicFontData" id=7]
+[ext_resource path="res://themes/PokemonUiThemeSlots.tres" type="Theme" id=8]
+
+[sub_resource type="Shader" id=1]
+code = "shader_type canvas_item;
+render_mode unshaded;
+
+uniform vec2 crop_origin = vec2(0.0, 0.0);
+uniform vec2 crop_size = vec2(1.0, 1.0);
+
+void fragment() {
+	vec2 crop_uv = crop_origin + (UV * crop_size);
+	COLOR = texture(TEXTURE, crop_uv);
+}
+"
+
+[sub_resource type="ShaderMaterial" id=2]
+shader = SubResource( 1 )
+shader_param/crop_origin = Vector2( 0, 0 )
+shader_param/crop_size = Vector2( 0.75, 1 )
+
+[sub_resource type="DynamicFont" id=3]
+font_data = ExtResource( 7 )
+
+[node name="PokedexEntryOverlay" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme = ExtResource( 6 )
+script = ExtResource( 1 )
+base_bar_height = 3.0
+use_sprite_trim_offset = true
+
+[node name="BackgroundClip" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Background" type="TextureRect" parent="BackgroundClip"]
+material = SubResource( 2 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+texture = ExtResource( 5 )
+expand = true
+stretch_mode = 1
+
+[node name="Panel" type="Control" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -317.0
+margin_top = -237.0
+margin_right = 317.0
+margin_bottom = 239.0
+
+[node name="UiScaleRoot" type="Control" parent="Panel"]
+margin_left = -2.0
+margin_top = -2.0
+margin_right = 318.0
+margin_bottom = 238.0
+rect_scale = Vector2( 2, 2 )
+
+[node name="CurrentPokemonSprite" type="Sprite" parent="Panel/UiScaleRoot"]
+position = Vector2( 72.5, 122.5 )
+texture = ExtResource( 4 )
+offset = Vector2( -0.5, -17 )
+region_enabled = true
+region_rect = Rect2( 0, 109, 36, 34 )
+
+[node name="DetailsType1Sprite" type="Sprite" parent="Panel/UiScaleRoot"]
+position = Vector2( 9.5, 132 )
+texture = ExtResource( 2 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 0, 140, 32, 14 )
+
+[node name="DetailsType2Sprite" type="Sprite" parent="Panel/UiScaleRoot"]
+position = Vector2( 44, 132 )
+texture = ExtResource( 2 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 0, 196, 32, 14 )
+
+[node name="SpeciesLabel" type="Label" parent="Panel/UiScaleRoot"]
+margin_left = 6.5
+margin_top = 152.0
+margin_right = 118.5
+margin_bottom = 170.0
+text = "BULBASAUR"
+autowrap = true
+
+[node name="StatusLabel" type="Label" parent="Panel/UiScaleRoot"]
+margin_left = 7.0
+margin_top = 174.0
+margin_right = 88.0
+margin_bottom = 185.0
+text = "Status: Not Caught"
+
+[node name="PokemonNumberLabel" type="Label" parent="Panel/UiScaleRoot"]
+margin_left = 8.5
+margin_top = 4.0
+margin_right = 35.5
+margin_bottom = 23.0
+text = "001"
+autowrap = true
+
+[node name="EntryWindow" type="NinePatchRect" parent="Panel/UiScaleRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 144.0
+margin_top = 1.0
+margin_right = -96.0
+margin_bottom = -1.0
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="ActionContentMargin" type="MarginContainer" parent="Panel/UiScaleRoot/EntryWindow"]
+margin_left = 5.0
+margin_top = 5.0
+margin_right = 69.0
+margin_bottom = 231.0
+
+[node name="ActionButtonList" type="VBoxContainer" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin"]
+margin_right = 71.0
+margin_bottom = 226.0
+custom_constants/separation = 2
+
+[node name="BaseStatsButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_right = 71.0
+margin_bottom = 20.0
+text = "Base Stats"
+flat = true
+align = 0
+
+[node name="AbilitiesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 22.0
+margin_right = 71.0
+margin_bottom = 42.0
+disabled = true
+text = "Abilities"
+flat = true
+align = 0
+
+[node name="LevelMovesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 44.0
+margin_right = 71.0
+margin_bottom = 64.0
+disabled = true
+text = "Level Moves"
+flat = true
+align = 0
+
+[node name="EggMovesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 66.0
+margin_right = 71.0
+margin_bottom = 86.0
+disabled = true
+text = "Egg Moves"
+flat = true
+align = 0
+
+[node name="TMMovesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 88.0
+margin_right = 71.0
+margin_bottom = 108.0
+disabled = true
+text = "TM Moves"
+flat = true
+align = 0
+
+[node name="BiomesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 110.0
+margin_right = 71.0
+margin_bottom = 130.0
+disabled = true
+text = "Biomes"
+flat = true
+align = 0
+
+[node name="NaturesButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 132.0
+margin_right = 71.0
+margin_bottom = 152.0
+disabled = true
+text = "Natures"
+flat = true
+align = 0
+
+[node name="RibbonsButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 154.0
+margin_right = 71.0
+margin_bottom = 174.0
+disabled = true
+text = "Ribbons"
+flat = true
+align = 0
+
+[node name="EvolutionsButton" type="Button" parent="Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 176.0
+margin_right = 71.0
+margin_bottom = 196.0
+disabled = true
+text = "Evolutions"
+flat = true
+align = 0
+
+[node name="BaseStatsWindow" type="NinePatchRect" parent="Panel/UiScaleRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 224.0
+margin_top = 1.0
+margin_right = -1.0
+margin_bottom = -137.0
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="ActionContentMargin" type="MarginContainer" parent="Panel/UiScaleRoot/BaseStatsWindow"]
+margin_left = 6.0
+margin_top = 5.0
+margin_right = 89.0
+margin_bottom = 99.0
+theme = ExtResource( 8 )
+
+[node name="ActionButtonList" type="VBoxContainer" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin"]
+margin_right = 83.0
+margin_bottom = 94.0
+custom_constants/separation = 2
+
+[node name="HPContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_right = 83.0
+margin_bottom = 11.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="HPBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/HPContainer"]
+margin_left = 60.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 22.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="HPLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/HPContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "HP: 45"
+
+[node name="AtkContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 13.0
+margin_right = 83.0
+margin_bottom = 24.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="AtkBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/AtkContainer"]
+margin_left = 58.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 24.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="AtkLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/AtkContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "ATK: 49"
+
+[node name="DefContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 26.0
+margin_right = 83.0
+margin_bottom = 37.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="DefBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/DefContainer"]
+margin_left = 58.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 24.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="DefLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/DefContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "DEF: 49"
+
+[node name="SpAtkContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 39.0
+margin_right = 83.0
+margin_bottom = 50.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="SpAtkBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpAtkContainer"]
+margin_left = 50.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 32.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="SpAtkLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpAtkContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "SPATK: 65"
+
+[node name="SpDefContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 52.0
+margin_right = 83.0
+margin_bottom = 63.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="SpDefBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpDefContainer"]
+margin_left = 50.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 32.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="SpDefLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpDefContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "SPDEF: 65"
+
+[node name="SpdContainer" type="Control" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 65.0
+margin_right = 83.0
+margin_bottom = 76.0
+rect_min_size = Vector2( 0, 11 )
+
+[node name="SpdBar" type="ColorRect" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpdContainer"]
+margin_left = 60.5
+margin_top = 4.0
+margin_right = 83.0
+margin_bottom = 7.0
+rect_min_size = Vector2( 22.5, 3 )
+color = Color( 0.4, 0.666667, 0.6, 1 )
+
+[node name="SpdLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/SpdContainer"]
+margin_right = 83.0
+margin_bottom = 11.0
+text = "SPD: 45"
+
+[node name="TotalLabel" type="Label" parent="Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList"]
+margin_top = 78.0
+margin_right = 83.0
+margin_bottom = 89.0
+custom_colors/font_color = Color( 0.862745, 0.956863, 0.427451, 1 )
+text = "Total: 318"
+
+[node name="Footer" type="Control" parent="Panel/UiScaleRoot"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = -28.0
+margin_right = -8.0
+
+[node name="MessageActionWindowSprite" type="NinePatchRect" parent="Panel/UiScaleRoot/Footer"]
+margin_left = -7.0
+margin_top = -10.0
+margin_right = 309.0
+margin_bottom = 28.0
+rect_min_size = Vector2( 220, 38 )
+theme = ExtResource( 6 )
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="MessageActionMargin" type="MarginContainer" parent="Panel/UiScaleRoot/Footer/MessageActionWindowSprite"]
+margin_left = 9.0
+margin_top = 7.0
+margin_right = 307.0
+margin_bottom = 32.0
+
+[node name="ActionTextLabel" type="Label" parent="Panel/UiScaleRoot/Footer/MessageActionWindowSprite/MessageActionMargin"]
+margin_top = 5.0
+margin_right = 298.0
+margin_bottom = 19.0
+custom_fonts/font = SubResource( 3 )
+text = "Show or hide base stats."
+autowrap = true

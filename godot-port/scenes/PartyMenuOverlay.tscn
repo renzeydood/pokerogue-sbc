@@ -596,10 +596,9 @@ flat = true
 align = 0
 
 [node name="PokedexButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
-margin_top = 22.0
+margin_top = 44.0
 margin_right = 69.0
-margin_bottom = 42.0
-disabled = true
+margin_bottom = 64.0
 text = "Pokedex"
 flat = true
 align = 0
@@ -615,9 +614,9 @@ flat = true
 align = 0
 
 [node name="CancelButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
-margin_top = 44.0
+margin_top = 66.0
 margin_right = 69.0
-margin_bottom = 64.0
+margin_bottom = 86.0
 text = "Cancel"
 flat = true
 align = 0
