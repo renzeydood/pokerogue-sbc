@@ -2,23 +2,20 @@ extends Control
 
 var entry_scene_path := "res://scenes/BattleScreen.tscn"
 var runtime_state_script = load("res://logic/RuntimeState.gd")
-const PartyModel = preload("res://data/PartyModel.gd")
 
 export(bool) var debug_seed_full_party_for_ui := false
 export(int) var debug_seed_party_level := 5
-
-var debug_seed_species_ids := [
-	"BULBASAUR",
-	"IVYSAUR",
-	"VENUSAUR",
-	"CHARMANDER",
-	"CHARMELEON",
-	"CHARIZARD",
-]
+export(bool) var use_debug_seed_profile := false
+export(String) var debug_seed_profile_id := "ui_party_showcase"
 
 func _ready():
 	if runtime_state_script != null:
-		if debug_seed_full_party_for_ui:
+		if use_debug_seed_profile:
+			var seed_result = runtime_state_script.apply_debug_seed_profile(get_tree(), debug_seed_profile_id, true, true)
+			if not bool(seed_result.get("ok", false)):
+				push_warning("Debug seed profile failed (%s). Falling back to starter seed." % String(seed_result.get("reason", "unknown")))
+				runtime_state_script.ensure_party_with_starter(get_tree(), "BULBASAUR", debug_seed_party_level)
+		elif debug_seed_full_party_for_ui:
 			_seed_debug_full_party(get_tree())
 		else:
 			runtime_state_script.ensure_party_with_starter(get_tree(), "BULBASAUR", debug_seed_party_level)
@@ -29,17 +26,7 @@ func _ready():
 func _seed_debug_full_party(tree) -> void:
 	if tree == null:
 		return
-
-	var party = PartyModel.new()
-	for species_id in debug_seed_species_ids:
-		runtime_state_script.add_caught_species(tree, String(species_id).strip_edges().to_upper())
-		party.add_member({
-			"species_id": String(species_id).strip_edges().to_upper(),
-			"level": max(1, debug_seed_party_level),
-			"current_hp": -1,
-			"move_ids": [],
-		})
-	if not party.members.empty():
-		party.set_active_slot(0)
-	runtime_state_script.set_party(tree, party)
-	tree.set_meta(runtime_state_script.LEGACY_SELECTED_SPECIES_META_KEY, "BULBASAUR")
+	var seed_result = runtime_state_script.apply_debug_seed_profile(tree, "ui_party_showcase", true, true)
+	if not bool(seed_result.get("ok", false)):
+		# Legacy fallback path for sessions where profile data is unavailable.
+		runtime_state_script.ensure_party_with_starter(tree, "BULBASAUR", debug_seed_party_level)

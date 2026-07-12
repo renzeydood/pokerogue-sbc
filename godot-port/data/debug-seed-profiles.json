@@ -1,0 +1,71 @@
+{
+  "profiles": [
+    {
+      "id": "ui_party_showcase",
+      "caught_species_ids": [
+        "BULBASAUR",
+        "IVYSAUR",
+        "VENUSAUR",
+        "CHARMANDER",
+        "CHARMELEON",
+        "CHARIZARD"
+      ],
+      "party_members": [
+        {
+          "species_id": "BULBASAUR",
+          "level": 5,
+          "current_hp": -1,
+          "move_ids": []
+        },
+        {
+          "species_id": "IVYSAUR",
+          "level": 8,
+          "current_hp": -1,
+          "move_ids": []
+        },
+        {
+          "species_id": "VENUSAUR",
+          "level": 12,
+          "current_hp": -1,
+          "move_ids": []
+        },
+        {
+          "species_id": "CHARMANDER",
+          "level": 5,
+          "current_hp": -1,
+          "move_ids": []
+        },
+        {
+          "species_id": "CHARMELEON",
+          "level": 8,
+          "current_hp": -1,
+          "move_ids": []
+        },
+        {
+          "species_id": "CHARIZARD",
+          "level": 12,
+          "current_hp": -1,
+          "move_ids": []
+        }
+      ],
+      "active_slot_index": 0,
+      "selected_species_id": "BULBASAUR"
+    },
+    {
+      "id": "starter_only",
+      "caught_species_ids": [
+        "BULBASAUR"
+      ],
+      "party_members": [
+        {
+          "species_id": "BULBASAUR",
+          "level": 5,
+          "current_hp": -1,
+          "move_ids": []
+        }
+      ],
+      "active_slot_index": 0,
+      "selected_species_id": "BULBASAUR"
+    }
+  ]
+}

@@ -6,14 +6,6 @@ const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
 const DEFAULT_UNLOCKED_SPECIES_ID := "BULBASAUR"
-const TEMPORARY_SEED_SPECIES_IDS := [
-	"BULBASAUR",
-	"IVYSAUR",
-	"VENUSAUR",
-	"CHARMANDER",
-	"CHARMELEON",
-	"CHARIZARD",
-]
 const EditorPreviewSync = preload("res://logic/EditorPreviewSync.gd")
 const EDITOR_PREVIEW_LIST_SPECIES := [
 	"BULBASAUR",
@@ -35,6 +27,7 @@ export(String) var editor_preview_species_name := "BULBASAUR"
 export(String) var editor_preview_type1 := "grass"
 export(String) var editor_preview_type2 := "poison"
 export(bool) var use_temporary_seed_species := false
+export(String) var temporary_seed_profile_id := "ui_party_showcase"
 
 var ui_scale_root = null
 var starter_list = null
@@ -277,7 +270,7 @@ func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
 		if typeof(roster_species_ids) == TYPE_ARRAY and not roster_species_ids.empty():
 			unlocked_species_ids = roster_species_ids.duplicate(true)
 	if use_temporary_seed_species:
-		unlocked_species_ids = _merge_temporary_seed_species_ids(unlocked_species_ids)
+		unlocked_species_ids = runtime_state_script.merge_species_ids_with_debug_seed_profile(unlocked_species_ids, temporary_seed_profile_id)
 
 	var filtered_entries := []
 	for species_entry in all_species_entries:
@@ -296,28 +289,6 @@ func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
 			return [species_entry]
 
 	return [all_species_entries[0]]
-
-func _get_temporary_seed_species_ids() -> Array:
-	var seeded_species := []
-	for raw_species_id in TEMPORARY_SEED_SPECIES_IDS:
-		var species_id = String(raw_species_id).strip_edges().to_upper()
-		if species_id.empty() or seeded_species.has(species_id):
-			continue
-		seeded_species.append(species_id)
-	return seeded_species
-
-func _merge_temporary_seed_species_ids(unlocked_species_ids: Array) -> Array:
-	var merged_species := []
-	for species_id in _get_temporary_seed_species_ids():
-		if merged_species.has(species_id):
-			continue
-		merged_species.append(species_id)
-	for raw_species_id in unlocked_species_ids:
-		var species_id = String(raw_species_id).strip_edges().to_upper()
-		if species_id.empty() or merged_species.has(species_id):
-			continue
-		merged_species.append(species_id)
-	return merged_species
 
 func _add_species_button(species_entry):
 	var button = Button.new()

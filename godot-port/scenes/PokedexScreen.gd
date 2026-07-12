@@ -9,17 +9,10 @@ export(float) var preview_sprite_scale := 1.0
 export(String, "center", "bottom") var preview_sprite_anchor_mode := "bottom"
 export(float) var preview_sprite_vertical_nudge_px := 0.0
 export(bool) var use_temporary_seed_species := false
+export(String) var temporary_seed_profile_id := "ui_party_showcase"
 
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
-const TEMPORARY_SEED_SPECIES_IDS := [
-	"BULBASAUR",
-	"IVYSAUR",
-	"VENUSAUR",
-	"CHARMANDER",
-	"CHARMELEON",
-	"CHARIZARD",
-]
 
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
@@ -137,13 +130,13 @@ func _setup_pokedex_entry_overlay() -> void:
 
 func _open_runtime_roster() -> void:
 	if runtime_state_script == null:
-		open_menu(_get_temporary_seed_species_ids())
+		open_menu([])
 		return
 	var caught_species = runtime_state_script.get_caught_species_ids(get_tree())
 	if typeof(caught_species) != TYPE_ARRAY:
 		caught_species = []
 	if use_temporary_seed_species:
-		open_menu(_merge_temporary_seed_species_ids(caught_species))
+		open_menu(runtime_state_script.merge_species_ids_with_debug_seed_profile(caught_species, temporary_seed_profile_id))
 		return
 	open_menu(caught_species)
 
@@ -228,24 +221,6 @@ func _open_species_entry(species_id: String) -> void:
 		return
 	pokedex_entry_overlay.open_menu(species_id, true)
 	pokedex_entry_overlay.raise()
-
-func _get_temporary_seed_species_ids() -> Array:
-	var seeded_species := []
-	for raw_species_id in TEMPORARY_SEED_SPECIES_IDS:
-		var species_id = String(raw_species_id).strip_edges().to_upper()
-		if species_id.empty() or seeded_species.has(species_id):
-			continue
-		seeded_species.append(species_id)
-	return seeded_species
-
-func _merge_temporary_seed_species_ids(caught_species: Array) -> Array:
-	var merged_species := _get_temporary_seed_species_ids()
-	for raw_species_id in caught_species:
-		var species_id = String(raw_species_id).strip_edges().to_upper()
-		if species_id.empty() or merged_species.has(species_id):
-			continue
-		merged_species.append(species_id)
-	return merged_species
 
 func _on_species_button_pressed(species_id: String) -> void:
 	var normalized_species_id = species_id.strip_edges().to_upper()
