@@ -19,6 +19,9 @@ export(float) var enemy_switch_slide_duration_sec := 0.55
 export(float) var player_panel_switch_slide_distance_px := 180.0
 export(float) var player_panel_switch_slide_duration_sec := 0.24
 export(int) var biome_switch_every_levels := 3
+export(int) var normal_trainer_encounter_every := 5
+export(int) var boss_pokemon_encounter_every := 10
+export(int) var boss_trainer_encounter_every := 30
 export(float) var arena_switch_blend_duration_sec := 0.22
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
@@ -49,6 +52,12 @@ export(Color) var player_pokemon_reveal_tint_color := Color(1.0, 0.75, 0.75, 1.0
 export(float) var player_pokemon_reveal_alpha_start := 0.0
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
 const SELECTION_SCENE_PATH := "res://scenes/PokemonSelectScreen.tscn"
+const ENCOUNTER_ARCHETYPE_NORMAL_POKEMON := "normal_pokemon"
+const ENCOUNTER_ARCHETYPE_BOSS_POKEMON := "boss_pokemon"
+const ENCOUNTER_ARCHETYPE_NORMAL_TRAINER := "normal_trainer"
+const ENCOUNTER_ARCHETYPE_BOSS_TRAINER := "boss_trainer"
+const ENCOUNTER_TYPE_WILD := "wild"
+const ENCOUNTER_TYPE_TRAINER := "trainer"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
 const OWNED_ICON_TEXTURE_REL := "assets/images/ui/icon_owned.png"
@@ -318,6 +327,7 @@ func _ready():
 	randomize()
 	log_debug("Battle scene ready")
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
+	_validate_encounter_cadence_settings()
 	update_run_button_label()
 	enemy_layer_home_position = enemy_layer.rect_position
 	player_panel_home_position = player_panel.rect_position
@@ -366,6 +376,23 @@ func log_debug(message: String):
 	f.seek_end()
 	f.store_line("[%s] %s" % [str(OS.get_unix_time()), message])
 	f.close()
+
+func _validate_encounter_cadence_settings() -> void:
+	if normal_trainer_encounter_every <= 0:
+		log_debug("Encounter cadence: normal_trainer_encounter_every disabled (<= 0).")
+	if boss_pokemon_encounter_every <= 0:
+		log_debug("Encounter cadence: boss_pokemon_encounter_every disabled (<= 0).")
+	if boss_trainer_encounter_every <= 0:
+		log_debug("Encounter cadence: boss_trainer_encounter_every disabled (<= 0).")
+
+	if normal_trainer_encounter_every > 0 and boss_trainer_encounter_every > 0 and boss_trainer_encounter_every % normal_trainer_encounter_every == 0:
+		log_debug("Encounter cadence: boss trainer cadence overrides normal trainer cadence on overlapping encounters.")
+
+	if boss_pokemon_encounter_every > 0 and boss_trainer_encounter_every > 0 and boss_trainer_encounter_every % boss_pokemon_encounter_every == 0:
+		log_debug("Encounter cadence: boss trainer cadence overrides boss pokemon cadence on overlapping encounters.")
+
+	if normal_trainer_encounter_every == 1:
+		log_debug("Encounter cadence: normal trainers are configured for every encounter (except higher-priority boss cadence).")
 
 func resource_exists(path: String) -> bool:
 	# In exported builds, imported resources may not be visible to File.file_exists.
@@ -1990,6 +2017,108 @@ func _apply_biome_state_to_battle_data(biome_state: Dictionary) -> void:
 	if typeof(battle_data) != TYPE_DICTIONARY:
 		return
 	battle_data["biome_state"] = biome_state.duplicate(true)
+	_refresh_encounter_metadata_for_current_enemy(biome_state)
+
+func _refresh_encounter_metadata_for_current_enemy(biome_state: Dictionary) -> Dictionary:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return {}
+
+	var enemy_species_id := ""
+	if battle_data.has("enemy") and battle_data["enemy"] != null:
+		enemy_species_id = String(battle_data["enemy"].species_id).strip_edges().to_upper()
+
+	var encounter_meta = _build_encounter_metadata(biome_state, enemy_species_id)
+	_apply_encounter_metadata_to_battle_data(encounter_meta)
+	_log_encounter_metadata(encounter_meta)
+	return encounter_meta
+
+func _build_encounter_metadata(biome_state: Dictionary, enemy_species_id: String) -> Dictionary:
+	var encounter_index = max(0, int(biome_state.get("encounter_index", 0)))
+	var encounter_number = encounter_index + 1
+	var classification = _classify_encounter_archetype(encounter_number)
+	var biome_id = String(biome_state.get("current_biome_id", "grass")).strip_edges().to_lower()
+	if biome_id.empty():
+		biome_id = "grass"
+
+	return {
+		"encounter_index": encounter_index,
+		"encounter_number": encounter_number,
+		"transition_trigger": String(biome_state.get("transition_trigger", "battle_start")),
+		"biome_id": biome_id,
+		"enemy_species_id": enemy_species_id,
+		"encounter_archetype": String(classification.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON)),
+		"encounter_type": String(classification.get("encounter_type", ENCOUNTER_TYPE_WILD)),
+		"is_trainer_encounter": bool(classification.get("is_trainer_encounter", false)),
+		"is_boss_encounter": bool(classification.get("is_boss_encounter", false)),
+	}
+
+func _classify_encounter_archetype(encounter_number: int) -> Dictionary:
+	var normalized_number = max(1, encounter_number)
+	var has_boss_trainer_cadence = boss_trainer_encounter_every > 0
+	var has_boss_pokemon_cadence = boss_pokemon_encounter_every > 0
+	var has_normal_trainer_cadence = normal_trainer_encounter_every > 0
+
+	if has_boss_trainer_cadence and normalized_number % boss_trainer_encounter_every == 0:
+		return {
+			"encounter_archetype": ENCOUNTER_ARCHETYPE_BOSS_TRAINER,
+			"encounter_type": ENCOUNTER_TYPE_TRAINER,
+			"is_trainer_encounter": true,
+			"is_boss_encounter": true,
+		}
+
+	if has_boss_pokemon_cadence and normalized_number % boss_pokemon_encounter_every == 0:
+		return {
+			"encounter_archetype": ENCOUNTER_ARCHETYPE_BOSS_POKEMON,
+			"encounter_type": ENCOUNTER_TYPE_WILD,
+			"is_trainer_encounter": false,
+			"is_boss_encounter": true,
+		}
+
+	if has_normal_trainer_cadence and normalized_number % normal_trainer_encounter_every == 0:
+		return {
+			"encounter_archetype": ENCOUNTER_ARCHETYPE_NORMAL_TRAINER,
+			"encounter_type": ENCOUNTER_TYPE_TRAINER,
+			"is_trainer_encounter": true,
+			"is_boss_encounter": false,
+		}
+
+	return {
+		"encounter_archetype": ENCOUNTER_ARCHETYPE_NORMAL_POKEMON,
+		"encounter_type": ENCOUNTER_TYPE_WILD,
+		"is_trainer_encounter": false,
+		"is_boss_encounter": false,
+	}
+
+func _apply_encounter_metadata_to_battle_data(encounter_meta: Dictionary) -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	battle_data["encounter_meta"] = encounter_meta.duplicate(true)
+	battle_data["encounter_archetype"] = String(encounter_meta.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON))
+	battle_data["encounter_type"] = String(encounter_meta.get("encounter_type", ENCOUNTER_TYPE_WILD))
+	battle_data["is_trainer_encounter"] = bool(encounter_meta.get("is_trainer_encounter", false))
+	battle_data["is_boss_encounter"] = bool(encounter_meta.get("is_boss_encounter", false))
+
+func _log_encounter_metadata(encounter_meta: Dictionary) -> void:
+	if typeof(encounter_meta) != TYPE_DICTIONARY or encounter_meta.empty():
+		return
+	var encounter_number = int(encounter_meta.get("encounter_number", 0))
+	var archetype = String(encounter_meta.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON))
+	var encounter_type = String(encounter_meta.get("encounter_type", ENCOUNTER_TYPE_WILD))
+	var biome_id = String(encounter_meta.get("biome_id", ""))
+	var enemy_species_id = String(encounter_meta.get("enemy_species_id", ""))
+	var trigger = String(encounter_meta.get("transition_trigger", ""))
+	var trainer_flag = bool(encounter_meta.get("is_trainer_encounter", false))
+	var boss_flag = bool(encounter_meta.get("is_boss_encounter", false))
+	log_debug(
+		"Encounter meta: #" + str(encounter_number)
+		+ " archetype=" + archetype
+		+ " type=" + encounter_type
+		+ " trainer=" + str(trainer_flag)
+		+ " boss=" + str(boss_flag)
+		+ " biome=" + biome_id
+		+ " enemy=" + enemy_species_id
+		+ " trigger=" + trigger
+	)
 
 func get_enemy_species_pool() -> Array:
 	if not enemy_species_pool.empty():
