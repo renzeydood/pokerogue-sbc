@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokerogue-sbc.local/schema/trainer.schema.v1.json",
+  "title": "Trainer Definition Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trainer_id",
+    "display_name",
+    "archetype",
+    "encounter_type",
+    "is_boss",
+    "sprite_asset_id",
+    "party_members"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "trainer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "archetype": {
+      "type": "string",
+      "enum": [
+        "normal_trainer",
+        "boss_trainer"
+      ]
+    },
+    "encounter_type": {
+      "type": "string",
+      "const": "trainer"
+    },
+    "is_boss": {
+      "type": "boolean"
+    },
+    "sprite_asset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "encounter_bgm": {
+      "type": "string"
+    },
+    "battle_bgm": {
+      "type": "string"
+    },
+    "victory_bgm": {
+      "type": "string"
+    },
+    "dialog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intro_key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Localization key for pre-battle trainer intro text."
+        },
+        "defeat_key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Localization key for trainer line after losing."
+        },
+        "victory_key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Localization key for trainer line after winning."
+        }
+      },
+      "description": "Optional trainer dialogue localization keys for future encounter/victory UI phases."
+    },
+    "party_members": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slot_index",
+          "species_id",
+          "level",
+          "move_ids"
+        ],
+        "properties": {
+          "slot_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "species_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "move_ids": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "current_hp": {
+            "type": "integer"
+          },
+          "form_tag": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

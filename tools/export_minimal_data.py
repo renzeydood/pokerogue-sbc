@@ -317,7 +317,8 @@ def _build_moves_catalog(attacks: list[str], move_enum: dict[str, int], move_ts:
             "name": _enum_name_to_title(move_name),
             "type": parsed["type"],
             "category": parsed["category"],
-            "power": parsed["power"],
+            # Source data may use -1 as a sentinel; normalize to 0 for stable minimal schema.
+            "power": max(0, parsed["power"]),
             "source": {
                 "repo": "dependency/pokerogue",
                 "move_enum_name": move_name,
