@@ -42,11 +42,11 @@ func _prepare_debug_runtime_state() -> void:
 			var seed_result = runtime_state_script.apply_debug_seed_profile(get_tree(), debug_seed_profile_id, true, true)
 			if not bool(seed_result.get("ok", false)):
 				push_warning("Debug seed profile failed (%s). Falling back to starter seed." % String(seed_result.get("reason", "unknown")))
-				runtime_state_script.ensure_party_with_starter(get_tree(), "BULBASAUR", debug_seed_party_level)
+				runtime_state_script.ensure_party_with_starter(get_tree(), "VENUSAUR", debug_seed_party_level)
 		elif debug_seed_full_party_for_ui:
 			_seed_debug_full_party(get_tree())
 		else:
-			runtime_state_script.ensure_party_with_starter(get_tree(), "BULBASAUR", debug_seed_party_level)
+			runtime_state_script.ensure_party_with_starter(get_tree(), "VENUSAUR", debug_seed_party_level)
 
 func _wire_menu_buttons() -> void:
 	_connect_button_scene(pokemon_select_button, POKEMON_SELECT_SCENE_PATH)

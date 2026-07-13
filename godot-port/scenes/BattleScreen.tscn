@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=2]
+[gd_scene load_steps=20 format=2]
 
 [ext_resource path="res://scenes/Battle.gd" type="Script" id=1]
 [ext_resource path="res://godot-minimal-assets/assets/images/arenas/abyss_bg.png" type="Texture" id=2]
@@ -16,18 +16,23 @@
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/overlay_hp.png" type="Texture" id=14]
 [ext_resource path="res://themes/PokemonUiTheme.tres" type="Theme" id=15]
 [ext_resource path="res://themes/PokemonUiThemeFooter.tres" type="Theme" id=16]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_overlay_enemy.png" type="Texture" id=17]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_overlay_player.png" type="Texture" id=18]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_ball.png" type="Texture" id=19]
 
 [node name="Battle" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme = ExtResource( 15 )
 script = ExtResource( 1 )
+player_trainer_exit_duration_sec = 0.7
 player_pokeball_start_offset_x = -25.0
 player_pokeball_start_offset_y = -110.0
 player_pokeball_target_offset_y = 20.0
 player_pokeball_start_delay_sec = 0.65
 player_pokeball_arc_height_px = 120.0
 player_pokemon_reveal_tint_color = Color( 1, 0.74902, 0.74902, 1 )
+trainer_defeat_text_hold_sec = 0.7
 capture_throw_start_offset_x = -100.0
 capture_throw_target_offset_x = -10.0
 capture_throw_target_offset_y = -100.0
@@ -73,6 +78,9 @@ texture = ExtResource( 7 )
 [node name="EnemyPokemonSpriteBattle" type="Sprite" parent="UiScaleRoot/BattlefieldLayer/EnemyLayer"]
 position = Vector2( 248.5, 119.5 )
 
+[node name="EnemyTrainerSprite" type="Sprite" parent="UiScaleRoot/BattlefieldLayer/EnemyLayer"]
+position = Vector2( 255.5, 112 )
+
 [node name="EnemyArenaSprite3" type="Sprite" parent="UiScaleRoot/BattlefieldLayer/EnemyLayer"]
 position = Vector2( 190, 102.5 )
 texture = ExtResource( 8 )
@@ -105,6 +113,7 @@ margin_right = -321.0
 margin_bottom = -240.0
 
 [node name="EnemyPanel" type="Control" parent="UiScaleRoot/UILayer"]
+visible = false
 margin_left = -81.0
 margin_top = 11.5
 margin_right = 195.0
@@ -160,7 +169,61 @@ region_enabled = true
 [node name="EnemyCaughtBadgeSprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyPanel"]
 position = Vector2( 87, 43 )
 
+[node name="EnemyTrainerPBPanel" type="Control" parent="UiScaleRoot/UILayer"]
+visible = false
+margin_left = -2.5
+margin_top = 46.5
+margin_right = 107.5
+margin_bottom = 59.5
+
+[node name="PBTraySprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 53.5, 10.5 )
+texture = ExtResource( 17 )
+
+[node name="TrayBall1Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 93.5, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall2Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 80, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall3Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 66, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall4Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 52, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall5Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 38.5, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall6Sprite" type="Sprite" parent="UiScaleRoot/UILayer/EnemyTrainerPBPanel"]
+position = Vector2( 24, 1.5 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
 [node name="PlayerPanel" type="Control" parent="UiScaleRoot/UILayer"]
+visible = false
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -221,6 +284,59 @@ position = Vector2( 64, 38 )
 centered = false
 region_enabled = true
 
+[node name="PlayerTrainerPBPanel" type="Control" parent="UiScaleRoot/UILayer"]
+visible = false
+margin_left = 215.0
+margin_top = 146.5
+margin_right = 325.0
+margin_bottom = 159.5
+
+[node name="PBTraySprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 53.5, 10.5 )
+texture = ExtResource( 18 )
+
+[node name="TrayBall1Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 16.5, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall2Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 31, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall3Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 44.5, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall4Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 58.5, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall5Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 72.5, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
+[node name="TrayBall6Sprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerTrainerPBPanel"]
+position = Vector2( 86, 1 )
+scale = Vector2( 1.5, 1.5 )
+texture = ExtResource( 19 )
+region_enabled = true
+region_rect = Rect2( 0, 0, 7.10145, 7.36214 )
+
 [node name="MessagePanel" type="Control" parent="UiScaleRoot/UILayer"]
 anchor_top = 1.0
 anchor_right = 1.0
@@ -250,6 +366,7 @@ text = "Battle ready."
 autowrap = true
 
 [node name="ControlsContainer" type="CenterContainer" parent="UiScaleRoot/UILayer"]
+visible = false
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
