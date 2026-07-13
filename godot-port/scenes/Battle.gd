@@ -16,12 +16,16 @@ export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
+export(float) var enemy_panel_slide_distance_px := 180.0
+export(float) var enemy_panel_slide_duration_sec := 0.55
 export(float) var player_panel_switch_slide_distance_px := 180.0
 export(float) var player_panel_switch_slide_duration_sec := 0.24
 export(int) var biome_switch_every_levels := 3
 export(int) var normal_trainer_encounter_every := 5
 export(int) var boss_pokemon_encounter_every := 10
 export(int) var boss_trainer_encounter_every := 30
+export(bool) var force_first_encounter_trainer := true
+export(bool) var debug_force_second_encounter_trainer := false
 export(float) var arena_switch_blend_duration_sec := 0.22
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
@@ -50,6 +54,45 @@ export(float) var player_pokemon_reveal_flash_mul := 1.35
 export(float) var player_pokemon_reveal_flash_duration_sec := 0.18
 export(Color) var player_pokemon_reveal_tint_color := Color(1.0, 0.75, 0.75, 1.0)
 export(float) var player_pokemon_reveal_alpha_start := 0.0
+export(bool) var enemy_trainer_intro_enabled := true
+export(float) var enemy_trainer_intro_text_hold_sec := 1.5
+export(float) var enemy_trainer_intro_slide_duration_sec := 0.3
+export(float) var enemy_trainer_intro_slide_distance_px := 90.0
+export(float) var enemy_trainer_sent_out_text_hold_sec := 1.5
+export(float) var enemy_trainer_exit_duration_sec := 0.75
+export(float) var enemy_trainer_exit_distance_px := 110.0
+export(float) var enemy_trainer_exit_offset_x := 16.0
+export(float) var enemy_trainer_exit_offset_y := -16.0
+export(float) var enemy_trainer_exit_alpha := 0.0
+export(float) var enemy_pokeball_start_offset_x := -6.0
+export(float) var enemy_pokeball_start_offset_y := -36.0
+export(float) var enemy_pokeball_target_offset_x := -4.0
+export(float) var enemy_pokeball_target_offset_y := -32.0
+export(float) var enemy_pokeball_arc_height_px := 33.0
+export(float) var enemy_pokeball_lob_duration_sec := 0.55
+export(float) var enemy_pokeball_lob_up_duration_sec := 0.15
+export(float) var enemy_pokeball_spin_degrees := -720.0
+export(float) var enemy_pokeball_opening_hold_sec := 0.06
+export(float) var enemy_pokeball_open_hold_sec := 0.08
+export(float) var enemy_pokemon_reveal_scale_duration_sec := 0.2
+export(float) var enemy_pokemon_reveal_flash_duration_sec := 0.16
+export(float) var enemy_pokemon_reveal_start_scale := 0.55
+export(float) var enemy_pokemon_reveal_alpha_start := 0.0
+export(Color) var enemy_pokemon_reveal_tint_color := Color(1.0, 0.88, 0.88, 1.0)
+export(float) var enemy_pokemon_reveal_to_player_delay_sec := 0.2
+export(float) var trainer_defeat_text_hold_sec := 0.9
+export(float) var trainer_victory_transition_slide_distance_px := 220.0
+export(float) var trainer_victory_transition_duration_sec := 0.55
+export(float) var player_trainer_victory_return_duration_sec := 0.75
+export(float) var player_trainer_victory_return_offset_x := 16.0
+export(float) var player_trainer_victory_return_offset_y := -16.0
+export(float) var trainer_pb_panel_slide_distance_px := 120.0
+export(float) var trainer_pb_panel_slide_duration_sec := 0.25
+export(float) var trainer_pb_panel_hold_sec := 1.5
+export(float) var trainer_pb_ball_spacing_px := 8.0
+export(int) var trainer_pb_tray_slot_count := 6
+export(int) var trainer_pb_player_active_count := 1
+export(int) var trainer_pb_enemy_active_count := 2
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
 const SELECTION_SCENE_PATH := "res://scenes/PokemonSelectScreen.tscn"
 const ENCOUNTER_ARCHETYPE_NORMAL_POKEMON := "normal_pokemon"
@@ -67,6 +110,12 @@ const PLAYER_TRAINER_BACK_TEXTURE_REL := "assets/images/trainer/trainer_m_back.p
 const PLAYER_TRAINER_BACK_ATLAS_REL := "assets/images/trainer/trainer_m_back.json"
 const PLAYER_TRAINER_BACK_PB_TEXTURE_REL := "assets/images/trainer/trainer_m_back_pb.png"
 const PLAYER_TRAINER_BACK_PB_ATLAS_REL := "assets/images/trainer/trainer_m_back_pb.json"
+const TRAINERS_CATALOG_PATH := "res://data/trainers.v1.json"
+const PB_TRAY_BALL_TEXTURE_REL := "assets/images/ui/pb_tray_ball.png"
+const PB_TRAY_BALL_ATLAS_REL := "assets/images/ui/pb_tray_ball.json"
+const PB_TRAY_BALL_FRAME_FILLED := "ball"
+const PB_TRAY_BALL_FRAME_EMPTY := "empty"
+const PB_TRAY_BALL_FRAME_FAINT := "faint"
 const POKEBALL_TEXTURE_REL := "assets/images/pb.png"
 const POKEBALL_ATLAS_REL := "assets/images/pb.json"
 const POKEBALL_FRAME_CLOSED := "pb"
@@ -162,6 +211,10 @@ onready var battlefield_layer = _resolve_first_existing([
 ])
 onready var enemy_panel = ui_layer.get_node_or_null("EnemyPanel") if ui_layer != null else null
 onready var player_panel = ui_layer.get_node_or_null("PlayerPanel") if ui_layer != null else null
+onready var enemy_trainer_pb_panel = ui_layer.get_node_or_null("EnemyTrainerPBPanel") if ui_layer != null else null
+onready var player_trainer_pb_panel = ui_layer.get_node_or_null("PlayerTrainerPBPanel") if ui_layer != null else null
+onready var enemy_trainer_pb_tray_sprite = enemy_trainer_pb_panel.get_node_or_null("PBTraySprite") if enemy_trainer_pb_panel != null else null
+onready var player_trainer_pb_tray_sprite = player_trainer_pb_panel.get_node_or_null("PBTraySprite") if player_trainer_pb_panel != null else null
 onready var controls_container = ui_layer.get_node_or_null("ControlsContainer") if ui_layer != null else null
 onready var controls_vbox = controls_container.get_node_or_null("ControlWindowSprite/ContentMargin/VBoxContainer") if controls_container != null else null
 onready var attack_menu_container = ui_layer.get_node_or_null("AttackMenuContainer") if ui_layer != null else null
@@ -184,6 +237,7 @@ onready var enemy_arena_sprite_1 = enemy_layer.get_node_or_null("EnemyArenaSprit
 onready var enemy_arena_sprite_2 = enemy_layer.get_node_or_null("EnemyArenaSprite2") if enemy_layer != null else null
 onready var enemy_arena_sprite_3 = enemy_layer.get_node_or_null("EnemyArenaSprite3") if enemy_layer != null else null
 onready var enemy_pokemon_sprite = enemy_layer.get_node_or_null("EnemyPokemonSpriteBattle") if enemy_layer != null else null
+onready var enemy_trainer_sprite = enemy_layer.get_node_or_null("EnemyTrainerSprite") if enemy_layer != null else null
 onready var effects_layer = battlefield_layer.get_node_or_null("EffectsLayer") if battlefield_layer != null else null
 onready var player_name_label = player_panel.get_node_or_null("PlayerNameLabel") if player_panel != null else null
 onready var player_level_label = player_panel.get_node_or_null("PlayerLevelLabel") if player_panel != null else null
@@ -275,12 +329,19 @@ var enemy_anim_index := 0
 var player_anim_elapsed := 0.0
 var enemy_anim_elapsed := 0.0
 var enemy_layer_home_position := Vector2.ZERO
+var battlefield_layer_home_position := Vector2.ZERO
 var player_panel_home_position := Vector2.ZERO
+var enemy_panel_home_position := Vector2.ZERO
+var enemy_trainer_pb_panel_home_position := Vector2.ZERO
+var player_trainer_pb_panel_home_position := Vector2.ZERO
 var player_sprite_home_position := Vector2.ZERO
 var player_sprite_home_scale := Vector2.ONE
 var enemy_sprite_home_position := Vector2.ZERO
 var enemy_sprite_home_scale := Vector2.ONE
+var enemy_panel_tween: Tween = null
 var player_panel_switch_tween: Tween = null
+var enemy_trainer_pb_panel_tween: Tween = null
+var player_trainer_pb_panel_tween: Tween = null
 var player_trainer_sprite_home_position := Vector2.ZERO
 var player_sprite_anim_enabled := true
 var enemy_sprite_anim_enabled := true
@@ -293,7 +354,14 @@ var player_trainer_choreo_elapsed := 0.0
 var player_trainer_last_throw_index := -1
 var player_trainer_pokemon_revealed := false
 var player_trainer_exit_started := false
+var enemy_trainer_sprite_home_position := Vector2.ZERO
+var enemy_trainer_texture_front = null
+var enemy_trainer_idle_frame := {}
+var pb_tray_ball_texture = null
+var pb_tray_ball_frame_rects := {}
+var pb_tray_ball_atlas_textures := {}
 var player_pokeball_sprite = null
+var enemy_pokeball_sprite = null
 var player_pokeball_lob_started := false
 var player_pokeball_release_done := false
 var player_sendout_cry_played := false
@@ -314,6 +382,8 @@ var pokedex_overlay = null
 var pokedex_overlay_visible := false
 var pokedex_return_to_party_menu := false
 var enemy_species_pool := []
+var trainers_catalog_by_id := {}
+var trainers_catalog_ordered := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
 var sendout_controls_locked := false
@@ -329,12 +399,22 @@ func _ready():
 	log_debug("Using minimal assets path: %s" % minimal_assets_path)
 	_validate_encounter_cadence_settings()
 	update_run_button_label()
+	battlefield_layer_home_position = battlefield_layer.rect_position
 	enemy_layer_home_position = enemy_layer.rect_position
 	player_panel_home_position = player_panel.rect_position
+	enemy_panel_home_position = enemy_panel.rect_position
+	if enemy_trainer_pb_panel != null:
+		enemy_trainer_pb_panel_home_position = enemy_trainer_pb_panel.rect_position
+		enemy_trainer_pb_panel.visible = false
+	if player_trainer_pb_panel != null:
+		player_trainer_pb_panel_home_position = player_trainer_pb_panel.rect_position
+		player_trainer_pb_panel.visible = false
 	player_sprite_home_position = player_pokemon_sprite.position
 	player_sprite_home_scale = player_pokemon_sprite.scale
 	enemy_sprite_home_position = enemy_pokemon_sprite.position
 	enemy_sprite_home_scale = enemy_pokemon_sprite.scale
+	if enemy_trainer_sprite != null:
+		enemy_trainer_sprite_home_position = enemy_trainer_sprite.position
 	if player_trainer_sprite != null:
 		player_trainer_sprite_home_position = player_trainer_sprite.position
 	build_hp_overlay_frames()
@@ -360,6 +440,8 @@ func _open_party_menu_on_ready():
 	open_party_menu()
 
 func log_debug(message: String):
+	print("[Battle] %s" % message)
+
 	var f = File.new()
 	# Ensure the log file exists before opening in append mode.
 	if not f.file_exists(debug_log_path):
@@ -378,6 +460,9 @@ func log_debug(message: String):
 	f.close()
 
 func _validate_encounter_cadence_settings() -> void:
+	if force_first_encounter_trainer:
+		log_debug("Encounter cadence: forcing encounter #1 to normal trainer for test flow.")
+
 	if normal_trainer_encounter_every <= 0:
 		log_debug("Encounter cadence: normal_trainer_encounter_every disabled (<= 0).")
 	if boss_pokemon_encounter_every <= 0:
@@ -393,6 +478,472 @@ func _validate_encounter_cadence_settings() -> void:
 
 	if normal_trainer_encounter_every == 1:
 		log_debug("Encounter cadence: normal trainers are configured for every encounter (except higher-priority boss cadence).")
+
+func _load_trainers_catalog_if_needed() -> bool:
+	if not trainers_catalog_by_id.empty():
+		return true
+
+	var payload = _read_json_payload(TRAINERS_CATALOG_PATH)
+	if typeof(payload) != TYPE_DICTIONARY:
+		log_debug("Trainer catalog load failed: payload missing or invalid at %s" % TRAINERS_CATALOG_PATH)
+		return false
+
+	var items = payload.get("items", [])
+	if typeof(items) != TYPE_ARRAY:
+		log_debug("Trainer catalog load failed: items array missing in %s" % TRAINERS_CATALOG_PATH)
+		return false
+
+	for item in items:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var trainer_id = String(item.get("trainer_id", "")).strip_edges().to_upper()
+		if trainer_id.empty():
+			continue
+		var trainer_entry = item.duplicate(true)
+		trainers_catalog_by_id[trainer_id] = trainer_entry
+		trainers_catalog_ordered.append(trainer_entry)
+
+	if trainers_catalog_by_id.empty():
+		log_debug("Trainer catalog load failed: no valid trainer entries in %s" % TRAINERS_CATALOG_PATH)
+		return false
+
+	log_debug("Trainer catalog loaded: %d trainer(s)." % trainers_catalog_by_id.size())
+	return true
+
+func _normalize_trainer_party_members(raw_members) -> Array:
+	if typeof(raw_members) != TYPE_ARRAY:
+		return []
+
+	var indexed_members := []
+	for raw_member in raw_members:
+		if typeof(raw_member) != TYPE_DICTIONARY:
+			continue
+		var species_id = String(raw_member.get("species_id", "")).strip_edges().to_upper()
+		if species_id.empty():
+			continue
+		indexed_members.append({
+			"slot_index": int(raw_member.get("slot_index", indexed_members.size())),
+			"member": raw_member.duplicate(true),
+		})
+
+	indexed_members.sort_custom(self, "_sort_trainer_member_slot")
+
+	var normalized := []
+	for entry in indexed_members:
+		normalized.append(entry.get("member", {}).duplicate(true))
+	return normalized
+
+func _sort_trainer_member_slot(a: Dictionary, b: Dictionary) -> bool:
+	return int(a.get("slot_index", 0)) < int(b.get("slot_index", 0))
+
+func _find_trainer_for_encounter(encounter_meta: Dictionary) -> Dictionary:
+	if not _load_trainers_catalog_if_needed():
+		return {}
+
+	var encounter_number = int(encounter_meta.get("encounter_number", 0))
+	if debug_force_second_encounter_trainer and encounter_number == 2:
+		var ordered_trainers := []
+		for trainer_entry in trainers_catalog_ordered:
+			if typeof(trainer_entry) != TYPE_DICTIONARY:
+				continue
+			if String(trainer_entry.get("encounter_type", "")).strip_edges().to_lower() != ENCOUNTER_TYPE_TRAINER:
+				continue
+			var trainer_party = _normalize_trainer_party_members(trainer_entry.get("party_members", []))
+			if trainer_party.empty():
+				continue
+			ordered_trainers.append(trainer_entry)
+		if ordered_trainers.size() >= 2:
+			return ordered_trainers[1].duplicate(true)
+
+	var wants_boss = bool(encounter_meta.get("is_boss_encounter", false))
+	var matches := []
+	for trainer_id in trainers_catalog_by_id.keys():
+		var trainer_entry = trainers_catalog_by_id[trainer_id]
+		if typeof(trainer_entry) != TYPE_DICTIONARY:
+			continue
+		if String(trainer_entry.get("encounter_type", "")).strip_edges().to_lower() != ENCOUNTER_TYPE_TRAINER:
+			continue
+		var trainer_is_boss = bool(trainer_entry.get("is_boss", false))
+		if trainer_is_boss != wants_boss:
+			continue
+		var party_members = _normalize_trainer_party_members(trainer_entry.get("party_members", []))
+		if party_members.empty():
+			continue
+		matches.append(trainer_entry)
+
+	if matches.empty():
+		for trainer_id in trainers_catalog_by_id.keys():
+			var fallback_entry = trainers_catalog_by_id[trainer_id]
+			if typeof(fallback_entry) != TYPE_DICTIONARY:
+				continue
+			if String(fallback_entry.get("encounter_type", "")).strip_edges().to_lower() != ENCOUNTER_TYPE_TRAINER:
+				continue
+			var fallback_party = _normalize_trainer_party_members(fallback_entry.get("party_members", []))
+			if fallback_party.empty():
+				continue
+			matches.append(fallback_entry)
+
+	if matches.empty():
+		return {}
+
+	matches.sort_custom(self, "_sort_trainer_id")
+	return matches[0].duplicate(true)
+
+func _sort_trainer_id(a: Dictionary, b: Dictionary) -> bool:
+	var a_id = String(a.get("trainer_id", "")).strip_edges().to_upper()
+	var b_id = String(b.get("trainer_id", "")).strip_edges().to_upper()
+	return a_id < b_id
+
+func _trainer_pb_panel_enemy_hidden_position() -> Vector2:
+	return enemy_trainer_pb_panel_home_position + Vector2(-trainer_pb_panel_slide_distance_px, 0)
+
+func _trainer_pb_panel_player_hidden_position() -> Vector2:
+	return player_trainer_pb_panel_home_position + Vector2(trainer_pb_panel_slide_distance_px, 0)
+
+func _stop_trainer_pb_panel_tween(is_enemy_panel: bool) -> void:
+	var tween_ref = enemy_trainer_pb_panel_tween if is_enemy_panel else player_trainer_pb_panel_tween
+	if tween_ref != null and is_instance_valid(tween_ref):
+		tween_ref.stop_all()
+		tween_ref.queue_free()
+	if is_enemy_panel:
+		enemy_trainer_pb_panel_tween = null
+	else:
+		player_trainer_pb_panel_tween = null
+
+func _animate_trainer_pb_panel_to(is_enemy_panel: bool, target_position: Vector2, duration_sec: float):
+	var panel = enemy_trainer_pb_panel if is_enemy_panel else player_trainer_pb_panel
+	if panel == null:
+		return null
+
+	_stop_trainer_pb_panel_tween(is_enemy_panel)
+	if duration_sec <= 0.0:
+		panel.rect_position = target_position
+		return null
+
+	var tween_ref = Tween.new()
+	add_child(tween_ref)
+	tween_ref.interpolate_property(
+		panel,
+		"rect_position",
+		panel.rect_position,
+		target_position,
+		duration_sec,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	tween_ref.start()
+	if is_enemy_panel:
+		enemy_trainer_pb_panel_tween = tween_ref
+	else:
+		player_trainer_pb_panel_tween = tween_ref
+	yield(tween_ref, "tween_all_completed")
+
+	if tween_ref != null and is_instance_valid(tween_ref):
+		tween_ref.queue_free()
+	if is_enemy_panel:
+		enemy_trainer_pb_panel_tween = null
+	else:
+		player_trainer_pb_panel_tween = null
+
+	panel.rect_position = target_position
+	return null
+
+func _ensure_pb_tray_ball_assets() -> bool:
+	if pb_tray_ball_texture != null and not pb_tray_ball_frame_rects.empty():
+		return true
+
+	var texture_path = minimal_assets_path + PB_TRAY_BALL_TEXTURE_REL
+	var atlas_path = minimal_assets_path + PB_TRAY_BALL_ATLAS_REL
+	if not resource_exists(texture_path):
+		return false
+
+	pb_tray_ball_texture = load(texture_path)
+	var ball_frame = parse_sprite_frame(atlas_path, PB_TRAY_BALL_FRAME_FILLED)
+	var empty_frame = parse_sprite_frame(atlas_path, PB_TRAY_BALL_FRAME_EMPTY)
+	var faint_frame = parse_sprite_frame(atlas_path, PB_TRAY_BALL_FRAME_FAINT)
+	if ball_frame == null or empty_frame == null:
+		return false
+
+	var bf = ball_frame.get("frame", {})
+	var ef = empty_frame.get("frame", {})
+	var ff = ef
+	if faint_frame != null:
+		ff = faint_frame.get("frame", {})
+	pb_tray_ball_frame_rects[PB_TRAY_BALL_FRAME_FILLED] = Rect2(bf.get("x", 0), bf.get("y", 0), bf.get("w", 7), bf.get("h", 7))
+	pb_tray_ball_frame_rects[PB_TRAY_BALL_FRAME_EMPTY] = Rect2(ef.get("x", 0), ef.get("y", 0), ef.get("w", 7), ef.get("h", 7))
+	pb_tray_ball_frame_rects[PB_TRAY_BALL_FRAME_FAINT] = Rect2(ff.get("x", 0), ff.get("y", 0), ff.get("w", 7), ff.get("h", 7))
+	pb_tray_ball_atlas_textures.clear()
+	for frame_name in [PB_TRAY_BALL_FRAME_FILLED, PB_TRAY_BALL_FRAME_EMPTY, PB_TRAY_BALL_FRAME_FAINT]:
+		var atlas_texture = AtlasTexture.new()
+		atlas_texture.atlas = pb_tray_ball_texture
+		atlas_texture.region = pb_tray_ball_frame_rects[frame_name]
+		pb_tray_ball_atlas_textures[frame_name] = atlas_texture
+	return true
+
+func _clear_trainer_pb_tray_balls(panel) -> void:
+	if panel == null:
+		return
+	for child in panel.get_children():
+		if child != null and String(child.name).begins_with("RuntimeTrayBall_"):
+			child.queue_free()
+
+func _get_editor_trainer_pb_tray_slots(panel) -> Array:
+	var slots := []
+	if panel == null:
+		return slots
+	for child in panel.get_children():
+		if child is Sprite and String(child.name).begins_with("TrayBall"):
+			slots.append(child)
+	return slots
+
+func _layout_editor_trainer_pb_tray_slots(panel, slots: Array) -> void:
+	if panel == null or slots.size() <= 1:
+		return
+
+	var first_slot = slots[0]
+	var last_slot = slots[slots.size() - 1]
+	if first_slot == null or last_slot == null:
+		return
+
+	var left_x = float(first_slot.position.x)
+	var right_x = float(last_slot.position.x)
+	if is_equal_approx(left_x, right_x):
+		var half_span = max(1.0, trainer_pb_ball_spacing_px * float(slots.size() - 1) * 0.5)
+		left_x = float(panel.rect_position.x) - half_span
+		right_x = float(panel.rect_position.x) + half_span
+
+	var step_x = (right_x - left_x) / float(slots.size() - 1)
+	var y = float(first_slot.position.y)
+	for i in range(slots.size()):
+		var slot = slots[i]
+		if slot == null:
+			continue
+		slot.position = Vector2(left_x + (step_x * i), y)
+
+func _render_trainer_pb_tray_balls(panel, tray_sprite, total_count: int, filled_count: int, faint_count: int = 0) -> void:
+	if panel == null or tray_sprite == null:
+		return
+	if not _ensure_pb_tray_ball_assets():
+		return
+
+	_clear_trainer_pb_tray_balls(panel)
+	var count = clamp(total_count, 0, max(0, trainer_pb_tray_slot_count))
+	var fainted = clamp(faint_count, 0, count)
+	var filled = clamp(filled_count, 0, count - fainted)
+	var slots = _get_editor_trainer_pb_tray_slots(panel)
+	if slots.empty():
+		log_debug("No TrayBall sprite slots found under %s; add Sprite children named TrayBall* directly under the panel." % panel.name)
+		return
+
+	_layout_editor_trainer_pb_tray_slots(panel, slots)
+
+	var filled_texture = pb_tray_ball_atlas_textures.get(PB_TRAY_BALL_FRAME_FILLED, null)
+	var empty_texture = pb_tray_ball_atlas_textures.get(PB_TRAY_BALL_FRAME_EMPTY, null)
+	var faint_texture = pb_tray_ball_atlas_textures.get(PB_TRAY_BALL_FRAME_FAINT, empty_texture)
+
+	for i in range(slots.size()):
+		var slot = slots[i]
+		if slot == null:
+			continue
+		slot.visible = i < count
+		if not slot.visible:
+			continue
+		if i < fainted:
+			slot.texture = faint_texture
+		elif i < (fainted + filled):
+			slot.texture = filled_texture
+		else:
+			slot.texture = empty_texture
+		slot.centered = true
+		slot.region_enabled = false
+
+func _get_enemy_trainer_tray_counts() -> Dictionary:
+	var slot_count = max(0, trainer_pb_tray_slot_count)
+	var active_count = clamp(trainer_pb_enemy_active_count, 0, slot_count)
+	var faint_count = 0
+
+	if _is_active_trainer_encounter() and typeof(battle_data) == TYPE_DICTIONARY:
+		var party_total = clamp(int(battle_data.get("enemy_trainer_party_total", active_count)), 0, slot_count)
+		var remaining = battle_data.get("enemy_trainer_party_remaining", [])
+		var remaining_count = int(remaining.size()) if typeof(remaining) == TYPE_ARRAY else 0
+		active_count = clamp(remaining_count + 1, 0, party_total)
+		faint_count = clamp(party_total - active_count, 0, party_total)
+
+	return {
+		"slot_count": slot_count,
+		"active_count": active_count,
+		"faint_count": faint_count,
+	}
+
+func _get_player_party_member_count_for_tray() -> int:
+	if runtime_state_script == null:
+		return 1
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return 1
+	if party.has_method("size"):
+		return int(max(1, int(party.size())))
+	return 1
+
+func _run_trainer_pb_panel_intro_sequence(show_enemy_panel: bool = true, show_player_panel: bool = true) -> void:
+	if not show_enemy_panel and not show_player_panel:
+		return
+	if show_enemy_panel and enemy_trainer_pb_panel == null:
+		show_enemy_panel = false
+	if show_player_panel and player_trainer_pb_panel == null:
+		show_player_panel = false
+	if not show_enemy_panel and not show_player_panel:
+		return
+
+	var enemy_counts = _get_enemy_trainer_tray_counts()
+	var slot_count = int(enemy_counts.get("slot_count", max(0, trainer_pb_tray_slot_count)))
+	var enemy_active_count = int(enemy_counts.get("active_count", 0))
+	var enemy_faint_count = int(enemy_counts.get("faint_count", 0))
+	var player_active_count = clamp(trainer_pb_player_active_count, 0, slot_count)
+
+	if show_enemy_panel:
+		_render_trainer_pb_tray_balls(enemy_trainer_pb_panel, enemy_trainer_pb_tray_sprite, slot_count, enemy_active_count, enemy_faint_count)
+	if show_player_panel:
+		_render_trainer_pb_tray_balls(player_trainer_pb_panel, player_trainer_pb_tray_sprite, slot_count, player_active_count, 0)
+
+	if show_enemy_panel:
+		enemy_trainer_pb_panel.visible = true
+		enemy_trainer_pb_panel.rect_position = _trainer_pb_panel_enemy_hidden_position()
+	if show_player_panel:
+		player_trainer_pb_panel.visible = true
+		player_trainer_pb_panel.rect_position = _trainer_pb_panel_player_hidden_position()
+
+	if show_enemy_panel:
+		_animate_trainer_pb_panel_to(true, enemy_trainer_pb_panel_home_position, max(0.0, trainer_pb_panel_slide_duration_sec))
+	if show_player_panel:
+		_animate_trainer_pb_panel_to(false, player_trainer_pb_panel_home_position, max(0.0, trainer_pb_panel_slide_duration_sec))
+
+	if trainer_pb_panel_hold_sec > 0.0:
+		yield(get_tree().create_timer(trainer_pb_panel_hold_sec), "timeout")
+
+	var enemy_out = null
+	var player_out = null
+	if show_enemy_panel:
+		enemy_out = _animate_trainer_pb_panel_to(true, _trainer_pb_panel_enemy_hidden_position(), max(0.0, trainer_pb_panel_slide_duration_sec))
+	if show_player_panel:
+		player_out = _animate_trainer_pb_panel_to(false, _trainer_pb_panel_player_hidden_position(), max(0.0, trainer_pb_panel_slide_duration_sec))
+	if enemy_out is GDScriptFunctionState:
+		yield(enemy_out, "completed")
+	if player_out is GDScriptFunctionState:
+		yield(player_out, "completed")
+
+	if show_enemy_panel:
+		enemy_trainer_pb_panel.visible = false
+	if show_player_panel:
+		player_trainer_pb_panel.visible = false
+
+func _build_enemy_from_trainer_member(member: Dictionary):
+	if member.empty():
+		return null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if species_id.empty():
+		return null
+
+	var level = max(1, int(member.get("level", 5)))
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) != TYPE_ARRAY:
+		move_ids = []
+
+	var enemy_data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
+	if enemy_data == null:
+		return null
+
+	var current_hp = int(member.get("current_hp", -1))
+	if current_hp > 0:
+		enemy_data.current_hp = min(enemy_data.current_hp, current_hp)
+
+	return enemy_data
+
+func _try_seed_trainer_encounter(encounter_meta: Dictionary) -> Dictionary:
+	var trainer_entry = _find_trainer_for_encounter(encounter_meta)
+	if trainer_entry.empty():
+		return {}
+
+	var party_members = _normalize_trainer_party_members(trainer_entry.get("party_members", []))
+	if party_members.empty():
+		return {}
+
+	var buildable_party := []
+	for member in party_members:
+		if typeof(member) != TYPE_DICTIONARY:
+			continue
+		var candidate_enemy = _build_enemy_from_trainer_member(member)
+		if candidate_enemy == null:
+			log_debug(
+				"Trainer seed skipped member for trainer_id=%s: species=%s could not be built."
+				% [
+					String(trainer_entry.get("trainer_id", "")),
+					String(member.get("species_id", "")),
+				]
+			)
+			continue
+		buildable_party.append({
+			"member": member.duplicate(true),
+			"enemy": candidate_enemy,
+		})
+
+	if buildable_party.empty():
+		log_debug("Trainer seed failed for trainer_id=%s: no buildable party members." % String(trainer_entry.get("trainer_id", "")))
+		return {}
+
+	var enemy_data = buildable_party[0].get("enemy", null)
+	if enemy_data == null:
+		log_debug("Trainer seed failed for trainer_id=%s: first buildable party member resolved to null enemy data." % String(trainer_entry.get("trainer_id", "")))
+		return {}
+
+	var remaining_members := []
+	for i in range(1, buildable_party.size()):
+		remaining_members.append(buildable_party[i].get("member", {}).duplicate(true))
+
+	return {
+		"trainer_id": String(trainer_entry.get("trainer_id", "")).strip_edges().to_upper(),
+		"display_name": String(trainer_entry.get("display_name", "Trainer")).strip_edges(),
+		"sprite_asset_id": String(trainer_entry.get("sprite_asset_id", "")).strip_edges().to_lower(),
+		"defeat_key": String(trainer_entry.get("dialog", {}).get("defeat_key", "")).strip_edges(),
+		"encounter_bgm": String(trainer_entry.get("encounter_bgm", "")).strip_edges(),
+		"battle_bgm": String(trainer_entry.get("battle_bgm", "")).strip_edges(),
+		"victory_bgm": String(trainer_entry.get("victory_bgm", "")).strip_edges(),
+		"is_boss": bool(trainer_entry.get("is_boss", false)),
+		"enemy": enemy_data,
+		"party_total": int(buildable_party.size()),
+		"remaining_members": remaining_members,
+	}
+
+func _is_active_trainer_encounter() -> bool:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return false
+	if not battle_data.has("enemy_trainer_id"):
+		return false
+	return not String(battle_data.get("enemy_trainer_id", "")).strip_edges().empty()
+
+func _dequeue_next_trainer_enemy():
+	if not _is_active_trainer_encounter():
+		return null
+
+	var remaining = battle_data.get("enemy_trainer_party_remaining", [])
+	if typeof(remaining) != TYPE_ARRAY or remaining.empty():
+		return null
+
+	var next_member = remaining[0]
+	var next_remaining := []
+	for i in range(1, remaining.size()):
+		next_remaining.append(remaining[i])
+	battle_data["enemy_trainer_party_remaining"] = next_remaining
+
+	if typeof(next_member) != TYPE_DICTIONARY:
+		return null
+
+	return _build_enemy_from_trainer_member(next_member)
 
 func resource_exists(path: String) -> bool:
 	# In exported builds, imported resources may not be visible to File.file_exists.
@@ -658,6 +1209,109 @@ func _resolve_biome_bgm_stream(arena_asset_id: String) -> Dictionary:
 
 	return {"stream": null, "track_id": ""}
 
+func _resolve_named_bgm_stream(track_id: String) -> Dictionary:
+	var raw_track_id = String(track_id).strip_edges()
+	if raw_track_id.empty():
+		return {"stream": null, "track_id": ""}
+
+	var candidates := [raw_track_id]
+	var normalized = _normalize_arena_asset_id(raw_track_id)
+	if not normalized.empty() and normalized != raw_track_id:
+		candidates.append(normalized)
+
+	var tried := {}
+	for candidate in candidates:
+		var resolved = String(candidate)
+		if tried.has(resolved):
+			continue
+		tried[resolved] = true
+		var path = _build_bgm_path(resolved)
+		if resource_exists(path):
+			return {"stream": load(path), "track_id": resolved}
+
+	return {"stream": null, "track_id": raw_track_id}
+
+func _play_named_bgm_track(track_id: String, force_restart: bool = false) -> bool:
+	_ensure_biome_bgm_players()
+	if biome_bgm_primary_player == null:
+		return false
+
+	var stream_data = _resolve_named_bgm_stream(track_id)
+	var bgm_stream = stream_data.get("stream", null)
+	var resolved_track_id = String(stream_data.get("track_id", "")).strip_edges()
+	if bgm_stream == null:
+		log_debug("Missing named BGM track '%s'" % track_id)
+		return false
+
+	if not force_restart and resolved_track_id == current_bgm_arena_asset_id:
+		if biome_bgm_active_player != null and not biome_bgm_active_player.playing:
+			biome_bgm_active_player.play()
+		biome_bgm_active_player.volume_db = biome_bgm_volume_db
+		return true
+
+	_configure_bgm_stream_loop(bgm_stream)
+	var incoming_player = _get_inactive_bgm_player()
+	var outgoing_player = biome_bgm_active_player
+	if incoming_player == null:
+		incoming_player = biome_bgm_primary_player
+
+	incoming_player.stop()
+	incoming_player.stream = bgm_stream
+
+	var crossfade_duration = max(0.0, biome_bgm_crossfade_duration_sec)
+	if outgoing_player == null or force_restart:
+		_stop_biome_bgm_crossfade_tween()
+		incoming_player.volume_db = biome_bgm_volume_db
+		incoming_player.play()
+		biome_bgm_active_player = incoming_player
+		current_bgm_arena_asset_id = resolved_track_id
+		return true
+
+	incoming_player.volume_db = -80.0
+	incoming_player.play()
+
+	if crossfade_duration <= 0.0:
+		_stop_biome_bgm_crossfade_tween()
+		outgoing_player.stop()
+		outgoing_player.volume_db = biome_bgm_volume_db
+		incoming_player.volume_db = biome_bgm_volume_db
+		biome_bgm_active_player = incoming_player
+		current_bgm_arena_asset_id = resolved_track_id
+		return true
+
+	_stop_biome_bgm_crossfade_tween()
+	biome_bgm_crossfade_tween = Tween.new()
+	add_child(biome_bgm_crossfade_tween)
+	biome_bgm_crossfade_tween.interpolate_property(
+		incoming_player,
+		"volume_db",
+		-80.0,
+		biome_bgm_volume_db,
+		crossfade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	biome_bgm_crossfade_tween.interpolate_property(
+		outgoing_player,
+		"volume_db",
+		outgoing_player.volume_db,
+		-80.0,
+		crossfade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	_connect_once(
+		biome_bgm_crossfade_tween,
+		"tween_all_completed",
+		"_on_biome_bgm_crossfade_completed",
+		[outgoing_player]
+	)
+	biome_bgm_crossfade_tween.start()
+
+	biome_bgm_active_player = incoming_player
+	current_bgm_arena_asset_id = resolved_track_id
+	return true
+
 func _get_inactive_bgm_player() -> AudioStreamPlayer:
 	if biome_bgm_primary_player == null:
 		return null
@@ -837,7 +1491,14 @@ func _apply_arena_visuals_from_biome_state() -> void:
 	_set_arena_texture(enemy_arena_sprite_1, _load_arena_texture(resolved_arena_id, "_b_1"))
 	_set_arena_texture(enemy_arena_sprite_2, _load_arena_texture(resolved_arena_id, "_b_2"))
 	_set_arena_texture(enemy_arena_sprite_3, _load_arena_texture(resolved_arena_id, "_b_3"))
-	_play_biome_bgm_for_arena(resolved_arena_id)
+
+	var trainer_bgm_id := ""
+	if _is_active_trainer_encounter():
+		trainer_bgm_id = String(battle_data.get("enemy_trainer_battle_bgm", "")).strip_edges()
+		if trainer_bgm_id.empty():
+			trainer_bgm_id = String(battle_data.get("enemy_trainer_encounter_bgm", "")).strip_edges()
+	if trainer_bgm_id.empty() or not _play_named_bgm_track(trainer_bgm_id):
+		_play_biome_bgm_for_arena(resolved_arena_id)
 
 	if should_blend:
 		_start_arena_visual_fade_in()
@@ -1259,6 +1920,7 @@ func execute_player_move(move):
 			yield(player_faint_anim, "completed")
 			if active_turn_token != turn_token:
 				return
+		_animate_player_panel_to(_player_panel_hidden_position(), max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
 		end_battle(false, attacker.species_id)
 		_finish_turn()
 		return
@@ -1318,6 +1980,9 @@ func _on_RunButton_pressed():
 # Capture flow and ball handling.
 func attempt_capture_with_ball(ball_key: String) -> void:
 	if battle_ended or turn_in_progress or capture_in_progress:
+		return
+	if _is_active_trainer_encounter():
+		set_battle_text("You cannot catch a trainer's Pokemon.")
 		return
 	if battle_data == null or not battle_data.has("enemy") or battle_data["enemy"] == null:
 		set_battle_text("No target to capture.")
@@ -1739,6 +2404,7 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 		enemy_switch_slide_duration_sec,
 		active_turn_token
 	)
+	_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 	if enemy_slide_out is GDScriptFunctionState:
 		yield(enemy_slide_out, "completed")
 		if active_turn_token != -1 and active_turn_token != turn_token:
@@ -1748,6 +2414,8 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 	battle_data["enemy"] = next_enemy
 	_apply_biome_state_to_battle_data(next_biome_state)
 	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	if enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
 	load_battle_sprites()
 	bind_battle_data()
 	player_sprite_anim_enabled = true
@@ -1756,12 +2424,13 @@ func _spawn_next_enemy_after_capture(captured_species_id: String, active_turn_to
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
 	var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
+	_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 	if enemy_slide_in is GDScriptFunctionState:
 		yield(enemy_slide_in, "completed")
 		if active_turn_token != -1 and active_turn_token != turn_token:
 			return null
 
-	set_battle_text("A wild %s appeared!" % String(next_enemy.species_id))
+	set_battle_text(_build_enemy_appeared_message(String(next_enemy.species_id)))
 	_play_enemy_sendout_cry_once()
 	return null
 
@@ -1854,17 +2523,206 @@ func _finish_turn():
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
 	if player_won:
+		_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec))
+		var encounter_meta = battle_data.get("encounter_meta", {}) if typeof(battle_data) == TYPE_DICTIONARY else {}
+		var is_trainer_encounter = bool(encounter_meta.get("is_trainer_encounter", false))
+		if is_trainer_encounter:
+			_enter_action_locked_state()
+			if ball_button != null:
+				ball_button.disabled = true
+			var trainer_outro = _run_trainer_victory_outro_and_start_next_encounter(fainted_species_id)
+			if trainer_outro is GDScriptFunctionState:
+				yield(trainer_outro, "completed")
+			return
+
 		_show_main_controls_locked()
+
 		ball_button.disabled = false
 		ball_button.grab_focus()
 		set_battle_text("%s fainted! You win! Press Ball to restart." % fainted_species_id)
 		return
 
 	# Defeat recovery path: return to starter selection.
+	_animate_player_panel_to(_player_panel_hidden_position(), max(0.0, player_panel_switch_slide_duration_sec))
 	_enter_action_locked_state()
 	set_battle_text("%s fainted! You lose! Returning to selection..." % fainted_species_id)
 	var timer = get_tree().create_timer(max(0.0, defeat_return_delay_sec))
 	_connect_once(timer, "timeout", "_return_to_selection_scene")
+
+func _resolve_trainer_defeat_message() -> String:
+	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges()
+	if trainer_name.empty():
+		trainer_name = "Trainer"
+
+	var defeat_key = String(battle_data.get("enemy_trainer_defeat_key", "")).strip_edges()
+	if not defeat_key.empty():
+		return "%s: %s" % [trainer_name, defeat_key]
+
+	return "%s has no Pokemon left!" % trainer_name
+
+func _apply_trainer_seed_to_battle_data(trainer_seed: Dictionary) -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY or trainer_seed.empty():
+		return
+	battle_data["enemy_trainer_id"] = String(trainer_seed.get("trainer_id", "")).strip_edges().to_upper()
+	battle_data["enemy_trainer_name"] = String(trainer_seed.get("display_name", "Trainer")).strip_edges()
+	battle_data["enemy_trainer_sprite_asset_id"] = String(trainer_seed.get("sprite_asset_id", "")).strip_edges().to_lower()
+	battle_data["enemy_trainer_defeat_key"] = String(trainer_seed.get("defeat_key", "")).strip_edges()
+	battle_data["enemy_trainer_encounter_bgm"] = String(trainer_seed.get("encounter_bgm", "")).strip_edges()
+	battle_data["enemy_trainer_battle_bgm"] = String(trainer_seed.get("battle_bgm", "")).strip_edges()
+	battle_data["enemy_trainer_victory_bgm"] = String(trainer_seed.get("victory_bgm", "")).strip_edges()
+	battle_data["enemy_trainer_party_total"] = int(trainer_seed.get("party_total", 1))
+	battle_data["enemy_trainer_is_boss"] = bool(trainer_seed.get("is_boss", false))
+	battle_data["enemy_trainer_party_remaining"] = trainer_seed.get("remaining_members", []).duplicate(true)
+
+func _set_enemy_trainer_state_cleared() -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	battle_data.erase("enemy_trainer_id")
+	battle_data.erase("enemy_trainer_name")
+	battle_data.erase("enemy_trainer_sprite_asset_id")
+	battle_data.erase("enemy_trainer_defeat_key")
+	battle_data.erase("enemy_trainer_encounter_bgm")
+	battle_data.erase("enemy_trainer_battle_bgm")
+	battle_data.erase("enemy_trainer_victory_bgm")
+	battle_data.erase("enemy_trainer_party_total")
+	battle_data.erase("enemy_trainer_is_boss")
+	battle_data.erase("enemy_trainer_party_remaining")
+
+func _set_enemy_next_trainer_presentation_visible(visible: bool) -> void:
+	if enemy_arena_sprite != null:
+		enemy_arena_sprite.visible = visible
+	if enemy_arena_sprite_1 != null:
+		enemy_arena_sprite_1.visible = visible
+	if enemy_arena_sprite_2 != null:
+		enemy_arena_sprite_2.visible = visible
+	if enemy_arena_sprite_3 != null:
+		enemy_arena_sprite_3.visible = visible
+	if not visible:
+		if enemy_pokemon_sprite != null:
+			enemy_pokemon_sprite.visible = false
+		if enemy_trainer_sprite != null:
+			enemy_trainer_sprite.visible = false
+			enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+			enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+func _clear_active_trainer_encounter_state() -> void:
+	if typeof(battle_data) != TYPE_DICTIONARY:
+		return
+	_set_enemy_trainer_state_cleared()
+	battle_data["is_trainer_encounter"] = false
+	battle_data["encounter_type"] = ENCOUNTER_TYPE_WILD
+	if battle_data.has("encounter_meta") and typeof(battle_data["encounter_meta"]) == TYPE_DICTIONARY:
+		battle_data["encounter_meta"]["is_trainer_encounter"] = false
+		battle_data["encounter_meta"]["encounter_type"] = ENCOUNTER_TYPE_WILD
+		battle_data["encounter_meta"].erase("trainer_id")
+		battle_data["encounter_meta"].erase("trainer_display_name")
+
+func _run_trainer_victory_outro_and_start_next_encounter(fainted_species_id: String):
+	var victory_bgm_id = String(battle_data.get("enemy_trainer_victory_bgm", "")).strip_edges()
+	if not victory_bgm_id.empty():
+		var _played_victory_bgm = _play_named_bgm_track(victory_bgm_id)
+	hide_all_command_menus()
+
+	if enemy_trainer_sprite != null and not enemy_trainer_idle_frame.empty() and enemy_trainer_idle_frame.has("frame"):
+		enemy_trainer_sprite.texture = enemy_trainer_texture_front
+		enemy_trainer_sprite.centered = true
+		enemy_trainer_sprite.region_enabled = true
+		enemy_trainer_sprite.offset = Vector2.ZERO
+		apply_sprite_frame(enemy_trainer_sprite, enemy_trainer_idle_frame["frame"])
+		enemy_trainer_sprite.visible = true
+		enemy_trainer_sprite.position = enemy_trainer_sprite_home_position + Vector2(enemy_trainer_exit_offset_x, enemy_trainer_exit_offset_y)
+		enemy_trainer_sprite.modulate = Color(1, 1, 1, clamp(enemy_trainer_exit_alpha, 0.0, 1.0))
+
+		var reenter_tween = Tween.new()
+		add_child(reenter_tween)
+		reenter_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"position:x",
+			enemy_trainer_sprite.position.x,
+			enemy_trainer_sprite_home_position.x,
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		reenter_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"position:y",
+			enemy_trainer_sprite.position.y,
+			enemy_trainer_sprite_home_position.y,
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		reenter_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"modulate:a",
+			enemy_trainer_sprite.modulate.a,
+			1.0,
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		reenter_tween.start()
+		yield(reenter_tween, "tween_all_completed")
+		reenter_tween.queue_free()
+		enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+		enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+	set_battle_text(_resolve_trainer_defeat_message())
+	if trainer_defeat_text_hold_sec > 0.0:
+		yield(get_tree().create_timer(trainer_defeat_text_hold_sec), "timeout")
+	set_battle_text("")
+
+	if enemy_trainer_sprite != null and enemy_trainer_sprite.visible:
+
+		var exit_tween = Tween.new()
+		add_child(exit_tween)
+		exit_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"position:x",
+			enemy_trainer_sprite.position.x,
+			enemy_trainer_sprite_home_position.x + enemy_trainer_exit_offset_x,
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		exit_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"position:y",
+			enemy_trainer_sprite.position.y,
+			enemy_trainer_sprite_home_position.y + enemy_trainer_exit_offset_y,
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		exit_tween.interpolate_property(
+			enemy_trainer_sprite,
+			"modulate:a",
+			enemy_trainer_sprite.modulate.a,
+			clamp(enemy_trainer_exit_alpha, 0.0, 1.0),
+			max(0.01, enemy_trainer_exit_duration_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		exit_tween.start()
+		yield(exit_tween, "tween_all_completed")
+		exit_tween.queue_free()
+		enemy_trainer_sprite.visible = false
+		enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+		enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+	battle_ended = false
+	turn_in_progress = false
+	capture_in_progress = false
+	_clear_active_trainer_encounter_state()
+	if enemy_trainer_pb_panel != null:
+		enemy_trainer_pb_panel.visible = false
+	if player_trainer_pb_panel != null:
+		player_trainer_pb_panel.visible = false
+
+	var next_transition = advance_to_next_enemy(fainted_species_id, -1, false)
+	if next_transition is GDScriptFunctionState:
+		yield(next_transition, "completed")
 
 func _return_to_selection_scene():
 	var tree = get_tree()
@@ -1882,11 +2740,33 @@ func reset_battle_state(message: String):
 	turn_token += 1
 	capture_in_progress = false
 	sendout_controls_locked = false
+	if battlefield_layer != null:
+		battlefield_layer.rect_position = battlefield_layer_home_position
+	_stop_enemy_panel_tween()
+	_stop_trainer_pb_panel_tween(true)
+	_stop_trainer_pb_panel_tween(false)
 	_stop_player_panel_switch_tween()
+	player_trainer_choreo_playing = false
+	player_trainer_choreo_elapsed = 0.0
+	player_trainer_last_throw_index = -1
+	player_trainer_pokemon_revealed = false
+	player_trainer_exit_started = false
+	player_sendout_cry_played = false
+	if player_trainer_sprite != null:
+		player_trainer_sprite.visible = false
 	if player_panel != null:
-		player_panel.rect_position = player_panel_home_position
+		player_panel.rect_position = _player_panel_hidden_position()
+	if enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
+	if enemy_trainer_pb_panel != null:
+		enemy_trainer_pb_panel.rect_position = _trainer_pb_panel_enemy_hidden_position()
+		enemy_trainer_pb_panel.visible = false
+	if player_trainer_pb_panel != null:
+		player_trainer_pb_panel.rect_position = _trainer_pb_panel_player_hidden_position()
+		player_trainer_pb_panel.visible = false
 	_close_party_menu_internal()
 	hide_ball_menu(false)
+	_hide_enemy_pokeball_sprite()
 	ball_inventory = BALL_DEFAULT_COUNTS.duplicate(true)
 	refresh_ball_menu_labels()
 	var handoff_species_id = consume_selected_species_id()
@@ -1928,14 +2808,69 @@ func reset_battle_state(message: String):
 	selected_player_species_id = active_player_species_id
 
 	var initial_biome_state = _ensure_runtime_biome_state()
+	var initial_encounter_meta = _build_encounter_metadata(initial_biome_state, "")
+	var trainer_seed = {}
+	var trainer_seed_failed := false
+	if bool(initial_encounter_meta.get("is_trainer_encounter", false)):
+		trainer_seed = _try_seed_trainer_encounter(initial_encounter_meta)
+
 	var next_enemy_species_id = pick_random_enemy_species_id("")
+	if not trainer_seed.empty() and trainer_seed.has("enemy") and trainer_seed["enemy"] != null:
+		next_enemy_species_id = String(trainer_seed["enemy"].species_id).strip_edges().to_upper()
+
 	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member)
+	if not trainer_seed.empty() and trainer_seed.has("enemy") and trainer_seed["enemy"] != null:
+		battle_data["enemy"] = trainer_seed["enemy"]
+		battle_data["enemy_trainer_id"] = String(trainer_seed.get("trainer_id", "")).strip_edges().to_upper()
+		battle_data["enemy_trainer_name"] = String(trainer_seed.get("display_name", "Trainer")).strip_edges()
+		battle_data["enemy_trainer_sprite_asset_id"] = String(trainer_seed.get("sprite_asset_id", "")).strip_edges().to_lower()
+		battle_data["enemy_trainer_defeat_key"] = String(trainer_seed.get("defeat_key", "")).strip_edges()
+		battle_data["enemy_trainer_encounter_bgm"] = String(trainer_seed.get("encounter_bgm", "")).strip_edges()
+		battle_data["enemy_trainer_battle_bgm"] = String(trainer_seed.get("battle_bgm", "")).strip_edges()
+		battle_data["enemy_trainer_victory_bgm"] = String(trainer_seed.get("victory_bgm", "")).strip_edges()
+		battle_data["enemy_trainer_party_total"] = int(trainer_seed.get("party_total", 1))
+		battle_data["enemy_trainer_is_boss"] = bool(trainer_seed.get("is_boss", false))
+		battle_data["enemy_trainer_party_remaining"] = trainer_seed.get("remaining_members", []).duplicate(true)
+		log_debug(
+			"Trainer encounter seeded: trainer_id=%s name=%s party_remaining=%d"
+			% [
+				String(battle_data.get("enemy_trainer_id", "")),
+				String(battle_data.get("enemy_trainer_name", "Trainer")),
+				int(battle_data.get("enemy_trainer_party_remaining", []).size()),
+			]
+		)
+	else:
+		battle_data.erase("enemy_trainer_id")
+		battle_data.erase("enemy_trainer_name")
+		battle_data.erase("enemy_trainer_sprite_asset_id")
+		battle_data.erase("enemy_trainer_defeat_key")
+		battle_data.erase("enemy_trainer_encounter_bgm")
+		battle_data.erase("enemy_trainer_battle_bgm")
+		battle_data.erase("enemy_trainer_victory_bgm")
+		battle_data.erase("enemy_trainer_party_total")
+		battle_data.erase("enemy_trainer_is_boss")
+		battle_data.erase("enemy_trainer_party_remaining")
+		if bool(initial_encounter_meta.get("is_trainer_encounter", false)):
+			trainer_seed_failed = true
+			log_debug("Trainer encounter fallback: no valid trainer seed found; using wild enemy flow.")
+
 	_apply_biome_state_to_battle_data(initial_biome_state)
+	if trainer_seed_failed:
+		var fallback_meta = battle_data.get("encounter_meta", {}).duplicate(true)
+		fallback_meta["encounter_type"] = ENCOUNTER_TYPE_WILD
+		fallback_meta["is_trainer_encounter"] = false
+		fallback_meta["trainer_id"] = ""
+		fallback_meta["trainer_display_name"] = ""
+		if bool(fallback_meta.get("is_boss_encounter", false)):
+			fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_BOSS_POKEMON
+		else:
+			fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_NORMAL_POKEMON
+		_apply_encounter_metadata_to_battle_data(fallback_meta)
 	enemy_layer.rect_position = enemy_layer_home_position
 	load_battle_sprites()
 	battle_ended = false
 	turn_in_progress = false
-	hide_attack_menu()
+	hide_all_command_menus()
 	refresh_attack_menu()
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
@@ -1946,10 +2881,15 @@ func reset_battle_state(message: String):
 	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
-	start_player_trainer_summon_choreography()
+	var uses_trainer_intro = _is_active_trainer_encounter() and enemy_trainer_intro_enabled and enemy_trainer_sprite != null and not enemy_trainer_idle_frame.empty()
+	_start_battle_opening_sequence()
 	ensure_button_focus()
-	set_battle_text(message)
-	_play_enemy_sendout_cry_once()
+	if uses_trainer_intro:
+		pass
+	elif message == "Battle ready." or message == "Battle reset.":
+		set_battle_text(_build_enemy_appeared_message(String(battle_data["enemy"].species_id)))
+	else:
+		set_battle_text(message)
 
 func set_sendout_controls_locked(locked: bool) -> void:
 	sendout_controls_locked = locked
@@ -1962,6 +2902,8 @@ func _on_player_sendout_settled() -> void:
 	if not sendout_controls_locked:
 		return
 	set_sendout_controls_locked(false)
+	if not battle_ended and not turn_in_progress and not capture_in_progress:
+		_show_main_controls_unlocked()
 
 func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}) -> Dictionary:
 	if catalog_loader == null:
@@ -2040,7 +2982,7 @@ func _build_encounter_metadata(biome_state: Dictionary, enemy_species_id: String
 	if biome_id.empty():
 		biome_id = "grass"
 
-	return {
+	var encounter_meta = {
 		"encounter_index": encounter_index,
 		"encounter_number": encounter_number,
 		"transition_trigger": String(biome_state.get("transition_trigger", "battle_start")),
@@ -2052,11 +2994,33 @@ func _build_encounter_metadata(biome_state: Dictionary, enemy_species_id: String
 		"is_boss_encounter": bool(classification.get("is_boss_encounter", false)),
 	}
 
+	if _is_active_trainer_encounter():
+		encounter_meta["trainer_id"] = String(battle_data.get("enemy_trainer_id", "")).strip_edges().to_upper()
+		encounter_meta["trainer_display_name"] = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges()
+
+	return encounter_meta
+
 func _classify_encounter_archetype(encounter_number: int) -> Dictionary:
 	var normalized_number = max(1, encounter_number)
 	var has_boss_trainer_cadence = boss_trainer_encounter_every > 0
 	var has_boss_pokemon_cadence = boss_pokemon_encounter_every > 0
 	var has_normal_trainer_cadence = normal_trainer_encounter_every > 0
+
+	if force_first_encounter_trainer and normalized_number == 1:
+		return {
+			"encounter_archetype": ENCOUNTER_ARCHETYPE_NORMAL_TRAINER,
+			"encounter_type": ENCOUNTER_TYPE_TRAINER,
+			"is_trainer_encounter": true,
+			"is_boss_encounter": false,
+		}
+
+	if debug_force_second_encounter_trainer and normalized_number == 2:
+		return {
+			"encounter_archetype": ENCOUNTER_ARCHETYPE_NORMAL_TRAINER,
+			"encounter_type": ENCOUNTER_TYPE_TRAINER,
+			"is_trainer_encounter": true,
+			"is_boss_encounter": false,
+		}
 
 	if has_boss_trainer_cadence and normalized_number % boss_trainer_encounter_every == 0:
 		return {
@@ -2109,12 +3073,16 @@ func _log_encounter_metadata(encounter_meta: Dictionary) -> void:
 	var trigger = String(encounter_meta.get("transition_trigger", ""))
 	var trainer_flag = bool(encounter_meta.get("is_trainer_encounter", false))
 	var boss_flag = bool(encounter_meta.get("is_boss_encounter", false))
+	var trainer_id = String(encounter_meta.get("trainer_id", ""))
+	var trainer_name = String(encounter_meta.get("trainer_display_name", ""))
 	log_debug(
 		"Encounter meta: #" + str(encounter_number)
 		+ " archetype=" + archetype
 		+ " type=" + encounter_type
 		+ " trainer=" + str(trainer_flag)
 		+ " boss=" + str(boss_flag)
+		+ " trainer_id=" + trainer_id
+		+ " trainer_name=" + trainer_name
 		+ " biome=" + biome_id
 		+ " enemy=" + enemy_species_id
 		+ " trigger=" + trigger
@@ -2156,22 +3124,27 @@ func pick_random_enemy_species_id(current_enemy_species_id: String) -> String:
 
 	return String(candidates[randi() % candidates.size()])
 
-func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = -1):
+func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = -1, include_fainted_text: bool = true):
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
 
-	set_battle_text("%s fainted!" % fainted_species_id)
+	if include_fainted_text and not fainted_species_id.empty():
+		set_battle_text("%s fainted!" % fainted_species_id)
 	if enemy_switch_delay_sec > 0.0:
 		yield(get_tree().create_timer(enemy_switch_delay_sec), "timeout")
 		if active_turn_token != -1 and active_turn_token != turn_token:
 			return
 
-	var enemy_slide_out = animate_enemy_layer_to(
-		enemy_layer_home_position + Vector2(enemy_switch_slide_distance_px, 0),
-		enemy_switch_slide_duration_sec,
-		active_turn_token
-	)
+	var trainer_party_switch = _is_active_trainer_encounter()
+	var enemy_slide_out = null
+	if not trainer_party_switch:
+		enemy_slide_out = animate_enemy_layer_to(
+			enemy_layer_home_position + Vector2(enemy_switch_slide_distance_px, 0),
+			enemy_switch_slide_duration_sec,
+			active_turn_token
+		)
+	_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 	if enemy_slide_out is GDScriptFunctionState:
 		yield(enemy_slide_out, "completed")
 		if active_turn_token != -1 and active_turn_token != turn_token:
@@ -2179,35 +3152,115 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 
 	var next_enemy_species_id = pick_random_enemy_species_id(fainted_species_id)
 	var next_enemy = null
-	if catalog_loader == null:
-		catalog_loader = catalog_loader_script.new()
-	if catalog_loader != null and catalog_loader.load_catalogs():
-		next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, 5)
+	var next_biome_state = {}
+	var next_trainer_seed := {}
+	var next_is_seeded_trainer := false
+	var next_trainer_seed_failed := false
+
+	if _is_active_trainer_encounter():
+		next_enemy = _dequeue_next_trainer_enemy()
+		next_biome_state = _get_battle_biome_state().duplicate(true)
+		next_biome_state["transition_trigger"] = "trainer_party_progress"
+	else:
+		next_biome_state = _advance_runtime_biome_state("enemy_defeated")
+		var next_encounter_meta = _build_encounter_metadata(next_biome_state, "")
+		if bool(next_encounter_meta.get("is_trainer_encounter", false)):
+			next_trainer_seed = _try_seed_trainer_encounter(next_encounter_meta)
+			if not next_trainer_seed.empty() and next_trainer_seed.has("enemy") and next_trainer_seed["enemy"] != null:
+				next_enemy = next_trainer_seed["enemy"]
+				next_is_seeded_trainer = true
+			else:
+				next_trainer_seed_failed = true
+		if catalog_loader == null:
+			catalog_loader = catalog_loader_script.new()
+		if next_enemy == null and catalog_loader != null and catalog_loader.load_catalogs():
+			next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, 5)
 
 	if next_enemy == null:
 		enemy_layer.rect_position = enemy_layer_home_position
 		end_battle(true, fainted_species_id)
 		return
 
-	var next_biome_state = _advance_runtime_biome_state("enemy_defeated")
 	battle_data["enemy"] = next_enemy
+	if not trainer_party_switch:
+		if next_is_seeded_trainer:
+			_apply_trainer_seed_to_battle_data(next_trainer_seed)
+		else:
+			_set_enemy_trainer_state_cleared()
 	_apply_biome_state_to_battle_data(next_biome_state)
-	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	if not trainer_party_switch and next_trainer_seed_failed:
+		var fallback_meta = battle_data.get("encounter_meta", {}).duplicate(true)
+		fallback_meta["encounter_type"] = ENCOUNTER_TYPE_WILD
+		fallback_meta["is_trainer_encounter"] = false
+		fallback_meta["trainer_id"] = ""
+		fallback_meta["trainer_display_name"] = ""
+		if bool(fallback_meta.get("is_boss_encounter", false)):
+			fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_BOSS_POKEMON
+		else:
+			fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_NORMAL_POKEMON
+		_apply_encounter_metadata_to_battle_data(fallback_meta)
+	if trainer_party_switch:
+		enemy_layer.rect_position = enemy_layer_home_position
+	else:
+		enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	if enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
 	load_battle_sprites()
-	bind_battle_data()
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
 	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
-	var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
-	if enemy_slide_in is GDScriptFunctionState:
-		yield(enemy_slide_in, "completed")
-		if active_turn_token != -1 and active_turn_token != turn_token:
-			return
-	show_main_controls()
-	set_battle_text("%s fainted! %s appeared!" % [fainted_species_id, next_enemy.species_id])
-	_play_enemy_sendout_cry_once()
+	if trainer_party_switch and enemy_pokemon_sprite != null:
+		enemy_pokemon_sprite.visible = false
+	if trainer_party_switch:
+		var trainer_switch_sequence = _run_enemy_trainer_party_switch_sequence(String(next_enemy.species_id))
+		if trainer_switch_sequence is GDScriptFunctionState:
+			yield(trainer_switch_sequence, "completed")
+			if active_turn_token != -1 and active_turn_token != turn_token:
+				return
+	elif next_is_seeded_trainer:
+		hide_all_command_menus()
+		set_sendout_controls_locked(true)
+		enemy_layer.rect_position = enemy_layer_home_position
+		if enemy_panel != null:
+			enemy_panel.rect_position = _enemy_panel_hidden_position()
+		_set_enemy_next_trainer_presentation_visible(false)
+		var recall_turn_token = active_turn_token if active_turn_token != -1 else turn_token
+		var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
+		if recall_anim is GDScriptFunctionState:
+			yield(recall_anim, "completed")
+			if active_turn_token != -1 and active_turn_token != turn_token:
+				return
+		var trainer_reentry = _run_player_trainer_reentry_sequence(active_turn_token)
+		if trainer_reentry is GDScriptFunctionState:
+			yield(trainer_reentry, "completed")
+			if active_turn_token != -1 and active_turn_token != turn_token:
+				return
+		_set_enemy_next_trainer_presentation_visible(true)
+		bind_battle_data()
+		_start_battle_opening_sequence()
+		return
+	else:
+		bind_battle_data()
+		var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
+		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
+		if enemy_slide_in is GDScriptFunctionState:
+			yield(enemy_slide_in, "completed")
+			if active_turn_token != -1 and active_turn_token != turn_token:
+				return
+	if active_turn_token == -1:
+		_show_main_controls_unlocked()
+	else:
+		show_main_controls()
+
+	var appeared_message = _build_enemy_appeared_message(String(next_enemy.species_id))
+	if include_fainted_text and not fainted_species_id.empty():
+		set_battle_text("%s fainted! %s" % [fainted_species_id, appeared_message])
+	else:
+		set_battle_text(appeared_message)
+	if not trainer_party_switch:
+		_play_enemy_sendout_cry_once()
 
 func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
 	if enemy_layer == null:
@@ -2238,6 +3291,58 @@ func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, activ
 	enemy_layer.rect_position = target_position
 	return null
 
+func _enemy_panel_hidden_position() -> Vector2:
+	return enemy_panel_home_position + Vector2(-enemy_panel_slide_distance_px, 0)
+
+func _player_panel_hidden_position() -> Vector2:
+	return player_panel_home_position + Vector2(player_panel_switch_slide_distance_px, 0)
+
+func _stop_enemy_panel_tween() -> void:
+	if enemy_panel_tween != null and is_instance_valid(enemy_panel_tween):
+		enemy_panel_tween.stop_all()
+		enemy_panel_tween.queue_free()
+	enemy_panel_tween = null
+
+func _animate_enemy_panel_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
+	if enemy_panel == null:
+		return null
+	var hidden_target = _enemy_panel_hidden_position()
+	var is_hidden_target = is_equal_approx(target_position.x, hidden_target.x) and is_equal_approx(target_position.y, hidden_target.y)
+
+	_stop_enemy_panel_tween()
+	if duration_sec <= 0.0:
+		enemy_panel.rect_position = target_position
+		enemy_panel.visible = not is_hidden_target
+		return null
+
+	if not is_hidden_target:
+		enemy_panel.visible = true
+
+	enemy_panel_tween = Tween.new()
+	add_child(enemy_panel_tween)
+	enemy_panel_tween.interpolate_property(
+		enemy_panel,
+		"rect_position",
+		enemy_panel.rect_position,
+		target_position,
+		duration_sec,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	enemy_panel_tween.start()
+	yield(enemy_panel_tween, "tween_all_completed")
+
+	if enemy_panel_tween != null and is_instance_valid(enemy_panel_tween):
+		enemy_panel_tween.queue_free()
+	enemy_panel_tween = null
+
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
+
+	enemy_panel.rect_position = target_position
+	enemy_panel.visible = not is_hidden_target
+	return null
+
 func _stop_player_panel_switch_tween() -> void:
 	if player_panel_switch_tween != null and is_instance_valid(player_panel_switch_tween):
 		player_panel_switch_tween.stop_all()
@@ -2247,11 +3352,17 @@ func _stop_player_panel_switch_tween() -> void:
 func _animate_player_panel_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
 	if player_panel == null:
 		return null
+	var hidden_target = _player_panel_hidden_position()
+	var is_hidden_target = is_equal_approx(target_position.x, hidden_target.x) and is_equal_approx(target_position.y, hidden_target.y)
 
 	_stop_player_panel_switch_tween()
 	if duration_sec <= 0.0:
 		player_panel.rect_position = target_position
+		player_panel.visible = not is_hidden_target
 		return null
+
+	if not is_hidden_target:
+		player_panel.visible = true
 
 	player_panel_switch_tween = Tween.new()
 	add_child(player_panel_switch_tween)
@@ -2275,6 +3386,7 @@ func _animate_player_panel_to(target_position: Vector2, duration_sec: float, act
 		return null
 
 	player_panel.rect_position = target_position
+	player_panel.visible = not is_hidden_target
 	return null
 
 func consume_selected_species_id() -> String:
@@ -2686,7 +3798,7 @@ func _play_player_switch_withdraw_animation(active_turn_token: int):
 	if player_pokemon_sprite == null:
 		return null
 	_animate_player_panel_to(
-		player_panel_home_position + Vector2(player_panel_switch_slide_distance_px, 0),
+		_player_panel_hidden_position(),
 		max(0.0, player_panel_switch_slide_duration_sec),
 		active_turn_token
 	)
@@ -3229,6 +4341,22 @@ func is_attack_menu_button(focus_owner) -> bool:
 
 func set_battle_text(message: String):
 	battle_text_label.text = message
+
+func _build_enemy_appeared_message(enemy_species_id: String) -> String:
+	var encounter_meta = battle_data.get("encounter_meta", {}) if typeof(battle_data) == TYPE_DICTIONARY else {}
+	var is_trainer_encounter = bool(encounter_meta.get("is_trainer_encounter", false))
+	if is_trainer_encounter:
+		var trainer_name = String(encounter_meta.get("trainer_display_name", "")).strip_edges()
+		var trainer_prefix = "A trainer"
+		if not trainer_name.empty():
+			trainer_prefix = trainer_name
+		var transition_trigger = String(encounter_meta.get("transition_trigger", "")).strip_edges().to_lower()
+		if transition_trigger == "trainer_party_progress":
+			return "%s sent out %s!" % [trainer_prefix, enemy_species_id]
+		if bool(encounter_meta.get("is_boss_encounter", false)):
+			return "%s challenges you with %s!" % [trainer_prefix + " (Boss)", enemy_species_id]
+		return "%s challenges you with %s!" % [trainer_prefix, enemy_species_id]
+	return "A wild %s appeared!" % enemy_species_id
 
 func build_type_effectiveness_text(type_multiplier: float) -> String:
 	# Pokerogue-style thresholds: >=2 super effective, <=0.5 not very effective.
@@ -3820,6 +4948,7 @@ func load_battle_sprites():
 	if enemy_sendout_cry_key.empty():
 		log_debug("Enemy sendout cry key unresolved for species %s" % enemy_species_id)
 	load_player_trainer_sprite()
+	_load_enemy_trainer_sprite()
 
 func _resolve_species_sendout_cry_key(species_id: String, species_paths: Dictionary) -> String:
 	var normalized_species_id = species_id.strip_edges().to_upper()
@@ -3939,17 +5068,447 @@ func _apply_trainer_frame(frame_entry: Dictionary) -> void:
 	player_trainer_sprite.offset = Vector2.ZERO
 	apply_sprite_frame(player_trainer_sprite, frame_entry["frame"])
 
+func _load_enemy_trainer_sprite() -> void:
+	enemy_trainer_idle_frame = {}
+	enemy_trainer_texture_front = null
+	if enemy_trainer_sprite == null:
+		return
+
+	if not _is_active_trainer_encounter():
+		enemy_trainer_sprite.visible = false
+		return
+
+	var sprite_asset_id = String(battle_data.get("enemy_trainer_sprite_asset_id", "")).strip_edges().to_lower()
+	if sprite_asset_id.empty():
+		enemy_trainer_sprite.visible = false
+		return
+
+	var texture_path = "%sassets/images/trainer/%s.png" % [minimal_assets_path, sprite_asset_id]
+	var atlas_path = "%sassets/images/trainer/%s.json" % [minimal_assets_path, sprite_asset_id]
+	if not resource_exists(texture_path):
+		log_debug("Missing enemy trainer texture: %s" % texture_path)
+		enemy_trainer_sprite.visible = false
+		return
+
+	enemy_trainer_texture_front = load(texture_path)
+	var frames = get_all_numeric_frames(atlas_path)
+	if frames.empty():
+		var fallback_frame = parse_sprite_frame(atlas_path, "0001.png")
+		if fallback_frame != null:
+			frames.append(fallback_frame)
+
+	if frames.empty():
+		enemy_trainer_sprite.texture = enemy_trainer_texture_front
+		enemy_trainer_sprite.centered = true
+		enemy_trainer_sprite.region_enabled = false
+		enemy_trainer_sprite.offset = Vector2.ZERO
+		enemy_trainer_sprite.visible = false
+		return
+
+	enemy_trainer_idle_frame = {
+		"texture": enemy_trainer_texture_front,
+		"frame": frames[0],
+	}
+
+	enemy_trainer_sprite.texture = enemy_trainer_texture_front
+	enemy_trainer_sprite.centered = true
+	enemy_trainer_sprite.region_enabled = true
+	enemy_trainer_sprite.offset = Vector2.ZERO
+	apply_sprite_frame(enemy_trainer_sprite, enemy_trainer_idle_frame["frame"])
+	enemy_trainer_sprite.visible = false
+
+func _start_battle_opening_sequence() -> void:
+	var use_player_trainer_intro = _is_active_trainer_encounter() and player_trainer_enabled and player_trainer_sprite != null and not player_trainer_idle_frame.empty()
+	if player_trainer_sprite != null:
+		player_trainer_choreo_playing = false
+		if use_player_trainer_intro:
+			player_trainer_sprite.visible = true
+			player_trainer_sprite.position = player_trainer_sprite_home_position
+			_apply_trainer_frame(player_trainer_idle_frame)
+		else:
+			player_trainer_sprite.visible = false
+
+	var use_trainer_intro = _is_active_trainer_encounter() and enemy_trainer_intro_enabled and enemy_trainer_sprite != null and not enemy_trainer_idle_frame.empty()
+	if use_trainer_intro:
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = false
+		if enemy_pokemon_sprite != null:
+			enemy_pokemon_sprite.visible = false
+		enemy_trainer_sprite.visible = true
+		enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+	else:
+		if enemy_trainer_pb_panel != null:
+			enemy_trainer_pb_panel.visible = false
+		if player_trainer_pb_panel != null:
+			player_trainer_pb_panel.visible = false
+		if enemy_trainer_sprite != null:
+			enemy_trainer_sprite.visible = false
+		if enemy_pokemon_sprite != null:
+			enemy_pokemon_sprite.visible = true
+
+	var slide = _run_enemy_opening_slide_in(not use_trainer_intro)
+	if slide is GDScriptFunctionState:
+		yield(slide, "completed")
+
+	if use_trainer_intro:
+		var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
+		if trainer_sequence is GDScriptFunctionState:
+			return
+	else:
+		_play_enemy_sendout_cry_once()
+		if _is_active_trainer_encounter():
+			start_player_trainer_summon_choreography()
+		else:
+			_show_main_controls_unlocked()
+
+func _run_enemy_opening_slide_in(include_enemy_panel: bool = true):
+	if include_enemy_panel and enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
+		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec))
+	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec)
+	if enemy_slide_in is GDScriptFunctionState:
+		yield(enemy_slide_in, "completed")
+	return null
+
+func _run_player_trainer_reentry_sequence(active_turn_token: int = -1):
+	if player_trainer_sprite == null or not player_trainer_enabled or player_trainer_idle_frame.empty():
+		return null
+
+	_apply_trainer_frame(player_trainer_idle_frame)
+	player_trainer_sprite.visible = true
+	player_trainer_sprite.position = player_trainer_sprite_home_position + Vector2(-player_trainer_exit_distance_px, 0)
+	var reentry_modulate = player_trainer_sprite.modulate
+	player_trainer_sprite.modulate = Color(reentry_modulate.r, reentry_modulate.g, reentry_modulate.b, 0.0)
+
+	var reentry_tween = Tween.new()
+	add_child(reentry_tween)
+	reentry_tween.interpolate_property(
+		player_trainer_sprite,
+		"position:x",
+		player_trainer_sprite.position.x,
+		player_trainer_sprite_home_position.x,
+		max(0.01, player_trainer_exit_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	reentry_tween.interpolate_property(
+		player_trainer_sprite,
+		"modulate:a",
+		player_trainer_sprite.modulate.a,
+		1.0,
+		max(0.01, player_trainer_exit_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	reentry_tween.start()
+	yield(reentry_tween, "tween_all_completed")
+	reentry_tween.queue_free()
+
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
+
+	player_trainer_sprite.position = player_trainer_sprite_home_position
+	player_trainer_sprite.modulate = Color(1, 1, 1, 1)
+	return null
+
+func _run_enemy_trainer_intro_post_slide_sequence():
+	if enemy_trainer_sprite == null:
+		start_player_trainer_summon_choreography()
+		return null
+	if enemy_trainer_idle_frame.empty():
+		start_player_trainer_summon_choreography()
+		return null
+
+	var enemy_species_id = String(battle_data["enemy"].species_id) if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null else "POKEMON"
+	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges() if typeof(battle_data) == TYPE_DICTIONARY else "Trainer"
+	if trainer_name.empty():
+		trainer_name = "Trainer"
+
+	if enemy_pokemon_sprite != null:
+		enemy_pokemon_sprite.visible = false
+	if enemy_trainer_sprite != null:
+		enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+	if enemy_trainer_pb_panel != null or player_trainer_pb_panel != null:
+		var tray_intro = _run_trainer_pb_panel_intro_sequence()
+		if tray_intro is GDScriptFunctionState:
+			yield(tray_intro, "completed")
+
+	set_battle_text("%s would like to battle!" % trainer_name)
+	if enemy_trainer_intro_text_hold_sec > 0.0:
+		yield(get_tree().create_timer(enemy_trainer_intro_text_hold_sec), "timeout")
+
+	var sendout_sequence = _run_enemy_trainer_throw_and_reveal_sequence(trainer_name, enemy_species_id)
+	if sendout_sequence is GDScriptFunctionState:
+		yield(sendout_sequence, "completed")
+	if enemy_pokemon_reveal_to_player_delay_sec > 0.0:
+		yield(get_tree().create_timer(enemy_pokemon_reveal_to_player_delay_sec), "timeout")
+	start_player_trainer_summon_choreography()
+	return null
+
+func _run_enemy_trainer_party_switch_sequence(enemy_species_id: String):
+	if enemy_trainer_sprite == null or enemy_trainer_idle_frame.empty():
+		if enemy_panel != null:
+			enemy_panel.rect_position = _enemy_panel_hidden_position()
+			_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec))
+		_play_enemy_pokemon_sendout_reveal_fx()
+		return null
+
+	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges() if typeof(battle_data) == TYPE_DICTIONARY else "Trainer"
+	if trainer_name.empty():
+		trainer_name = "Trainer"
+
+	if enemy_trainer_idle_frame.has("frame"):
+		enemy_trainer_sprite.texture = enemy_trainer_texture_front
+		enemy_trainer_sprite.centered = true
+		enemy_trainer_sprite.region_enabled = true
+		enemy_trainer_sprite.offset = Vector2.ZERO
+		apply_sprite_frame(enemy_trainer_sprite, enemy_trainer_idle_frame["frame"])
+	enemy_trainer_sprite.visible = true
+	enemy_trainer_sprite.position = enemy_trainer_sprite_home_position + Vector2(enemy_trainer_exit_offset_x, enemy_trainer_exit_offset_y)
+	var entry_modulate = enemy_trainer_sprite.modulate
+	enemy_trainer_sprite.modulate = Color(entry_modulate.r, entry_modulate.g, entry_modulate.b, clamp(enemy_trainer_exit_alpha, 0.0, 1.0))
+
+	var entry_tween = Tween.new()
+	add_child(entry_tween)
+	entry_tween.interpolate_property(enemy_trainer_sprite, "position:x", enemy_trainer_sprite.position.x, enemy_trainer_sprite_home_position.x, max(0.01, enemy_trainer_exit_duration_sec), Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	entry_tween.interpolate_property(enemy_trainer_sprite, "position:y", enemy_trainer_sprite.position.y, enemy_trainer_sprite_home_position.y, max(0.01, enemy_trainer_exit_duration_sec), Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	entry_tween.interpolate_property(enemy_trainer_sprite, "modulate:a", enemy_trainer_sprite.modulate.a, 1.0, max(0.01, enemy_trainer_exit_duration_sec), Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	entry_tween.start()
+	yield(entry_tween, "tween_all_completed")
+	entry_tween.queue_free()
+	enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+	enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+	if enemy_trainer_pb_panel != null:
+		var tray_intro = _run_trainer_pb_panel_intro_sequence(true, false)
+		if tray_intro is GDScriptFunctionState:
+			yield(tray_intro, "completed")
+
+	var sendout_sequence = _run_enemy_trainer_throw_and_reveal_sequence(trainer_name, enemy_species_id)
+	if sendout_sequence is GDScriptFunctionState:
+		yield(sendout_sequence, "completed")
+
+	return null
+
+func _run_enemy_trainer_throw_and_reveal_sequence(trainer_name: String, enemy_species_id: String):
+	if enemy_pokemon_sprite != null:
+		enemy_pokemon_sprite.visible = false
+	set_battle_text("%s sent out %s!" % [trainer_name, enemy_species_id])
+	if enemy_trainer_sent_out_text_hold_sec > 0.0:
+		yield(get_tree().create_timer(enemy_trainer_sent_out_text_hold_sec), "timeout")
+
+	var exit_tween = Tween.new()
+	add_child(exit_tween)
+	exit_tween.interpolate_property(
+		enemy_trainer_sprite,
+		"position:x",
+		enemy_trainer_sprite.position.x,
+		enemy_trainer_sprite_home_position.x + enemy_trainer_exit_offset_x,
+		max(0.01, enemy_trainer_exit_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	exit_tween.interpolate_property(
+		enemy_trainer_sprite,
+		"position:y",
+		enemy_trainer_sprite.position.y,
+		enemy_trainer_sprite_home_position.y + enemy_trainer_exit_offset_y,
+		max(0.01, enemy_trainer_exit_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	exit_tween.interpolate_property(
+		enemy_trainer_sprite,
+		"modulate:a",
+		enemy_trainer_sprite.modulate.a,
+		clamp(enemy_trainer_exit_alpha, 0.0, 1.0),
+		max(0.01, enemy_trainer_exit_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	exit_tween.start()
+
+	var enemy_throw_sequence = _run_enemy_pokeball_throw_sequence()
+	if enemy_throw_sequence is GDScriptFunctionState:
+		yield(enemy_throw_sequence, "completed")
+
+	if exit_tween != null and exit_tween.is_active():
+		yield(exit_tween, "tween_all_completed")
+	if exit_tween != null:
+		exit_tween.queue_free()
+
+	enemy_trainer_sprite.visible = false
+	enemy_trainer_sprite.position = enemy_trainer_sprite_home_position
+	enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
+
+	if enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
+		bind_battle_data()
+		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec))
+
+	_play_enemy_pokemon_sendout_reveal_fx()
+	return null
+
+func _ensure_enemy_pokeball_sprite() -> bool:
+	if enemy_pokeball_sprite != null:
+		return true
+	if effects_layer == null:
+		return false
+
+	enemy_pokeball_sprite = Sprite.new()
+	enemy_pokeball_sprite.centered = true
+	enemy_pokeball_sprite.region_enabled = true
+	enemy_pokeball_sprite.visible = false
+	effects_layer.add_child(enemy_pokeball_sprite)
+	return true
+
+func _apply_enemy_pokeball_frame(frame_name: String) -> bool:
+	if not _ensure_enemy_pokeball_sprite():
+		return false
+
+	var texture_path = minimal_assets_path + POKEBALL_TEXTURE_REL
+	var atlas_path = minimal_assets_path + POKEBALL_ATLAS_REL
+	if not resource_exists(texture_path):
+		return false
+
+	var frame_data = parse_sprite_frame(atlas_path, frame_name)
+	if frame_data == null:
+		return false
+
+	enemy_pokeball_sprite.texture = load(texture_path)
+	enemy_pokeball_sprite.region_enabled = true
+	enemy_pokeball_sprite.centered = true
+	var frame = frame_data["frame"]
+	enemy_pokeball_sprite.region_rect = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+	return true
+
+func _run_enemy_pokeball_throw_sequence() -> void:
+	if not _apply_enemy_pokeball_frame(POKEBALL_FRAME_CLOSED):
+		return
+	if enemy_pokeball_sprite == null:
+		return
+
+	enemy_pokeball_sprite.visible = true
+	enemy_pokeball_sprite.rotation_degrees = 0.0
+	var start_pos = enemy_trainer_sprite_home_position + Vector2(enemy_pokeball_start_offset_x, enemy_pokeball_start_offset_y)
+	if enemy_trainer_sprite != null:
+		start_pos = enemy_trainer_sprite.position + Vector2(enemy_pokeball_start_offset_x, enemy_pokeball_start_offset_y)
+	var target_pos = enemy_sprite_home_position + Vector2(enemy_pokeball_target_offset_x, enemy_pokeball_target_offset_y)
+	var arc_peak_y = target_pos.y - enemy_pokeball_arc_height_px
+	enemy_pokeball_sprite.position = start_pos
+
+	var lob_duration = max(0.01, enemy_pokeball_lob_duration_sec)
+	var lob_up_duration = clamp(enemy_pokeball_lob_up_duration_sec, 0.01, lob_duration - 0.01)
+	var lob_down_duration = max(0.01, lob_duration - lob_up_duration)
+
+	var x_tween = Tween.new()
+	add_child(x_tween)
+	x_tween.interpolate_property(enemy_pokeball_sprite, "position:x", start_pos.x, target_pos.x, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	x_tween.start()
+
+	var rotate_tween = Tween.new()
+	add_child(rotate_tween)
+	rotate_tween.interpolate_property(enemy_pokeball_sprite, "rotation_degrees", 0.0, enemy_pokeball_spin_degrees, lob_duration, Tween.TRANS_LINEAR, Tween.EASE_IN_OUT)
+	rotate_tween.start()
+
+	var up_tween = Tween.new()
+	add_child(up_tween)
+	up_tween.interpolate_property(enemy_pokeball_sprite, "position:y", start_pos.y, arc_peak_y, lob_up_duration, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	up_tween.start()
+	yield(up_tween, "tween_all_completed")
+	up_tween.queue_free()
+
+	var down_tween = Tween.new()
+	add_child(down_tween)
+	down_tween.interpolate_property(enemy_pokeball_sprite, "position:y", enemy_pokeball_sprite.position.y, target_pos.y, lob_down_duration, Tween.TRANS_CUBIC, Tween.EASE_IN)
+	down_tween.start()
+	yield(down_tween, "tween_all_completed")
+	down_tween.queue_free()
+
+	if x_tween != null:
+		x_tween.queue_free()
+	if rotate_tween != null:
+		rotate_tween.queue_free()
+
+	if not _apply_enemy_pokeball_frame(POKEBALL_FRAME_OPENING):
+		_hide_enemy_pokeball_sprite()
+		return
+	yield(get_tree().create_timer(max(0.01, enemy_pokeball_opening_hold_sec)), "timeout")
+
+	_play_player_pokeball_release_sfx()
+	if _apply_enemy_pokeball_frame(POKEBALL_FRAME_OPEN):
+		_spawn_player_pokeball_open_particles(target_pos + Vector2(0, -2))
+	yield(get_tree().create_timer(max(0.01, enemy_pokeball_open_hold_sec)), "timeout")
+	_hide_enemy_pokeball_sprite()
+
+func _hide_enemy_pokeball_sprite() -> void:
+	if enemy_pokeball_sprite != null:
+		enemy_pokeball_sprite.visible = false
+
+func _play_enemy_pokemon_sendout_reveal_fx() -> void:
+	if enemy_pokemon_sprite == null:
+		_play_enemy_sendout_cry_once()
+		return
+
+	if not battle_fx_enabled:
+		enemy_pokemon_sprite.visible = true
+		enemy_pokemon_sprite.scale = enemy_sprite_home_scale
+		enemy_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+		_play_enemy_sendout_cry_once()
+		return
+
+	var start_scale_mul = max(0.1, enemy_pokemon_reveal_start_scale)
+	var target_scale = enemy_sprite_home_scale
+	var start_scale = Vector2(target_scale.x * start_scale_mul, target_scale.y * start_scale_mul)
+	enemy_pokemon_sprite.scale = start_scale
+	var tint = enemy_pokemon_reveal_tint_color
+	tint.a = clamp(enemy_pokemon_reveal_alpha_start, 0.0, 1.0)
+	enemy_pokemon_sprite.modulate = tint
+	enemy_pokemon_sprite.visible = true
+
+	var reveal_tween = Tween.new()
+	add_child(reveal_tween)
+	reveal_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"scale",
+		start_scale,
+		target_scale,
+		max(0.01, enemy_pokemon_reveal_scale_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.interpolate_property(
+		enemy_pokemon_sprite,
+		"modulate",
+		enemy_pokemon_sprite.modulate,
+		Color(1, 1, 1, 1),
+		max(0.01, enemy_pokemon_reveal_flash_duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN
+	)
+	reveal_tween.start()
+	_connect_once(reveal_tween, "tween_all_completed", "_on_enemy_pokemon_reveal_tween_completed", [reveal_tween])
+
+func _on_enemy_pokemon_reveal_tween_completed(reveal_tween: Tween) -> void:
+	_play_enemy_sendout_cry_once()
+	if reveal_tween != null:
+		reveal_tween.queue_free()
+
 func start_player_trainer_summon_choreography() -> void:
 	set_sendout_controls_locked(true)
 	if player_trainer_sprite == null or not player_trainer_enabled:
 		if player_pokemon_sprite != null:
 			player_pokemon_sprite.visible = true
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec))
 		_play_player_sendout_cry_once()
 		_on_player_sendout_settled()
 		return
 	if player_trainer_idle_frame.empty():
 		if player_pokemon_sprite != null:
 			player_pokemon_sprite.visible = true
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec))
 		_play_player_sendout_cry_once()
 		_on_player_sendout_settled()
 		return
@@ -4049,10 +5608,12 @@ func _play_player_pokeball_release_sfx() -> void:
 
 func _play_player_pokemon_sendout_reveal_fx() -> void:
 	if player_pokemon_sprite == null:
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec))
 		_on_player_sendout_settled()
 		return
 
 	if not battle_fx_enabled:
+		_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec))
 		player_pokemon_sprite.visible = true
 		player_pokemon_sprite.scale = player_sprite_home_scale
 		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
@@ -4074,6 +5635,7 @@ func _play_player_pokemon_sendout_reveal_fx() -> void:
 	tint.a = clamp(player_pokemon_reveal_alpha_start, 0.0, 1.0)
 	player_pokemon_sprite.modulate = tint
 	player_pokemon_sprite.visible = true
+	_animate_player_panel_to(player_panel_home_position, max(0.0, player_panel_switch_slide_duration_sec))
 
 	var reveal_tween = Tween.new()
 	add_child(reveal_tween)
@@ -4516,6 +6078,7 @@ func reset_pokemon_animation_state():
 		player_trainer_sprite.visible = false
 		player_trainer_sprite.position = player_trainer_sprite_home_position
 	_hide_player_pokeball_sprite()
+	_hide_enemy_pokeball_sprite()
 
 func update_pokemon_animations(delta: float):
 	if not battle_fx_enabled:
