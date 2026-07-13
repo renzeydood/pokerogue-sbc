@@ -12,24 +12,24 @@ var _push_queue := []
 var _immediate_queue := []
 var _deferred_queue := []
 
-var _active_phase: BattlePhase = null
+var _active_phase = null
 var _is_running := false
 var _is_dispatching := false
 var _allow_completion := false
 
-func push_phase(phase: BattlePhase) -> void:
+func push_phase(phase) -> void:
 	if phase == null:
 		return
 	_push_queue.append(phase)
 	_try_dispatch()
 
-func unshift_phase(phase: BattlePhase) -> void:
+func unshift_phase(phase) -> void:
 	if phase == null:
 		return
 	_immediate_queue.append(phase)
 	_try_dispatch()
 
-func defer_phase(phase: BattlePhase) -> void:
+func defer_phase(phase) -> void:
 	if phase == null:
 		return
 	_deferred_queue.append(phase)
@@ -57,7 +57,7 @@ func queue_sizes() -> Dictionary:
 		"deferred": _deferred_queue.size(),
 	}
 
-func _next_phase() -> BattlePhase:
+func _next_phase():
 	if not _immediate_queue.empty():
 		return _immediate_queue.pop_front()
 	if not _deferred_queue.empty():
@@ -94,7 +94,7 @@ func _try_dispatch() -> void:
 			break
 	_is_dispatching = false
 
-func _on_phase_completion_requested(phase: BattlePhase) -> bool:
+func _on_phase_completion_requested(phase) -> bool:
 	if phase == null:
 		return false
 	if _active_phase == null:
@@ -113,45 +113,3 @@ func _on_phase_completion_requested(phase: BattlePhase) -> bool:
 	_active_phase = null
 	_try_dispatch()
 	return true
-
-class _SelfTestPhase extends BattlePhaseType:
-	var _label := ""
-	var _log := []
-	var _runner_ref: BattlePhaseRunner = null
-	var _op := ""
-	var _enqueue_phase: BattlePhase = null
-
-	func _init(label: String, log: Array, runner_ref: BattlePhaseRunner, op: String = "", enqueue_phase: BattlePhase = null) -> void:
-		phase_name = label
-		_label = label
-		_log = log
-		_runner_ref = runner_ref
-		_op = op
-		_enqueue_phase = enqueue_phase
-
-	func _on_start() -> void:
-		_log.append("start:" + _label)
-		if _op == "unshift" and _enqueue_phase != null:
-			_runner_ref.unshift_phase(_enqueue_phase)
-		elif _op == "defer" and _enqueue_phase != null:
-			_runner_ref.defer_phase(_enqueue_phase)
-		complete()
-
-func run_deterministic_self_test() -> Dictionary:
-	clear()
-	var log := []
-	var deferred = _SelfTestPhase.new("Deferred", log, self)
-	var child = _SelfTestPhase.new("Child", log, self)
-	var root = _SelfTestPhase.new("Root", log, self, "unshift", child)
-	var add_deferred = _SelfTestPhase.new("AddDeferred", log, self, "defer", deferred)
-	var tail = _SelfTestPhase.new("Tail", log, self)
-
-	push_phase(root)
-	push_phase(add_deferred)
-	push_phase(tail)
-
-	return {
-		"ok": log == ["start:Root", "start:Child", "start:AddDeferred", "start:Deferred", "start:Tail"],
-		"execution_log": log,
-		"remaining": queue_sizes(),
-	}

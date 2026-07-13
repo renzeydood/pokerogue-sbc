@@ -15,6 +15,16 @@ _global_script_classes=[ {
 "path": "res://logic/BattleCalc.gd"
 }, {
 "base": "Reference",
+"class": "BattlePhase",
+"language": "GDScript",
+"path": "res://logic/BattlePhase.gd"
+}, {
+"base": "Reference",
+"class": "BattlePhaseRunner",
+"language": "GDScript",
+"path": "res://logic/BattlePhaseRunner.gd"
+}, {
+"base": "Reference",
 "class": "CatalogDataLoader",
 "language": "GDScript",
 "path": "res://logic/CatalogDataLoader.gd"
@@ -23,6 +33,16 @@ _global_script_classes=[ {
 "class": "EditorPreviewSync",
 "language": "GDScript",
 "path": "res://logic/EditorPreviewSync.gd"
+}, {
+"base": "BattlePhase",
+"class": "EncounterTransitionIntroPhase",
+"language": "GDScript",
+"path": "res://logic/phases/EncounterTransitionIntroPhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "EncounterTransitionResolvePhase",
+"language": "GDScript",
+"path": "res://logic/phases/EncounterTransitionResolvePhase.gd"
 }, {
 "base": "Reference",
 "class": "MoveData",
@@ -41,8 +61,12 @@ _global_script_classes=[ {
 } ]
 _global_script_class_icons={
 "BattleCalc": "",
+"BattlePhase": "",
+"BattlePhaseRunner": "",
 "CatalogDataLoader": "",
 "EditorPreviewSync": "",
+"EncounterTransitionIntroPhase": "",
+"EncounterTransitionResolvePhase": "",
 "MoveData": "",
 "PartyModel": "",
 "RuntimeState": ""

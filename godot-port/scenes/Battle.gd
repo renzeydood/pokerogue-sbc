@@ -181,6 +181,9 @@ var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
+var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
+var encounter_transition_intro_phase_script = load("res://logic/phases/EncounterTransitionIntroPhase.gd")
+var encounter_transition_resolve_phase_script = load("res://logic/phases/EncounterTransitionResolvePhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
@@ -3129,12 +3132,38 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		end_battle(true, fainted_species_id)
 		return
 
-	if include_fainted_text and not fainted_species_id.empty():
-		set_battle_text("%s fainted!" % fainted_species_id)
-	if enemy_switch_delay_sec > 0.0:
-		yield(get_tree().create_timer(enemy_switch_delay_sec), "timeout")
-		if active_turn_token != -1 and active_turn_token != turn_token:
-			return
+	var transition_context := {
+		"aborted": false,
+	}
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(
+		encounter_transition_intro_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_resolve_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+
+	return
+
+func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_turn_token: int = -1, include_fainted_text: bool = true):
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		end_battle(true, fainted_species_id)
+		return
 
 	var trainer_party_switch = _is_active_trainer_encounter()
 	var enemy_slide_out = null
