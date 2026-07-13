@@ -1,8 +1,72 @@
 {
   "schema_version": 1,
   "generated_from": "dependency/pokerogue",
-  "generated_at": "2026-07-04T05:32:08.329415+00:00",
+  "generated_at": "2026-07-13T02:23:43.002819+00:00",
   "items": [
+    {
+      "schema_version": 1,
+      "move_id": "ABSORB",
+      "name": "Absorb",
+      "type": "GRASS",
+      "category": "SPECIAL",
+      "power": 20,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ABSORB",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ACROBATICS",
+      "name": "Acrobatics",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 55,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ACROBATICS",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "AERIAL_ACE",
+      "name": "Aerial Ace",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "AERIAL_ACE",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "AGILITY",
+      "name": "Agility",
+      "type": "PSYCHIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "AGILITY",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
     {
       "schema_version": 1,
       "move_id": "AIR_SLASH",
@@ -17,6 +81,230 @@
       },
       "accuracy": 95,
       "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "AQUA_RING",
+      "name": "Aqua Ring",
+      "type": "WATER",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "AQUA_RING",
+        "generation": 4
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "AQUA_STEP",
+      "name": "Aqua Step",
+      "type": "WATER",
+      "category": "PHYSICAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "AQUA_STEP",
+        "generation": 9
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ARM_THRUST",
+      "name": "Arm Thrust",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ARM_THRUST",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ASSURANCE",
+      "name": "Assurance",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ASSURANCE",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ASTONISH",
+      "name": "Astonish",
+      "type": "GHOST",
+      "category": "PHYSICAL",
+      "power": 30,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ASTONISH",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BABY_DOLL_EYES",
+      "name": "Baby Doll Eyes",
+      "type": "FAIRY",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BABY_DOLL_EYES",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 1
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BEAK_BLAST",
+      "name": "Beak Blast",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BEAK_BLAST",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 5,
+      "priority": -3
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BEAT_UP",
+      "name": "Beat Up",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BEAT_UP",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BELLY_DRUM",
+      "name": "Belly Drum",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BELLY_DRUM",
+        "generation": 2
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BIDE",
+      "name": "Bide",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BIDE",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 1
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BIND",
+      "name": "Bind",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BIND",
+        "generation": 1
+      },
+      "accuracy": 85,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BITE",
+      "name": "Bite",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BITE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BLAZE_KICK",
+      "name": "Blaze Kick",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 85,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BLAZE_KICK",
+        "generation": 3
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BRANCH_POKE",
+      "name": "Branch Poke",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BRANCH_POKE",
+        "generation": 8
+      },
+      "accuracy": 100,
+      "pp": 40,
       "priority": 0
     },
     {
@@ -37,6 +325,390 @@
     },
     {
       "schema_version": 1,
+      "move_id": "BUBBLE_BEAM",
+      "name": "Bubble Beam",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 65,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BUBBLE_BEAM",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "BUG_BITE",
+      "name": "Bug Bite",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "BUG_BITE",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CHARGE",
+      "name": "Charge",
+      "type": "ELECTRIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CHARGE",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CHARM",
+      "name": "Charm",
+      "type": "FAIRY",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CHARM",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CLOSE_COMBAT",
+      "name": "Close Combat",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CLOSE_COMBAT",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "COMET_PUNCH",
+      "name": "Comet Punch",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 18,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "COMET_PUNCH",
+        "generation": 1
+      },
+      "accuracy": 85,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CONFUSE_RAY",
+      "name": "Confuse Ray",
+      "type": "GHOST",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CONFUSE_RAY",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CONFUSION",
+      "name": "Confusion",
+      "type": "PSYCHIC",
+      "category": "SPECIAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CONFUSION",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CONSTRICT",
+      "name": "Constrict",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 10,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CONSTRICT",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "COUNTER",
+      "name": "Counter",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "COUNTER",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": -5
+    },
+    {
+      "schema_version": 1,
+      "move_id": "COVET",
+      "name": "Covet",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "COVET",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "CROSS_POISON",
+      "name": "Cross Poison",
+      "type": "POISON",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "CROSS_POISON",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DARKEST_LARIAT",
+      "name": "Darkest Lariat",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 85,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DARKEST_LARIAT",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DEFENSE_CURL",
+      "name": "Defense Curl",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DEFENSE_CURL",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DISARMING_VOICE",
+      "name": "Disarming Voice",
+      "type": "FAIRY",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DISARMING_VOICE",
+        "generation": 6
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DOUBLE_HIT",
+      "name": "Double Hit",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 35,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DOUBLE_HIT",
+        "generation": 4
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DOUBLE_KICK",
+      "name": "Double Kick",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 30,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DOUBLE_KICK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DOUBLE_TEAM",
+      "name": "Double Team",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DOUBLE_TEAM",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DRUM_BEATING",
+      "name": "Drum Beating",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DRUM_BEATING",
+        "generation": 8
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "DUAL_CHOP",
+      "name": "Dual Chop",
+      "type": "DRAGON",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "DUAL_CHOP",
+        "generation": 5
+      },
+      "accuracy": 90,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "EARTHQUAKE",
+      "name": "Earthquake",
+      "type": "GROUND",
+      "category": "PHYSICAL",
+      "power": 100,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "EARTHQUAKE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ECHOED_VOICE",
+      "name": "Echoed Voice",
+      "type": "NORMAL",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ECHOED_VOICE",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ELECTRIC_TERRAIN",
+      "name": "Electric Terrain",
+      "type": "ELECTRIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ELECTRIC_TERRAIN",
+        "generation": 6
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ELECTRO_BALL",
+      "name": "Electro Ball",
+      "type": "ELECTRIC",
+      "category": "SPECIAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ELECTRO_BALL",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "EMBER",
       "name": "Ember",
       "type": "FIRE",
@@ -53,6 +725,134 @@
     },
     {
       "schema_version": 1,
+      "move_id": "FAIRY_WIND",
+      "name": "Fairy Wind",
+      "type": "FAIRY",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FAIRY_WIND",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FALSE_SWIPE",
+      "name": "False Swipe",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FALSE_SWIPE",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FEINT",
+      "name": "Feint",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 30,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FEINT",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 2
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FIRE_FANG",
+      "name": "Fire Fang",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 65,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FIRE_FANG",
+        "generation": 4
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FIRE_PUNCH",
+      "name": "Fire Punch",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 75,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FIRE_PUNCH",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FIRE_SPIN",
+      "name": "Fire Spin",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 35,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FIRE_SPIN",
+        "generation": 1
+      },
+      "accuracy": 85,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FLAME_CHARGE",
+      "name": "Flame Charge",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FLAME_CHARGE",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FLARE_BLITZ",
+      "name": "Flare Blitz",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FLARE_BLITZ",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "FLASH_CANNON",
       "name": "Flash Cannon",
       "type": "STEEL",
@@ -62,6 +862,118 @@
         "repo": "dependency/pokerogue",
         "move_enum_name": "FLASH_CANNON",
         "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FLOWER_TRICK",
+      "name": "Flower Trick",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FLOWER_TRICK",
+        "generation": 9
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FOCUS_ENERGY",
+      "name": "Focus Energy",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FOCUS_ENERGY",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FOLLOW_ME",
+      "name": "Follow Me",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FOLLOW_ME",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 2
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FORESIGHT",
+      "name": "Foresight",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FORESIGHT",
+        "generation": 2
+      },
+      "accuracy": -1,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FURY_ATTACK",
+      "name": "Fury Attack",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FURY_ATTACK",
+        "generation": 1
+      },
+      "accuracy": 85,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FURY_CUTTER",
+      "name": "Fury Cutter",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FURY_CUTTER",
+        "generation": 2
+      },
+      "accuracy": 95,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "FUTURE_SIGHT",
+      "name": "Future Sight",
+      "type": "PSYCHIC",
+      "category": "SPECIAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "FUTURE_SIGHT",
+        "generation": 2
       },
       "accuracy": 100,
       "pp": 10,
@@ -85,6 +997,326 @@
     },
     {
       "schema_version": 1,
+      "move_id": "GROWTH",
+      "name": "Growth",
+      "type": "GRASS",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "GROWTH",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "GUST",
+      "name": "Gust",
+      "type": "FLYING",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "GUST",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "GYRO_BALL",
+      "name": "Gyro Ball",
+      "type": "STEEL",
+      "category": "PHYSICAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "GYRO_BALL",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HAMMER_ARM",
+      "name": "Hammer Arm",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 100,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HAMMER_ARM",
+        "generation": 4
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HARDEN",
+      "name": "Harden",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HARDEN",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HAZE",
+      "name": "Haze",
+      "type": "ICE",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HAZE",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HEAT_WAVE",
+      "name": "Heat Wave",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 95,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HEAT_WAVE",
+        "generation": 3
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HELPING_HAND",
+      "name": "Helping Hand",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HELPING_HAND",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 5
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HONE_CLAWS",
+      "name": "Hone Claws",
+      "type": "DARK",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HONE_CLAWS",
+        "generation": 5
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HOWL",
+      "name": "Howl",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HOWL",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HURRICANE",
+      "name": "Hurricane",
+      "type": "FLYING",
+      "category": "SPECIAL",
+      "power": 110,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HURRICANE",
+        "generation": 5
+      },
+      "accuracy": 70,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "HYPER_BEAM",
+      "name": "Hyper Beam",
+      "type": "NORMAL",
+      "category": "SPECIAL",
+      "power": 150,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "HYPER_BEAM",
+        "generation": 1
+      },
+      "accuracy": 90,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ICE_FANG",
+      "name": "Ice Fang",
+      "type": "ICE",
+      "category": "PHYSICAL",
+      "power": 65,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ICE_FANG",
+        "generation": 4
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ICE_PUNCH",
+      "name": "Ice Punch",
+      "type": "ICE",
+      "category": "PHYSICAL",
+      "power": 75,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ICE_PUNCH",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "IRON_DEFENSE",
+      "name": "Iron Defense",
+      "type": "STEEL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "IRON_DEFENSE",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "IRON_TAIL",
+      "name": "Iron Tail",
+      "type": "STEEL",
+      "category": "PHYSICAL",
+      "power": 100,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "IRON_TAIL",
+        "generation": 2
+      },
+      "accuracy": 75,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LASER_FOCUS",
+      "name": "Laser Focus",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LASER_FOCUS",
+        "generation": 7
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LEAFAGE",
+      "name": "Leafage",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LEAFAGE",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LEAF_BLADE",
+      "name": "Leaf Blade",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LEAF_BLADE",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LEAF_STORM",
+      "name": "Leaf Storm",
+      "type": "GRASS",
+      "category": "SPECIAL",
+      "power": 130,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LEAF_STORM",
+        "generation": 4
+      },
+      "accuracy": 90,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "LEECH_SEED",
       "name": "Leech Seed",
       "type": "GRASS",
@@ -97,6 +1329,326 @@
       },
       "accuracy": 90,
       "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LEER",
+      "name": "Leer",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LEER",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LICK",
+      "name": "Lick",
+      "type": "GHOST",
+      "category": "PHYSICAL",
+      "power": 30,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LICK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LIGHT_SCREEN",
+      "name": "Light Screen",
+      "type": "PSYCHIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LIGHT_SCREEN",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LOW_KICK",
+      "name": "Low Kick",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LOW_KICK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LUCKY_CHANT",
+      "name": "Lucky Chant",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LUCKY_CHANT",
+        "generation": 4
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "LUNGE",
+      "name": "Lunge",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "LUNGE",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MACH_PUNCH",
+      "name": "Mach Punch",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MACH_PUNCH",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 1
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MAGICAL_LEAF",
+      "name": "Magical Leaf",
+      "type": "GRASS",
+      "category": "SPECIAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MAGICAL_LEAF",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MEGAHORN",
+      "name": "Megahorn",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MEGAHORN",
+        "generation": 2
+      },
+      "accuracy": 85,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "METAL_CLAW",
+      "name": "Metal Claw",
+      "type": "STEEL",
+      "category": "PHYSICAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "METAL_CLAW",
+        "generation": 2
+      },
+      "accuracy": 95,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MOONLIGHT",
+      "name": "Moonlight",
+      "type": "FAIRY",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MOONLIGHT",
+        "generation": 2
+      },
+      "accuracy": -1,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MUDDY_WATER",
+      "name": "Muddy Water",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MUDDY_WATER",
+        "generation": 3
+      },
+      "accuracy": 85,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MUD_SHOT",
+      "name": "Mud Shot",
+      "type": "GROUND",
+      "category": "SPECIAL",
+      "power": 55,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MUD_SHOT",
+        "generation": 3
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MUD_SLAP",
+      "name": "Mud Slap",
+      "type": "GROUND",
+      "category": "SPECIAL",
+      "power": 20,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MUD_SLAP",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "MYSTICAL_FIRE",
+      "name": "Mystical Fire",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 75,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "MYSTICAL_FIRE",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "NEEDLE_ARM",
+      "name": "Needle Arm",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "NEEDLE_ARM",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "NIGHT_SLASH",
+      "name": "Night Slash",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "NIGHT_SLASH",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ODOR_SLEUTH",
+      "name": "Odor Sleuth",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ODOR_SLEUTH",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PAYBACK",
+      "name": "Payback",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PAYBACK",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PECK",
+      "name": "Peck",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 35,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PECK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
       "priority": 0
     },
     {
@@ -117,6 +1669,198 @@
     },
     {
       "schema_version": 1,
+      "move_id": "PETAL_DANCE",
+      "name": "Petal Dance",
+      "type": "GRASS",
+      "category": "SPECIAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PETAL_DANCE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PHANTOM_FORCE",
+      "name": "Phantom Force",
+      "type": "GHOST",
+      "category": "PHYSICAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PHANTOM_FORCE",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PIN_MISSILE",
+      "name": "Pin Missile",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 25,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PIN_MISSILE",
+        "generation": 1
+      },
+      "accuracy": 95,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PLAY_NICE",
+      "name": "Play Nice",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PLAY_NICE",
+        "generation": 6
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "POISON_POWDER",
+      "name": "Poison Powder",
+      "type": "POISON",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "POISON_POWDER",
+        "generation": 1
+      },
+      "accuracy": 75,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "POISON_STING",
+      "name": "Poison Sting",
+      "type": "POISON",
+      "category": "PHYSICAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "POISON_STING",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "POUND",
+      "name": "Pound",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "POUND",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "POWER_TRIP",
+      "name": "Power Trip",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 20,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "POWER_TRIP",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PROTECT",
+      "name": "Protect",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PROTECT",
+        "generation": 2
+      },
+      "accuracy": -1,
+      "pp": 5,
+      "priority": 4
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PURSUIT",
+      "name": "Pursuit",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PURSUIT",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "PYRO_BALL",
+      "name": "Pyro Ball",
+      "type": "FIRE",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "PYRO_BALL",
+        "generation": 8
+      },
+      "accuracy": 90,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "QUICK_ATTACK",
+      "name": "Quick Attack",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "QUICK_ATTACK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 1
+    },
+    {
+      "schema_version": 1,
       "move_id": "RAGE",
       "name": "Rage",
       "type": "NORMAL",
@@ -129,6 +1873,198 @@
       },
       "accuracy": 100,
       "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "RAPID_SPIN",
+      "name": "Rapid Spin",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "RAPID_SPIN",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "RAZOR_LEAF",
+      "name": "Razor Leaf",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 55,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "RAZOR_LEAF",
+        "generation": 1
+      },
+      "accuracy": 95,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "REFLECT",
+      "name": "Reflect",
+      "type": "PSYCHIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "REFLECT",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "REVIVAL_BLESSING",
+      "name": "Revival Blessing",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "REVIVAL_BLESSING",
+        "generation": 9
+      },
+      "accuracy": -1,
+      "pp": 1,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROAR",
+      "name": "Roar",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROAR",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": -6
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROCK_BLAST",
+      "name": "Rock Blast",
+      "type": "ROCK",
+      "category": "PHYSICAL",
+      "power": 25,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROCK_BLAST",
+        "generation": 3
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROCK_SMASH",
+      "name": "Rock Smash",
+      "type": "FIGHTING",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROCK_SMASH",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROLLOUT",
+      "name": "Rollout",
+      "type": "ROCK",
+      "category": "PHYSICAL",
+      "power": 30,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROLLOUT",
+        "generation": 2
+      },
+      "accuracy": 90,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROTOTILLER",
+      "name": "Rototiller",
+      "type": "GROUND",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROTOTILLER",
+        "generation": 6
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "ROUND",
+      "name": "Round",
+      "type": "NORMAL",
+      "category": "SPECIAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "ROUND",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SAND_ATTACK",
+      "name": "Sand Attack",
+      "type": "GROUND",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SAND_ATTACK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SCARY_FACE",
+      "name": "Scary Face",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SCARY_FACE",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 10,
       "priority": 0
     },
     {
@@ -149,6 +2085,22 @@
     },
     {
       "schema_version": 1,
+      "move_id": "SHADOW_BALL",
+      "name": "Shadow Ball",
+      "type": "GHOST",
+      "category": "SPECIAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SHADOW_BALL",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "SHADOW_CLAW",
       "name": "Shadow Claw",
       "type": "GHOST",
@@ -161,6 +2113,454 @@
       },
       "accuracy": 100,
       "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SHED_TAIL",
+      "name": "Shed Tail",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SHED_TAIL",
+        "generation": 9
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SILK_TRAP",
+      "name": "Silk Trap",
+      "type": "BUG",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SILK_TRAP",
+        "generation": 9
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 4
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SING",
+      "name": "Sing",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SING",
+        "generation": 1
+      },
+      "accuracy": 55,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SKY_ATTACK",
+      "name": "Sky Attack",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 140,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SKY_ATTACK",
+        "generation": 1
+      },
+      "accuracy": 90,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SLACK_OFF",
+      "name": "Slack Off",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SLACK_OFF",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 5,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SLAM",
+      "name": "Slam",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SLAM",
+        "generation": 1
+      },
+      "accuracy": 75,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SLASH",
+      "name": "Slash",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SLASH",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SLEEP_POWDER",
+      "name": "Sleep Powder",
+      "type": "GRASS",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SLEEP_POWDER",
+        "generation": 1
+      },
+      "accuracy": 75,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SLUDGE_BOMB",
+      "name": "Sludge Bomb",
+      "type": "POISON",
+      "category": "SPECIAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SLUDGE_BOMB",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SMOKESCREEN",
+      "name": "Smokescreen",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SMOKESCREEN",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SNARL",
+      "name": "Snarl",
+      "type": "DARK",
+      "category": "SPECIAL",
+      "power": 55,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SNARL",
+        "generation": 5
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SNIPE_SHOT",
+      "name": "Snipe Shot",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 85,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SNIPE_SHOT",
+        "generation": 8
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SPARKLING_ARIA",
+      "name": "Sparkling Aria",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SPARKLING_ARIA",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SPIKY_SHIELD",
+      "name": "Spiky Shield",
+      "type": "GRASS",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SPIKY_SHIELD",
+        "generation": 6
+      },
+      "accuracy": -1,
+      "pp": 5,
+      "priority": 4
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SPITE",
+      "name": "Spite",
+      "type": "GHOST",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SPITE",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SPIT_UP",
+      "name": "Spit Up",
+      "type": "NORMAL",
+      "category": "SPECIAL",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SPIT_UP",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STEEL_WING",
+      "name": "Steel Wing",
+      "type": "STEEL",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STEEL_WING",
+        "generation": 2
+      },
+      "accuracy": 90,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STOCKPILE",
+      "name": "Stockpile",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STOCKPILE",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STRING_SHOT",
+      "name": "String Shot",
+      "type": "BUG",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STRING_SHOT",
+        "generation": 1
+      },
+      "accuracy": 95,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STRUGGLE_BUG",
+      "name": "Struggle Bug",
+      "type": "BUG",
+      "category": "SPECIAL",
+      "power": 50,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STRUGGLE_BUG",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STUFF_CHEEKS",
+      "name": "Stuff Cheeks",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STUFF_CHEEKS",
+        "generation": 8
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "STUN_SPORE",
+      "name": "Stun Spore",
+      "type": "GRASS",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "STUN_SPORE",
+        "generation": 1
+      },
+      "accuracy": 75,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SUPERSONIC",
+      "name": "Supersonic",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SUPERSONIC",
+        "generation": 1
+      },
+      "accuracy": 55,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SURF",
+      "name": "Surf",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SURF",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SWALLOW",
+      "name": "Swallow",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SWALLOW",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SWEET_SCENT",
+      "name": "Sweet Scent",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SWEET_SCENT",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SWIFT",
+      "name": "Swift",
+      "type": "NORMAL",
+      "category": "SPECIAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SWIFT",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "SWORDS_DANCE",
+      "name": "Swords Dance",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "SWORDS_DANCE",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 20,
       "priority": 0
     },
     {
@@ -181,6 +2581,22 @@
     },
     {
       "schema_version": 1,
+      "move_id": "TAILWIND",
+      "name": "Tailwind",
+      "type": "FLYING",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TAILWIND",
+        "generation": 4
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "TAIL_WHIP",
       "name": "Tail Whip",
       "type": "NORMAL",
@@ -193,6 +2609,214 @@
       },
       "accuracy": 100,
       "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TAUNT",
+      "name": "Taunt",
+      "type": "DARK",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TAUNT",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TEETER_DANCE",
+      "name": "Teeter Dance",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TEETER_DANCE",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "THIEF",
+      "name": "Thief",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "THIEF",
+        "generation": 2
+      },
+      "accuracy": 100,
+      "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "THROAT_CHOP",
+      "name": "Throat Chop",
+      "type": "DARK",
+      "category": "PHYSICAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "THROAT_CHOP",
+        "generation": 7
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "THUNDERBOLT",
+      "name": "Thunderbolt",
+      "type": "ELECTRIC",
+      "category": "SPECIAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "THUNDERBOLT",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "THUNDER_FANG",
+      "name": "Thunder Fang",
+      "type": "ELECTRIC",
+      "category": "PHYSICAL",
+      "power": 65,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "THUNDER_FANG",
+        "generation": 4
+      },
+      "accuracy": 95,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "THUNDER_SHOCK",
+      "name": "Thunder Shock",
+      "type": "ELECTRIC",
+      "category": "SPECIAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "THUNDER_SHOCK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TIDY_UP",
+      "name": "Tidy Up",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TIDY_UP",
+        "generation": 9
+      },
+      "accuracy": -1,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TORCH_SONG",
+      "name": "Torch Song",
+      "type": "FIRE",
+      "category": "SPECIAL",
+      "power": 80,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TORCH_SONG",
+        "generation": 9
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TOXIC",
+      "name": "Toxic",
+      "type": "POISON",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TOXIC",
+        "generation": 1
+      },
+      "accuracy": 90,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TRICK",
+      "name": "Trick",
+      "type": "PSYCHIC",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TRICK",
+        "generation": 3
+      },
+      "accuracy": 100,
+      "pp": 10,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TWINEEDLE",
+      "name": "Twineedle",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 25,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TWINEEDLE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "U_TURN",
+      "name": "U Turn",
+      "type": "BUG",
+      "category": "PHYSICAL",
+      "power": 70,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "U_TURN",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 20,
       "priority": 0
     },
     {
@@ -213,6 +2837,22 @@
     },
     {
       "schema_version": 1,
+      "move_id": "VISE_GRIP",
+      "name": "Vise Grip",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 55,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "VISE_GRIP",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
       "move_id": "WATER_GUN",
       "name": "Water Gun",
       "type": "WATER",
@@ -225,6 +2865,150 @@
       },
       "accuracy": 100,
       "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WATER_SHURIKEN",
+      "name": "Water Shuriken",
+      "type": "WATER",
+      "category": "SPECIAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WATER_SHURIKEN",
+        "generation": 6
+      },
+      "accuracy": 100,
+      "pp": 20,
+      "priority": 1
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WATER_SPORT",
+      "name": "Water Sport",
+      "type": "WATER",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WATER_SPORT",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WILD_CHARGE",
+      "name": "Wild Charge",
+      "type": "ELECTRIC",
+      "category": "PHYSICAL",
+      "power": 90,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WILD_CHARGE",
+        "generation": 5
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WING_ATTACK",
+      "name": "Wing Attack",
+      "type": "FLYING",
+      "category": "PHYSICAL",
+      "power": 60,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WING_ATTACK",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WITHDRAW",
+      "name": "Withdraw",
+      "type": "WATER",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WITHDRAW",
+        "generation": 1
+      },
+      "accuracy": -1,
+      "pp": 40,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WOOD_HAMMER",
+      "name": "Wood Hammer",
+      "type": "GRASS",
+      "category": "PHYSICAL",
+      "power": 120,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WOOD_HAMMER",
+        "generation": 4
+      },
+      "accuracy": 100,
+      "pp": 15,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WORK_UP",
+      "name": "Work Up",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WORK_UP",
+        "generation": 5
+      },
+      "accuracy": -1,
+      "pp": 30,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "WRAP",
+      "name": "Wrap",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 15,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "WRAP",
+        "generation": 1
+      },
+      "accuracy": 90,
+      "pp": 20,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "YAWN",
+      "name": "Yawn",
+      "type": "NORMAL",
+      "category": "STATUS",
+      "power": 0,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "YAWN",
+        "generation": 3
+      },
+      "accuracy": -1,
+      "pp": 10,
       "priority": 0
     }
   ]

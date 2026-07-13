@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "generated_from": "manual_template",
+  "generated_at": "2026-07-12T00:00:00Z",
+  "items": [
+    {
+      "schema_version": 1,
+      "trainer_id": "PLAYER_F",
+      "display_name": "Rival",
+      "title": "Trainer",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "player_f",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "RATTATA",
+          "level": 6,
+          "move_ids": [
+            "TACKLE",
+            "TAIL_WHIP"
+          ],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Replace with final species/moves once trainer assets/data are ready."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "PIDGEY",
+          "level": 6,
+          "move_ids": [
+            "TACKLE",
+            "GUST"
+          ],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Optional second slot for early normal trainer baseline."
+        }
+      ],
+      "notes": "Template entry: rename trainer_id/display_name/sprite_asset_id and replace party data."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "GYM_LEADER_TEMPLATE",
+      "display_name": "Gym Leader Gardenia",
+      "title": "Gym Leader",
+      "archetype": "boss_trainer",
+      "encounter_type": "trainer",
+      "is_boss": true,
+      "sprite_asset_id": "gardenia",
+      "encounter_bgm": "battle_sinnoh_gym",
+      "battle_bgm": "battle_sinnoh_gym",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "SNIVY",
+          "level": 12,
+          "move_ids": [
+            "TACKLE",
+            "VINE_WHIP"
+          ],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Boss-trainer placeholder entry for future expansion."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "IVYSAUR",
+          "level": 12,
+          "move_ids": [
+            "TACKLE",
+            "GROWL",
+            "VINE_WHIP",
+            "LEECH_SEED"
+          ],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Boss-trainer placeholder entry for future expansion."
+        }
+      ],
+      "notes": "Keep boss trainers in the same catalog shape so ENEMY-03/ENEMY-05 can share loaders later."
+    }
+  ]
+}

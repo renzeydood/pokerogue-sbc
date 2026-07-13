@@ -117,6 +117,8 @@
     "assets/images/ui/bg.json",
     "assets/images/ui/cursor_reverse.png",
     "assets/images/ui/cursor.png",
+    "assets/images/ui/namebox.png",
+    "assets/images/ui/namebox.json",
     "assets/images/categories_legacy.png",
     "assets/images/categories.json",
     "assets/images/pb.png",
@@ -130,7 +132,11 @@
     "assets/audio/bgm/title.mp3",
     "assets/audio/ui/select.wav",
     "assets/audio/ui/menu_open.wav",
-    "assets/audio/se/pb_rel.wav"
+    "assets/audio/se/pb_rel.wav",
+    "assets/audio/bgm/battle_sinnoh_gym.mp3",
+    "assets/audio/bgm/battle_rival_3.mp3",
+    "assets/audio/bgm/bw/victory_gym.mp3",
+    "assets/audio/bgm/bw/victory_trainer.mp3"
   ]
 }
 
