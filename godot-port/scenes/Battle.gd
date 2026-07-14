@@ -2041,7 +2041,6 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 		return turn_state
 
 	if defender.moves.empty():
-		set_battle_text("%s has no move." % defender.species_id)
 		turn_state["enemy_has_move"] = false
 		turn_state["terminal"] = true
 		return turn_state
@@ -2339,33 +2338,6 @@ func _run_capture_post_encounter_phase_state(capture_state: Dictionary, active_t
 
 	_handle_capture_failure(enemy)
 	return capture_state
-
-func _run_capture_sequence(ball_key: String, enemy, active_turn_token: int):
-	set_battle_text("You threw a %s!" % _get_ball_label(ball_key))
-	_play_capture_sfx("pb_throw.wav")
-
-	var throw_anim = _play_capture_throw_open_animation(ball_key, active_turn_token)
-	if throw_anim is GDScriptFunctionState:
-		yield(throw_anim, "completed")
-	if active_turn_token != turn_token:
-		return null
-
-	var shake_successes = _roll_capture_shakes(ball_key, enemy)
-	var capture_success = shake_successes >= CAPTURE_REQUIRED_SHAKES
-	var shake_anim = _play_capture_shakes(ball_key, enemy, shake_successes, capture_success, active_turn_token)
-	if shake_anim is GDScriptFunctionState:
-		yield(shake_anim, "completed")
-	if active_turn_token != turn_token:
-		return null
-
-	if capture_success:
-		var success_flow = _handle_capture_success(enemy, active_turn_token)
-		if success_flow is GDScriptFunctionState:
-			yield(success_flow, "completed")
-		return null
-
-	_handle_capture_failure(enemy)
-	return null
 
 func _play_capture_throw_open_animation(ball_key: String, active_turn_token: int):
 	if not _apply_capture_ball_frame(ball_key, ""):
@@ -3508,45 +3480,6 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	active_transition_run_id = ""
 
 	return
-
-func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_turn_token: int = -1, include_fainted_text: bool = true):
-	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
-		end_battle(true, fainted_species_id)
-		return
-	_log_transition_checkpoint("resolve_phase.entry", {
-		"fainted_species_id": fainted_species_id,
-		"active_turn_token": active_turn_token,
-	})
-
-	var transition_state = _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id, active_turn_token)
-	if transition_state is GDScriptFunctionState:
-		transition_state = yield(transition_state, "completed")
-
-	if typeof(transition_state) != TYPE_DICTIONARY:
-		_log_transition_checkpoint("resolve_phase.invalid_transition_state")
-		return
-	if bool(transition_state.get("cancelled", false)):
-		_log_transition_checkpoint("resolve_phase.cancelled_after_seed")
-		return
-	if not bool(transition_state.get("ok", false)):
-		_log_transition_checkpoint("resolve_phase.seed_not_ok")
-		return
-
-	var presentation_result = _advance_to_next_enemy_run_presentation_phase_state(transition_state, active_turn_token)
-	if presentation_result is GDScriptFunctionState:
-		yield(presentation_result, "completed")
-		if _is_turn_token_cancelled(active_turn_token):
-			return
-
-	if bool(transition_state.get("cancelled", false)):
-		_log_transition_checkpoint("resolve_phase.cancelled_after_presentation")
-		return
-	if bool(transition_state.get("early_return", false)):
-		_log_transition_checkpoint("resolve_phase.early_return")
-		return
-
-	_advance_to_next_enemy_finalize_phase_state(transition_state, fainted_species_id, include_fainted_text)
-	_log_transition_checkpoint("resolve_phase.finalized")
 
 func _is_turn_token_cancelled(active_turn_token: int) -> bool:
 	return active_turn_token != -1 and active_turn_token != turn_token
