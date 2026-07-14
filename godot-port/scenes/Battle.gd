@@ -195,6 +195,9 @@ var turn_player_move_phase_script = load("res://logic/phases/TurnPlayerMovePhase
 var turn_enemy_move_phase_script = load("res://logic/phases/TurnEnemyMovePhase.gd")
 var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolvePhase.gd")
 var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
+var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
+var capture_sequence_phase_script = load("res://logic/phases/CaptureSequencePhase.gd")
+var capture_post_encounter_phase_script = load("res://logic/phases/CapturePostEncounterPhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
@@ -407,6 +410,8 @@ var opening_run_counter := 0
 var active_opening_run_id := ""
 var turn_run_counter := 0
 var active_turn_run_id := ""
+var capture_run_counter := 0
+var active_capture_run_id := ""
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -523,6 +528,21 @@ func _log_turn_checkpoint(label: String, details: Dictionary = {}) -> void:
 func _next_turn_run_id() -> String:
 	turn_run_counter += 1
 	return "tr-%s" % String(turn_run_counter)
+
+func _log_capture_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Capture checkpoint: " + label
+	if not active_capture_run_id.empty():
+		message += " | run_id=%s" % active_capture_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_capture_run_id() -> String:
+	capture_run_counter += 1
+	return "cp-%s" % String(capture_run_counter)
 
 func _validate_encounter_cadence_settings() -> void:
 	if force_first_encounter_trainer:
@@ -2194,24 +2214,131 @@ func attempt_capture_with_ball(ball_key: String) -> void:
 		focus_first_ball_menu_button()
 		return
 
-	ball_inventory[ball_key] = max(0, available - 1)
-	refresh_ball_menu_labels()
-	_enter_action_locked_state()
-
 	turn_in_progress = true
 	capture_in_progress = true
 	var active_turn_token = turn_token
-	var enemy = battle_data["enemy"]
-	var capture_flow = _run_capture_sequence(ball_key, enemy, active_turn_token)
-	if capture_flow is GDScriptFunctionState:
-		yield(capture_flow, "completed")
+	active_capture_run_id = _next_capture_run_id()
+	_log_capture_checkpoint("entry", {
+		"active_turn_token": active_turn_token,
+		"ball_key": ball_key,
+	})
+
+	var capture_context := {
+		"aborted": false,
+		"capture_state": {
+			"ball_key": ball_key,
+			"active_turn_token": active_turn_token,
+			"available": available,
+			"cancelled": false,
+			"capture_success": false,
+			"enemy": null,
+		},
+	}
+
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(capture_begin_phase_script.new(self, capture_context, active_turn_token))
+	phase_runner.push_phase(capture_sequence_phase_script.new(self, capture_context, active_turn_token))
+	phase_runner.push_phase(capture_post_encounter_phase_script.new(self, capture_context, active_turn_token))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
 
 	if active_turn_token != turn_token:
 		capture_in_progress = false
+		_log_capture_checkpoint("queue_idle", {
+			"cancelled": true,
+		})
+		active_capture_run_id = ""
 		return
 
 	capture_in_progress = false
 	_finish_turn()
+
+	var capture_state = capture_context.get("capture_state", {})
+	if typeof(capture_state) == TYPE_DICTIONARY:
+		_log_capture_checkpoint("queue_idle", {
+			"cancelled": bool(capture_state.get("cancelled", false)),
+			"capture_success": bool(capture_state.get("capture_success", false)),
+		})
+	else:
+		_log_capture_checkpoint("queue_idle")
+	active_capture_run_id = ""
+
+func _run_capture_begin_phase_state(capture_state: Dictionary, _active_turn_token: int) -> Dictionary:
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	var ball_key = String(capture_state.get("ball_key", "")).strip_edges().to_lower()
+	var available = int(capture_state.get("available", 0))
+	if ball_key.empty() or available <= 0:
+		capture_state["cancelled"] = true
+		return capture_state
+
+	ball_inventory[ball_key] = max(0, available - 1)
+	refresh_ball_menu_labels()
+	_enter_action_locked_state()
+
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null:
+		capture_state["enemy"] = battle_data["enemy"]
+	else:
+		capture_state["cancelled"] = true
+
+	return capture_state
+
+func _run_capture_sequence_phase_state(capture_state: Dictionary, active_turn_token: int):
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(capture_state.get("cancelled", false)):
+		return capture_state
+
+	var ball_key = String(capture_state.get("ball_key", "")).strip_edges().to_lower()
+	var enemy = capture_state.get("enemy", null)
+	if ball_key.empty() or enemy == null:
+		capture_state["cancelled"] = true
+		return capture_state
+
+	set_battle_text("You threw a %s!" % _get_ball_label(ball_key))
+	_play_capture_sfx("pb_throw.wav")
+
+	var throw_anim = _play_capture_throw_open_animation(ball_key, active_turn_token)
+	if throw_anim is GDScriptFunctionState:
+		yield(throw_anim, "completed")
+	if _is_turn_token_cancelled(active_turn_token):
+		capture_state["cancelled"] = true
+		return capture_state
+
+	var shake_successes = _roll_capture_shakes(ball_key, enemy)
+	var capture_success = shake_successes >= CAPTURE_REQUIRED_SHAKES
+	capture_state["shake_successes"] = shake_successes
+	capture_state["capture_success"] = capture_success
+	var shake_anim = _play_capture_shakes(ball_key, enemy, shake_successes, capture_success, active_turn_token)
+	if shake_anim is GDScriptFunctionState:
+		yield(shake_anim, "completed")
+	if _is_turn_token_cancelled(active_turn_token):
+		capture_state["cancelled"] = true
+
+	return capture_state
+
+func _run_capture_post_encounter_phase_state(capture_state: Dictionary, active_turn_token: int):
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(capture_state.get("cancelled", false)):
+		return capture_state
+
+	var enemy = capture_state.get("enemy", null)
+	if enemy == null:
+		capture_state["cancelled"] = true
+		return capture_state
+
+	if bool(capture_state.get("capture_success", false)):
+		var success_flow = _handle_capture_success(enemy, active_turn_token)
+		if success_flow is GDScriptFunctionState:
+			yield(success_flow, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			capture_state["cancelled"] = true
+		return capture_state
+
+	_handle_capture_failure(enemy)
+	return capture_state
 
 func _run_capture_sequence(ball_key: String, enemy, active_turn_token: int):
 	set_battle_text("You threw a %s!" % _get_ball_label(ball_key))
