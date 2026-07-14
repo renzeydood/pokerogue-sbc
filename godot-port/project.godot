@@ -88,6 +88,31 @@ _global_script_classes=[ {
 "class": "RuntimeState",
 "language": "GDScript",
 "path": "res://logic/RuntimeState.gd"
+}, {
+"base": "BattlePhase",
+"class": "TurnCommandResolvePhase",
+"language": "GDScript",
+"path": "res://logic/phases/TurnCommandResolvePhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "TurnEndUnlockPhase",
+"language": "GDScript",
+"path": "res://logic/phases/TurnEndUnlockPhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "TurnEnemyMovePhase",
+"language": "GDScript",
+"path": "res://logic/phases/TurnEnemyMovePhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "TurnFaintResolvePhase",
+"language": "GDScript",
+"path": "res://logic/phases/TurnFaintResolvePhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "TurnPlayerMovePhase",
+"language": "GDScript",
+"path": "res://logic/phases/TurnPlayerMovePhase.gd"
 } ]
 _global_script_class_icons={
 "BattleCalc": "",
@@ -105,7 +130,12 @@ _global_script_class_icons={
 "OpeningResolvePhase": "",
 "OpeningSlidePhase": "",
 "PartyModel": "",
-"RuntimeState": ""
+"RuntimeState": "",
+"TurnCommandResolvePhase": "",
+"TurnEndUnlockPhase": "",
+"TurnEnemyMovePhase": "",
+"TurnFaintResolvePhase": "",
+"TurnPlayerMovePhase": ""
 }
 
 [application]
