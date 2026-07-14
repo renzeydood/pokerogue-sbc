@@ -386,6 +386,11 @@ var player_sendout_cry_key := ""
 var player_cry_audio_player: AudioStreamPlayer = null
 var enemy_sendout_cry_key := ""
 var enemy_cry_audio_player: AudioStreamPlayer = null
+var last_player_cry_key := ""
+var last_player_cry_played_at_msec := -1
+var last_enemy_cry_key := ""
+var last_enemy_cry_played_at_msec := -1
+const SENDOUT_CRY_DEDUPE_WINDOW_MSEC := 250
 var pokeball_particles_texture = null
 var pokeball_particles_frames := []
 var pokeball_open_particle_sprite_frames: SpriteFrames = null
@@ -6202,7 +6207,10 @@ func _play_player_sendout_cry_once() -> void:
 		return
 	if player_sendout_cry_key.empty():
 		log_debug("Skipping player cry: no resolved cry key")
-		print("[Battle] Skipping player cry: no resolved cry key")
+		return
+
+	var now_msec = OS.get_ticks_msec()
+	if player_sendout_cry_key == last_player_cry_key and last_player_cry_played_at_msec >= 0 and (now_msec - last_player_cry_played_at_msec) <= SENDOUT_CRY_DEDUPE_WINDOW_MSEC:
 		return
 
 	var cry_candidates = [
@@ -6218,13 +6226,11 @@ func _play_player_sendout_cry_once() -> void:
 
 	if cry_path.empty():
 		log_debug("Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
-		print("[Battle] Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
 		return
 
 	var cry_stream = load(cry_path)
 	if cry_stream == null:
 		log_debug("Skipping player cry: failed to load stream %s" % cry_path)
-		print("[Battle] Skipping player cry: failed to load stream %s" % cry_path)
 		return
 
 	# Some imported streams may carry loop metadata. Force one-shot behavior.
@@ -6241,13 +6247,17 @@ func _play_player_sendout_cry_once() -> void:
 	player_cry_audio_player.stream = cry_stream
 	player_cry_audio_player.play()
 	log_debug("Played player cry: %s" % cry_path)
-	print("[Battle] Played player cry: %s" % cry_path)
 	player_sendout_cry_played = true
+	last_player_cry_key = player_sendout_cry_key
+	last_player_cry_played_at_msec = now_msec
 
 func _play_enemy_sendout_cry_once() -> void:
 	if enemy_sendout_cry_key.empty():
 		log_debug("Skipping enemy cry: no resolved cry key")
-		print("[Battle] Skipping enemy cry: no resolved cry key")
+		return
+
+	var now_msec = OS.get_ticks_msec()
+	if enemy_sendout_cry_key == last_enemy_cry_key and last_enemy_cry_played_at_msec >= 0 and (now_msec - last_enemy_cry_played_at_msec) <= SENDOUT_CRY_DEDUPE_WINDOW_MSEC:
 		return
 
 	var cry_candidates = [
@@ -6263,13 +6273,11 @@ func _play_enemy_sendout_cry_once() -> void:
 
 	if cry_path.empty():
 		log_debug("Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
-		print("[Battle] Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
 		return
 
 	var cry_stream = load(cry_path)
 	if cry_stream == null:
 		log_debug("Skipping enemy cry: failed to load stream %s" % cry_path)
-		print("[Battle] Skipping enemy cry: failed to load stream %s" % cry_path)
 		return
 
 	# Some imported streams may carry loop metadata. Force one-shot behavior.
@@ -6286,7 +6294,8 @@ func _play_enemy_sendout_cry_once() -> void:
 	enemy_cry_audio_player.stream = cry_stream
 	enemy_cry_audio_player.play()
 	log_debug("Played enemy cry: %s" % cry_path)
-	print("[Battle] Played enemy cry: %s" % cry_path)
+	last_enemy_cry_key = enemy_sendout_cry_key
+	last_enemy_cry_played_at_msec = now_msec
 
 func _ensure_player_pokeball_sprite() -> bool:
 	if player_pokeball_sprite != null:
