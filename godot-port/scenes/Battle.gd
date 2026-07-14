@@ -5399,17 +5399,46 @@ func _run_opening_resolve_phase_state(opening_state: Dictionary):
 		"use_trainer_intro": use_trainer_intro,
 	})
 	if use_trainer_intro:
-		var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
+		var trainer_sequence = _run_opening_trainer_resolve_branch(opening_state)
 		if trainer_sequence is GDScriptFunctionState:
 			_log_opening_checkpoint("resolve.trainer_sequence_async")
-			return
+			yield(trainer_sequence, "completed")
 	else:
-		_play_enemy_sendout_cry_once()
-		if _is_active_trainer_encounter():
-			start_player_trainer_summon_choreography()
-		else:
-			_show_main_controls_unlocked()
+		var non_trainer_sequence = _run_opening_non_trainer_resolve_branch(opening_state)
+		if non_trainer_sequence is GDScriptFunctionState:
+			yield(non_trainer_sequence, "completed")
 	_log_opening_checkpoint("resolve.complete")
+	return null
+
+func _run_opening_trainer_resolve_branch(_opening_state: Dictionary):
+	var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
+	if trainer_sequence is GDScriptFunctionState:
+		yield(trainer_sequence, "completed")
+	return null
+
+func _run_opening_non_trainer_resolve_branch(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_player_trainer_intro = bool(opening_state.get("use_player_trainer_intro", false))
+	_log_opening_checkpoint("resolve.non_trainer_branch", {
+		"use_player_trainer_intro": use_player_trainer_intro,
+		"active_trainer_encounter": _is_active_trainer_encounter(),
+	})
+	_play_enemy_sendout_cry_once()
+	if _is_active_trainer_encounter():
+		start_player_trainer_summon_choreography()
+	else:
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = true
+		if player_panel != null:
+			var player_panel_reveal = _animate_player_panel_to(
+				player_panel_home_position,
+				max(0.0, player_panel_switch_slide_duration_sec)
+			)
+			if player_panel_reveal is GDScriptFunctionState:
+				yield(player_panel_reveal, "completed")
+		set_sendout_controls_locked(false)
+		_show_main_controls_unlocked()
 	return null
 
 func _run_enemy_opening_slide_in(include_enemy_panel: bool = true):
@@ -5471,6 +5500,20 @@ func _run_enemy_trainer_intro_post_slide_sequence():
 		start_player_trainer_summon_choreography()
 		return null
 
+	var intro_state = _prepare_enemy_trainer_intro_state()
+	var trainer_intro_dialog = _run_enemy_trainer_intro_dialog_phase(intro_state)
+	if trainer_intro_dialog is GDScriptFunctionState:
+		yield(trainer_intro_dialog, "completed")
+
+	var sendout_sequence = _run_enemy_trainer_intro_sendout_phase(intro_state)
+	if sendout_sequence is GDScriptFunctionState:
+		yield(sendout_sequence, "completed")
+	if enemy_pokemon_reveal_to_player_delay_sec > 0.0:
+		yield(get_tree().create_timer(enemy_pokemon_reveal_to_player_delay_sec), "timeout")
+	start_player_trainer_summon_choreography()
+	return null
+
+func _prepare_enemy_trainer_intro_state() -> Dictionary:
 	var enemy_species_id = String(battle_data["enemy"].species_id) if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null else "POKEMON"
 	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges() if typeof(battle_data) == TYPE_DICTIONARY else "Trainer"
 	if trainer_name.empty():
@@ -5481,21 +5524,43 @@ func _run_enemy_trainer_intro_post_slide_sequence():
 	if enemy_trainer_sprite != null:
 		enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
 
+	var intro_state := {
+		"trainer_name": trainer_name,
+		"enemy_species_id": enemy_species_id,
+	}
+	_log_opening_checkpoint("resolve.trainer_intro_prepared", intro_state)
+	return intro_state
+
+func _run_enemy_trainer_intro_dialog_phase(intro_state: Dictionary):
+	if typeof(intro_state) != TYPE_DICTIONARY:
+		return null
+	var trainer_name = String(intro_state.get("trainer_name", "Trainer"))
+
 	if enemy_trainer_pb_panel != null or player_trainer_pb_panel != null:
 		var tray_intro = _run_trainer_pb_panel_intro_sequence()
 		if tray_intro is GDScriptFunctionState:
 			yield(tray_intro, "completed")
 
+	_log_opening_checkpoint("resolve.trainer_intro_dialog", {
+		"trainer_name": trainer_name,
+	})
 	set_battle_text("%s would like to battle!" % trainer_name)
 	if enemy_trainer_intro_text_hold_sec > 0.0:
 		yield(get_tree().create_timer(enemy_trainer_intro_text_hold_sec), "timeout")
+	return null
 
+func _run_enemy_trainer_intro_sendout_phase(intro_state: Dictionary):
+	if typeof(intro_state) != TYPE_DICTIONARY:
+		return null
+	var trainer_name = String(intro_state.get("trainer_name", "Trainer"))
+	var enemy_species_id = String(intro_state.get("enemy_species_id", "POKEMON"))
+	_log_opening_checkpoint("resolve.trainer_intro_sendout", {
+		"trainer_name": trainer_name,
+		"enemy_species_id": enemy_species_id,
+	})
 	var sendout_sequence = _run_enemy_trainer_throw_and_reveal_sequence(trainer_name, enemy_species_id)
 	if sendout_sequence is GDScriptFunctionState:
 		yield(sendout_sequence, "completed")
-	if enemy_pokemon_reveal_to_player_delay_sec > 0.0:
-		yield(get_tree().create_timer(enemy_pokemon_reveal_to_player_delay_sec), "timeout")
-	start_player_trainer_summon_choreography()
 	return null
 
 func _run_enemy_trainer_party_switch_sequence(enemy_species_id: String):
