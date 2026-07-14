@@ -184,7 +184,9 @@ var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
 var encounter_transition_intro_phase_script = load("res://logic/phases/EncounterTransitionIntroPhase.gd")
-var encounter_transition_resolve_phase_script = load("res://logic/phases/EncounterTransitionResolvePhase.gd")
+var encounter_transition_seed_load_phase_script = load("res://logic/phases/EncounterTransitionSeedLoadPhase.gd")
+var encounter_transition_presentation_phase_script = load("res://logic/phases/EncounterTransitionPresentationPhase.gd")
+var encounter_transition_finalize_phase_script = load("res://logic/phases/EncounterTransitionFinalizePhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
@@ -391,6 +393,8 @@ var trainers_catalog_ordered := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
 var sendout_controls_locked := false
+var transition_run_counter := 0
+var active_transition_run_id := ""
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -467,10 +471,16 @@ func _log_transition_checkpoint(label: String, details: Dictionary = {}) -> void
 	if not debug_transition_checkpoints:
 		return
 	var message = "Transition checkpoint: " + label
+	if not active_transition_run_id.empty():
+		message += " | run_id=%s" % active_transition_run_id
 	if typeof(details) == TYPE_DICTIONARY:
 		for key in details.keys():
 			message += " | %s=%s" % [String(key), String(details[key])]
 	log_debug(message)
+
+func _next_transition_run_id() -> String:
+	transition_run_counter += 1
+	return "tx-%s" % String(transition_run_counter)
 
 func _validate_encounter_cadence_settings() -> void:
 	if force_first_encounter_trainer:
@@ -3141,6 +3151,7 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
+	active_transition_run_id = _next_transition_run_id()
 	_log_transition_checkpoint("advance_to_next_enemy.entry", {
 		"fainted_species_id": fainted_species_id,
 		"active_turn_token": active_turn_token,
@@ -3161,7 +3172,25 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		)
 	)
 	phase_runner.push_phase(
-		encounter_transition_resolve_phase_script.new(
+		encounter_transition_seed_load_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_presentation_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_finalize_phase_script.new(
 			self,
 			transition_context,
 			fainted_species_id,
@@ -3173,6 +3202,7 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	if phase_runner.is_running():
 		yield(phase_runner, "queue_idle")
 	_log_transition_checkpoint("advance_to_next_enemy.queue_idle")
+	active_transition_run_id = ""
 
 	return
 
