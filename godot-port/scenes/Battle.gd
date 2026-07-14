@@ -31,6 +31,7 @@ export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
 export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
 export(bool) var debug_open_party_menu_on_ready := false
+export(bool) var debug_transition_checkpoints := true
 export(float) var party_menu_overlay_fade_duration_sec := 0.12
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
@@ -181,6 +182,22 @@ var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
+var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
+var encounter_transition_intro_phase_script = load("res://logic/phases/EncounterTransitionIntroPhase.gd")
+var encounter_transition_seed_load_phase_script = load("res://logic/phases/EncounterTransitionSeedLoadPhase.gd")
+var encounter_transition_presentation_phase_script = load("res://logic/phases/EncounterTransitionPresentationPhase.gd")
+var encounter_transition_finalize_phase_script = load("res://logic/phases/EncounterTransitionFinalizePhase.gd")
+var opening_prepare_phase_script = load("res://logic/phases/OpeningPreparePhase.gd")
+var opening_slide_phase_script = load("res://logic/phases/OpeningSlidePhase.gd")
+var opening_resolve_phase_script = load("res://logic/phases/OpeningResolvePhase.gd")
+var turn_command_resolve_phase_script = load("res://logic/phases/TurnCommandResolvePhase.gd")
+var turn_player_move_phase_script = load("res://logic/phases/TurnPlayerMovePhase.gd")
+var turn_enemy_move_phase_script = load("res://logic/phases/TurnEnemyMovePhase.gd")
+var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolvePhase.gd")
+var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
+var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
+var capture_sequence_phase_script = load("res://logic/phases/CaptureSequencePhase.gd")
+var capture_post_encounter_phase_script = load("res://logic/phases/CapturePostEncounterPhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
@@ -369,6 +386,11 @@ var player_sendout_cry_key := ""
 var player_cry_audio_player: AudioStreamPlayer = null
 var enemy_sendout_cry_key := ""
 var enemy_cry_audio_player: AudioStreamPlayer = null
+var last_player_cry_key := ""
+var last_player_cry_played_at_msec := -1
+var last_enemy_cry_key := ""
+var last_enemy_cry_played_at_msec := -1
+const SENDOUT_CRY_DEDUPE_WINDOW_MSEC := 250
 var pokeball_particles_texture = null
 var pokeball_particles_frames := []
 var pokeball_open_particle_sprite_frames: SpriteFrames = null
@@ -387,6 +409,14 @@ var trainers_catalog_ordered := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
 var sendout_controls_locked := false
+var transition_run_counter := 0
+var active_transition_run_id := ""
+var opening_run_counter := 0
+var active_opening_run_id := ""
+var turn_run_counter := 0
+var active_turn_run_id := ""
+var capture_run_counter := 0
+var active_capture_run_id := ""
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -458,6 +488,66 @@ func log_debug(message: String):
 	f.seek_end()
 	f.store_line("[%s] %s" % [str(OS.get_unix_time()), message])
 	f.close()
+
+func _log_transition_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Transition checkpoint: " + label
+	if not active_transition_run_id.empty():
+		message += " | run_id=%s" % active_transition_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_transition_run_id() -> String:
+	transition_run_counter += 1
+	return "tx-%s" % String(transition_run_counter)
+
+func _log_opening_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Opening checkpoint: " + label
+	if not active_opening_run_id.empty():
+		message += " | run_id=%s" % active_opening_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_opening_run_id() -> String:
+	opening_run_counter += 1
+	return "op-%s" % String(opening_run_counter)
+
+func _log_turn_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Turn checkpoint: " + label
+	if not active_turn_run_id.empty():
+		message += " | run_id=%s" % active_turn_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_turn_run_id() -> String:
+	turn_run_counter += 1
+	return "tr-%s" % String(turn_run_counter)
+
+func _log_capture_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Capture checkpoint: " + label
+	if not active_capture_run_id.empty():
+		message += " | run_id=%s" % active_capture_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_capture_run_id() -> String:
+	capture_run_counter += 1
+	return "cp-%s" % String(capture_run_counter)
 
 func _validate_encounter_cadence_settings() -> void:
 	if force_first_encounter_trainer:
@@ -1836,19 +1926,95 @@ func execute_player_move(move):
 	turn_in_progress = true
 	_enter_action_locked_state()
 	var active_turn_token = turn_token
+	active_turn_run_id = _next_turn_run_id()
+	_log_turn_checkpoint("entry", {
+		"active_turn_token": active_turn_token,
+		"move_id": String(move.move_id),
+	})
 
-	var attacker = battle_data["player"]
-	var defender = battle_data["enemy"]
+	var turn_context := {
+		"aborted": false,
+		"turn_state": {
+			"move": move,
+			"active_turn_token": active_turn_token,
+			"cancelled": false,
+			"terminal": false,
+			"battle_error": false,
+			"enemy_has_move": true,
+			"enemy_fainted": false,
+			"player_fainted": false,
+		},
+	}
+
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(turn_command_resolve_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_player_move_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_enemy_move_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_faint_resolve_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_end_unlock_phase_script.new(self, turn_context, active_turn_token))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+
+	var turn_state = turn_context.get("turn_state", {})
+	if typeof(turn_state) == TYPE_DICTIONARY:
+		_log_turn_checkpoint("queue_idle", {
+			"cancelled": bool(turn_state.get("cancelled", false)),
+			"terminal": bool(turn_state.get("terminal", false)),
+		})
+	else:
+		_log_turn_checkpoint("queue_idle")
+	active_turn_run_id = ""
+	return
+
+func _run_turn_command_resolve_phase_state(turn_state: Dictionary, active_turn_token: int) -> Dictionary:
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		turn_state["cancelled"] = true
+		turn_state["terminal"] = true
+		return turn_state
+
+	var attacker = battle_data["player"] if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") else null
+	var defender = battle_data["enemy"] if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") else null
 	if attacker == null or defender == null:
 		set_battle_text("Battle data missing.")
-		_finish_turn()
-		return
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
+
+	var move = turn_state.get("move", null)
+	if move == null:
+		set_battle_text("No move available.")
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
+
+	turn_state["attacker"] = attacker
+	turn_state["defender"] = defender
+	return turn_state
+
+func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("terminal", false)) or bool(turn_state.get("cancelled", false)):
+		return turn_state
+
+	var attacker = turn_state.get("attacker", null)
+	var defender = turn_state.get("defender", null)
+	var move = turn_state.get("move", null)
+	if attacker == null or defender == null or move == null:
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
 
 	var player_move_anim = play_move_animation(move.move_id, player_pokemon_sprite, enemy_pokemon_sprite, active_turn_token)
 	if player_move_anim is GDScriptFunctionState:
 		yield(player_move_anim, "completed")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
 	defender.current_hp = max(0, defender.current_hp - damage)
@@ -1858,42 +2024,58 @@ func execute_player_move(move):
 	var player_hit_feedback = play_hit_feedback(enemy_pokemon_sprite, active_turn_token)
 	if player_hit_feedback is GDScriptFunctionState:
 		yield(player_hit_feedback, "completed")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move.move_id, damage]
 	battle_message += build_type_effectiveness_text(player_type_multiplier)
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	if defender.is_fainted():
-		var enemy_faint_anim = play_faint_animation(enemy_pokemon_sprite, false, active_turn_token)
-		if enemy_faint_anim is GDScriptFunctionState:
-			yield(enemy_faint_anim, "completed")
-			if active_turn_token != turn_token:
-				return
-		var enemy_advance = advance_to_next_enemy(defender.species_id, active_turn_token)
-		if enemy_advance is GDScriptFunctionState:
-			yield(enemy_advance, "completed")
-			if active_turn_token != turn_token:
-				return
-		_finish_turn()
-		return
+		turn_state["enemy_fainted"] = true
+		turn_state["terminal"] = true
+		turn_state["fainted_species_id"] = String(defender.species_id)
+		return turn_state
 
 	if defender.moves.empty():
-		set_battle_text("%s has no move." % defender.species_id)
-		_finish_turn()
-		return
+		turn_state["enemy_has_move"] = false
+		turn_state["terminal"] = true
+		return turn_state
 
-	var enemy_move = defender.moves[0]
+	turn_state["enemy_move"] = defender.moves[0]
+	return turn_state
+
+func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+	if bool(turn_state.get("enemy_fainted", false)) or not bool(turn_state.get("enemy_has_move", true)):
+		return turn_state
+
+	var attacker = turn_state.get("attacker", null)
+	var defender = turn_state.get("defender", null)
+	var enemy_move = turn_state.get("enemy_move", null)
+	if attacker == null or defender == null or enemy_move == null:
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
+
 	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
 	if enemy_move_anim is GDScriptFunctionState:
 		yield(enemy_move_anim, "completed")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
@@ -1903,29 +2085,70 @@ func execute_player_move(move):
 	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
 	if enemy_hit_feedback is GDScriptFunctionState:
 		yield(enemy_hit_feedback, "completed")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
 	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
 	set_battle_text(enemy_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-		if active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			turn_state["terminal"] = true
+			return turn_state
 
 	if attacker.is_fainted():
+		turn_state["player_fainted"] = true
+		turn_state["terminal"] = true
+		turn_state["fainted_species_id"] = String(attacker.species_id)
+
+	return turn_state
+
+func _run_turn_faint_resolve_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+
+	if bool(turn_state.get("enemy_fainted", false)):
+		var enemy_species_id = String(turn_state.get("fainted_species_id", ""))
+		var enemy_faint_anim = play_faint_animation(enemy_pokemon_sprite, false, active_turn_token)
+		if enemy_faint_anim is GDScriptFunctionState:
+			yield(enemy_faint_anim, "completed")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				return turn_state
+		var enemy_advance = advance_to_next_enemy(enemy_species_id, active_turn_token)
+		if enemy_advance is GDScriptFunctionState:
+			yield(enemy_advance, "completed")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+		return turn_state
+
+	if bool(turn_state.get("player_fainted", false)):
+		var player_species_id = String(turn_state.get("fainted_species_id", ""))
 		var player_faint_anim = play_faint_animation(player_pokemon_sprite, true, active_turn_token)
 		if player_faint_anim is GDScriptFunctionState:
 			yield(player_faint_anim, "completed")
-			if active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				return turn_state
 		_animate_player_panel_to(_player_panel_hidden_position(), max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
-		end_battle(false, attacker.species_id)
-		_finish_turn()
-		return
+		end_battle(false, player_species_id)
+		return turn_state
 
+	return turn_state
+
+func _run_turn_end_unlock_phase_state(turn_state: Dictionary, _active_turn_token: int) -> Dictionary:
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
 	_finish_turn()
+	return turn_state
 
 func _on_BallButton_pressed():
 	if battle_ended:
@@ -1995,51 +2218,131 @@ func attempt_capture_with_ball(ball_key: String) -> void:
 		focus_first_ball_menu_button()
 		return
 
-	ball_inventory[ball_key] = max(0, available - 1)
-	refresh_ball_menu_labels()
-	_enter_action_locked_state()
-
 	turn_in_progress = true
 	capture_in_progress = true
 	var active_turn_token = turn_token
-	var enemy = battle_data["enemy"]
-	var capture_flow = _run_capture_sequence(ball_key, enemy, active_turn_token)
-	if capture_flow is GDScriptFunctionState:
-		yield(capture_flow, "completed")
+	active_capture_run_id = _next_capture_run_id()
+	_log_capture_checkpoint("entry", {
+		"active_turn_token": active_turn_token,
+		"ball_key": ball_key,
+	})
+
+	var capture_context := {
+		"aborted": false,
+		"capture_state": {
+			"ball_key": ball_key,
+			"active_turn_token": active_turn_token,
+			"available": available,
+			"cancelled": false,
+			"capture_success": false,
+			"enemy": null,
+		},
+	}
+
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(capture_begin_phase_script.new(self, capture_context, active_turn_token))
+	phase_runner.push_phase(capture_sequence_phase_script.new(self, capture_context, active_turn_token))
+	phase_runner.push_phase(capture_post_encounter_phase_script.new(self, capture_context, active_turn_token))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
 
 	if active_turn_token != turn_token:
 		capture_in_progress = false
+		_log_capture_checkpoint("queue_idle", {
+			"cancelled": true,
+		})
+		active_capture_run_id = ""
 		return
 
 	capture_in_progress = false
 	_finish_turn()
 
-func _run_capture_sequence(ball_key: String, enemy, active_turn_token: int):
+	var capture_state = capture_context.get("capture_state", {})
+	if typeof(capture_state) == TYPE_DICTIONARY:
+		_log_capture_checkpoint("queue_idle", {
+			"cancelled": bool(capture_state.get("cancelled", false)),
+			"capture_success": bool(capture_state.get("capture_success", false)),
+		})
+	else:
+		_log_capture_checkpoint("queue_idle")
+	active_capture_run_id = ""
+
+func _run_capture_begin_phase_state(capture_state: Dictionary, _active_turn_token: int) -> Dictionary:
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	var ball_key = String(capture_state.get("ball_key", "")).strip_edges().to_lower()
+	var available = int(capture_state.get("available", 0))
+	if ball_key.empty() or available <= 0:
+		capture_state["cancelled"] = true
+		return capture_state
+
+	ball_inventory[ball_key] = max(0, available - 1)
+	refresh_ball_menu_labels()
+	_enter_action_locked_state()
+
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null:
+		capture_state["enemy"] = battle_data["enemy"]
+	else:
+		capture_state["cancelled"] = true
+
+	return capture_state
+
+func _run_capture_sequence_phase_state(capture_state: Dictionary, active_turn_token: int):
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(capture_state.get("cancelled", false)):
+		return capture_state
+
+	var ball_key = String(capture_state.get("ball_key", "")).strip_edges().to_lower()
+	var enemy = capture_state.get("enemy", null)
+	if ball_key.empty() or enemy == null:
+		capture_state["cancelled"] = true
+		return capture_state
+
 	set_battle_text("You threw a %s!" % _get_ball_label(ball_key))
 	_play_capture_sfx("pb_throw.wav")
 
 	var throw_anim = _play_capture_throw_open_animation(ball_key, active_turn_token)
 	if throw_anim is GDScriptFunctionState:
 		yield(throw_anim, "completed")
-	if active_turn_token != turn_token:
-		return null
+	if _is_turn_token_cancelled(active_turn_token):
+		capture_state["cancelled"] = true
+		return capture_state
 
 	var shake_successes = _roll_capture_shakes(ball_key, enemy)
 	var capture_success = shake_successes >= CAPTURE_REQUIRED_SHAKES
+	capture_state["shake_successes"] = shake_successes
+	capture_state["capture_success"] = capture_success
 	var shake_anim = _play_capture_shakes(ball_key, enemy, shake_successes, capture_success, active_turn_token)
 	if shake_anim is GDScriptFunctionState:
 		yield(shake_anim, "completed")
-	if active_turn_token != turn_token:
-		return null
+	if _is_turn_token_cancelled(active_turn_token):
+		capture_state["cancelled"] = true
 
-	if capture_success:
+	return capture_state
+
+func _run_capture_post_encounter_phase_state(capture_state: Dictionary, active_turn_token: int):
+	if typeof(capture_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(capture_state.get("cancelled", false)):
+		return capture_state
+
+	var enemy = capture_state.get("enemy", null)
+	if enemy == null:
+		capture_state["cancelled"] = true
+		return capture_state
+
+	if bool(capture_state.get("capture_success", false)):
 		var success_flow = _handle_capture_success(enemy, active_turn_token)
 		if success_flow is GDScriptFunctionState:
 			yield(success_flow, "completed")
-		return null
+		if _is_turn_token_cancelled(active_turn_token):
+			capture_state["cancelled"] = true
+		return capture_state
 
 	_handle_capture_failure(enemy)
-	return null
+	return capture_state
 
 func _play_capture_throw_open_animation(ball_key: String, active_turn_token: int):
 	if not _apply_capture_ball_frame(ball_key, ""):
@@ -3128,15 +3431,82 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
+	active_transition_run_id = _next_transition_run_id()
+	_log_transition_checkpoint("advance_to_next_enemy.entry", {
+		"fainted_species_id": fainted_species_id,
+		"active_turn_token": active_turn_token,
+		"include_fainted_text": include_fainted_text,
+	})
 
-	if include_fainted_text and not fainted_species_id.empty():
-		set_battle_text("%s fainted!" % fainted_species_id)
-	if enemy_switch_delay_sec > 0.0:
-		yield(get_tree().create_timer(enemy_switch_delay_sec), "timeout")
-		if active_turn_token != -1 and active_turn_token != turn_token:
-			return
+	var transition_context := {
+		"aborted": false,
+	}
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(
+		encounter_transition_intro_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_seed_load_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_presentation_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
+	phase_runner.push_phase(
+		encounter_transition_finalize_phase_script.new(
+			self,
+			transition_context,
+			fainted_species_id,
+			active_turn_token,
+			include_fainted_text
+		)
+	)
 
-	var trainer_party_switch = _is_active_trainer_encounter()
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+	_log_transition_checkpoint("advance_to_next_enemy.queue_idle")
+	active_transition_run_id = ""
+
+	return
+
+func _is_turn_token_cancelled(active_turn_token: int) -> bool:
+	return active_turn_token != -1 and active_turn_token != turn_token
+
+func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String, active_turn_token: int = -1) -> Dictionary:
+	_log_transition_checkpoint("seed_load.entry", {
+		"fainted_species_id": fainted_species_id,
+		"active_turn_token": active_turn_token,
+	})
+	var transition_state := {
+		"ok": false,
+		"cancelled": false,
+		"early_return": false,
+		"trainer_party_switch": _is_active_trainer_encounter(),
+		"next_is_seeded_trainer": false,
+		"next_trainer_seed_failed": false,
+		"next_enemy": null,
+		"next_trainer_seed": {},
+		"next_biome_state": {},
+	}
+
+	var trainer_party_switch = bool(transition_state["trainer_party_switch"])
 	var enemy_slide_out = null
 	if not trainer_party_switch:
 		enemy_slide_out = animate_enemy_layer_to(
@@ -3147,8 +3517,10 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 	if enemy_slide_out is GDScriptFunctionState:
 		yield(enemy_slide_out, "completed")
-		if active_turn_token != -1 and active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("seed_load.cancelled_after_slide_out")
+			return transition_state
 
 	var next_enemy_species_id = pick_random_enemy_species_id(fainted_species_id)
 	var next_enemy = null
@@ -3157,7 +3529,7 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	var next_is_seeded_trainer := false
 	var next_trainer_seed_failed := false
 
-	if _is_active_trainer_encounter():
+	if trainer_party_switch:
 		next_enemy = _dequeue_next_trainer_enemy()
 		next_biome_state = _get_battle_biome_state().duplicate(true)
 		next_biome_state["transition_trigger"] = "trainer_party_progress"
@@ -3179,7 +3551,8 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	if next_enemy == null:
 		enemy_layer.rect_position = enemy_layer_home_position
 		end_battle(true, fainted_species_id)
-		return
+		_log_transition_checkpoint("seed_load.no_next_enemy_end_battle")
+		return transition_state
 
 	battle_data["enemy"] = next_enemy
 	if not trainer_party_switch:
@@ -3213,13 +3586,41 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	reset_pokemon_animation_state()
 	if trainer_party_switch and enemy_pokemon_sprite != null:
 		enemy_pokemon_sprite.visible = false
+
+	transition_state["ok"] = true
+	transition_state["next_enemy"] = next_enemy
+	transition_state["next_biome_state"] = next_biome_state
+	transition_state["next_trainer_seed"] = next_trainer_seed
+	transition_state["next_is_seeded_trainer"] = next_is_seeded_trainer
+	transition_state["next_trainer_seed_failed"] = next_trainer_seed_failed
+	_log_transition_checkpoint("seed_load.ready", {
+		"trainer_party_switch": trainer_party_switch,
+		"next_is_seeded_trainer": next_is_seeded_trainer,
+		"next_trainer_seed_failed": next_trainer_seed_failed,
+		"next_enemy_species": String(next_enemy.species_id),
+	})
+	return transition_state
+
+func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dictionary, active_turn_token: int = -1):
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return null
+
+	var trainer_party_switch = bool(transition_state.get("trainer_party_switch", false))
+	var next_is_seeded_trainer = bool(transition_state.get("next_is_seeded_trainer", false))
+	var next_enemy = transition_state.get("next_enemy", null)
+	var next_enemy_species_id = String(next_enemy.species_id) if next_enemy != null else ""
+
 	if trainer_party_switch:
-		var trainer_switch_sequence = _run_enemy_trainer_party_switch_sequence(String(next_enemy.species_id))
+		_log_transition_checkpoint("presentation.branch", {"type": "trainer_party_switch"})
+		var trainer_switch_sequence = _run_enemy_trainer_party_switch_sequence(next_enemy_species_id)
 		if trainer_switch_sequence is GDScriptFunctionState:
 			yield(trainer_switch_sequence, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.trainer_party_switch")
+				return null
 	elif next_is_seeded_trainer:
+		_log_transition_checkpoint("presentation.branch", {"type": "next_seeded_trainer"})
 		hide_all_command_menus()
 		set_sendout_controls_locked(true)
 		enemy_layer.rect_position = enemy_layer_home_position
@@ -3230,29 +3631,50 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
 		if recall_anim is GDScriptFunctionState:
 			yield(recall_anim, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.seeded_trainer_recall")
+				return null
 		var trainer_reentry = _run_player_trainer_reentry_sequence(active_turn_token)
 		if trainer_reentry is GDScriptFunctionState:
 			yield(trainer_reentry, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.seeded_trainer_reentry")
+				return null
 		_set_enemy_next_trainer_presentation_visible(true)
 		bind_battle_data()
 		_start_battle_opening_sequence()
-		return
+		transition_state["early_return"] = true
+		_log_transition_checkpoint("presentation.early_return_to_opening")
+		return null
 	else:
+		_log_transition_checkpoint("presentation.branch", {"type": "wild_slide_in"})
 		bind_battle_data()
 		var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
 		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 		if enemy_slide_in is GDScriptFunctionState:
 			yield(enemy_slide_in, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.wild_slide_in")
+				return null
+
 	if active_turn_token == -1:
 		_show_main_controls_unlocked()
 	else:
 		show_main_controls()
+	_log_transition_checkpoint("presentation.complete")
+
+	return null
+
+func _advance_to_next_enemy_finalize_phase_state(transition_state: Dictionary, fainted_species_id: String, include_fainted_text: bool = true) -> void:
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return
+	var next_enemy = transition_state.get("next_enemy", null)
+	if next_enemy == null:
+		return
+	var trainer_party_switch = bool(transition_state.get("trainer_party_switch", false))
 
 	var appeared_message = _build_enemy_appeared_message(String(next_enemy.species_id))
 	if include_fainted_text and not fainted_species_id.empty():
@@ -3261,6 +3683,10 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		set_battle_text(appeared_message)
 	if not trainer_party_switch:
 		_play_enemy_sendout_cry_once()
+	_log_transition_checkpoint("finalize.complete", {
+		"trainer_party_switch": trainer_party_switch,
+		"next_enemy_species": String(next_enemy.species_id),
+	})
 
 func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
 	if enemy_layer == null:
@@ -5118,6 +5544,24 @@ func _load_enemy_trainer_sprite() -> void:
 	enemy_trainer_sprite.visible = false
 
 func _start_battle_opening_sequence() -> void:
+	active_opening_run_id = _next_opening_run_id()
+	_log_opening_checkpoint("entry")
+	var opening_context := {
+		"aborted": false,
+	}
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(opening_prepare_phase_script.new(self, opening_context))
+	phase_runner.push_phase(opening_slide_phase_script.new(self, opening_context))
+	phase_runner.push_phase(opening_resolve_phase_script.new(self, opening_context))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+	_log_opening_checkpoint("queue_idle")
+	active_opening_run_id = ""
+
+	return
+
+func _prepare_opening_phase_state() -> Dictionary:
 	var use_player_trainer_intro = _is_active_trainer_encounter() and player_trainer_enabled and player_trainer_sprite != null and not player_trainer_idle_frame.empty()
 	if player_trainer_sprite != null:
 		player_trainer_choreo_playing = false
@@ -5146,20 +5590,77 @@ func _start_battle_opening_sequence() -> void:
 		if enemy_pokemon_sprite != null:
 			enemy_pokemon_sprite.visible = true
 
+	var opening_state := {
+		"use_trainer_intro": use_trainer_intro,
+		"use_player_trainer_intro": use_player_trainer_intro,
+	}
+	_log_opening_checkpoint("prepared", opening_state)
+	return opening_state
+
+func _run_opening_slide_phase_state(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_trainer_intro = bool(opening_state.get("use_trainer_intro", false))
+	_log_opening_checkpoint("slide.start", {
+		"include_enemy_panel": not use_trainer_intro,
+	})
+
 	var slide = _run_enemy_opening_slide_in(not use_trainer_intro)
 	if slide is GDScriptFunctionState:
 		yield(slide, "completed")
+	_log_opening_checkpoint("slide.complete")
+	return null
 
+
+func _run_opening_resolve_phase_state(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_trainer_intro = bool(opening_state.get("use_trainer_intro", false))
+	_log_opening_checkpoint("resolve.start", {
+		"use_trainer_intro": use_trainer_intro,
+	})
 	if use_trainer_intro:
-		var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
+		var trainer_sequence = _run_opening_trainer_resolve_branch(opening_state)
 		if trainer_sequence is GDScriptFunctionState:
-			return
+			_log_opening_checkpoint("resolve.trainer_sequence_async")
+			yield(trainer_sequence, "completed")
 	else:
-		_play_enemy_sendout_cry_once()
-		if _is_active_trainer_encounter():
-			start_player_trainer_summon_choreography()
-		else:
-			_show_main_controls_unlocked()
+		var non_trainer_sequence = _run_opening_non_trainer_resolve_branch(opening_state)
+		if non_trainer_sequence is GDScriptFunctionState:
+			yield(non_trainer_sequence, "completed")
+	_log_opening_checkpoint("resolve.complete")
+	return null
+
+func _run_opening_trainer_resolve_branch(_opening_state: Dictionary):
+	var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
+	if trainer_sequence is GDScriptFunctionState:
+		yield(trainer_sequence, "completed")
+	return null
+
+func _run_opening_non_trainer_resolve_branch(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_player_trainer_intro = bool(opening_state.get("use_player_trainer_intro", false))
+	_log_opening_checkpoint("resolve.non_trainer_branch", {
+		"use_player_trainer_intro": use_player_trainer_intro,
+		"active_trainer_encounter": _is_active_trainer_encounter(),
+	})
+	_play_enemy_sendout_cry_once()
+	if _is_active_trainer_encounter():
+		start_player_trainer_summon_choreography()
+	else:
+		if player_pokemon_sprite != null:
+			player_pokemon_sprite.visible = true
+		if player_panel != null:
+			var player_panel_reveal = _animate_player_panel_to(
+				player_panel_home_position,
+				max(0.0, player_panel_switch_slide_duration_sec)
+			)
+			if player_panel_reveal is GDScriptFunctionState:
+				yield(player_panel_reveal, "completed")
+		set_sendout_controls_locked(false)
+		_show_main_controls_unlocked()
+	return null
 
 func _run_enemy_opening_slide_in(include_enemy_panel: bool = true):
 	if include_enemy_panel and enemy_panel != null:
@@ -5220,6 +5721,20 @@ func _run_enemy_trainer_intro_post_slide_sequence():
 		start_player_trainer_summon_choreography()
 		return null
 
+	var intro_state = _prepare_enemy_trainer_intro_state()
+	var trainer_intro_dialog = _run_enemy_trainer_intro_dialog_phase(intro_state)
+	if trainer_intro_dialog is GDScriptFunctionState:
+		yield(trainer_intro_dialog, "completed")
+
+	var sendout_sequence = _run_enemy_trainer_intro_sendout_phase(intro_state)
+	if sendout_sequence is GDScriptFunctionState:
+		yield(sendout_sequence, "completed")
+	if enemy_pokemon_reveal_to_player_delay_sec > 0.0:
+		yield(get_tree().create_timer(enemy_pokemon_reveal_to_player_delay_sec), "timeout")
+	start_player_trainer_summon_choreography()
+	return null
+
+func _prepare_enemy_trainer_intro_state() -> Dictionary:
 	var enemy_species_id = String(battle_data["enemy"].species_id) if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null else "POKEMON"
 	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges() if typeof(battle_data) == TYPE_DICTIONARY else "Trainer"
 	if trainer_name.empty():
@@ -5230,21 +5745,43 @@ func _run_enemy_trainer_intro_post_slide_sequence():
 	if enemy_trainer_sprite != null:
 		enemy_trainer_sprite.modulate = Color(1, 1, 1, 1)
 
+	var intro_state := {
+		"trainer_name": trainer_name,
+		"enemy_species_id": enemy_species_id,
+	}
+	_log_opening_checkpoint("resolve.trainer_intro_prepared", intro_state)
+	return intro_state
+
+func _run_enemy_trainer_intro_dialog_phase(intro_state: Dictionary):
+	if typeof(intro_state) != TYPE_DICTIONARY:
+		return null
+	var trainer_name = String(intro_state.get("trainer_name", "Trainer"))
+
 	if enemy_trainer_pb_panel != null or player_trainer_pb_panel != null:
 		var tray_intro = _run_trainer_pb_panel_intro_sequence()
 		if tray_intro is GDScriptFunctionState:
 			yield(tray_intro, "completed")
 
+	_log_opening_checkpoint("resolve.trainer_intro_dialog", {
+		"trainer_name": trainer_name,
+	})
 	set_battle_text("%s would like to battle!" % trainer_name)
 	if enemy_trainer_intro_text_hold_sec > 0.0:
 		yield(get_tree().create_timer(enemy_trainer_intro_text_hold_sec), "timeout")
+	return null
 
+func _run_enemy_trainer_intro_sendout_phase(intro_state: Dictionary):
+	if typeof(intro_state) != TYPE_DICTIONARY:
+		return null
+	var trainer_name = String(intro_state.get("trainer_name", "Trainer"))
+	var enemy_species_id = String(intro_state.get("enemy_species_id", "POKEMON"))
+	_log_opening_checkpoint("resolve.trainer_intro_sendout", {
+		"trainer_name": trainer_name,
+		"enemy_species_id": enemy_species_id,
+	})
 	var sendout_sequence = _run_enemy_trainer_throw_and_reveal_sequence(trainer_name, enemy_species_id)
 	if sendout_sequence is GDScriptFunctionState:
 		yield(sendout_sequence, "completed")
-	if enemy_pokemon_reveal_to_player_delay_sec > 0.0:
-		yield(get_tree().create_timer(enemy_pokemon_reveal_to_player_delay_sec), "timeout")
-	start_player_trainer_summon_choreography()
 	return null
 
 func _run_enemy_trainer_party_switch_sequence(enemy_species_id: String):
@@ -5670,7 +6207,10 @@ func _play_player_sendout_cry_once() -> void:
 		return
 	if player_sendout_cry_key.empty():
 		log_debug("Skipping player cry: no resolved cry key")
-		print("[Battle] Skipping player cry: no resolved cry key")
+		return
+
+	var now_msec = OS.get_ticks_msec()
+	if player_sendout_cry_key == last_player_cry_key and last_player_cry_played_at_msec >= 0 and (now_msec - last_player_cry_played_at_msec) <= SENDOUT_CRY_DEDUPE_WINDOW_MSEC:
 		return
 
 	var cry_candidates = [
@@ -5686,13 +6226,11 @@ func _play_player_sendout_cry_once() -> void:
 
 	if cry_path.empty():
 		log_debug("Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
-		print("[Battle] Skipping player cry: no cry file found for key %s" % player_sendout_cry_key)
 		return
 
 	var cry_stream = load(cry_path)
 	if cry_stream == null:
 		log_debug("Skipping player cry: failed to load stream %s" % cry_path)
-		print("[Battle] Skipping player cry: failed to load stream %s" % cry_path)
 		return
 
 	# Some imported streams may carry loop metadata. Force one-shot behavior.
@@ -5709,13 +6247,17 @@ func _play_player_sendout_cry_once() -> void:
 	player_cry_audio_player.stream = cry_stream
 	player_cry_audio_player.play()
 	log_debug("Played player cry: %s" % cry_path)
-	print("[Battle] Played player cry: %s" % cry_path)
 	player_sendout_cry_played = true
+	last_player_cry_key = player_sendout_cry_key
+	last_player_cry_played_at_msec = now_msec
 
 func _play_enemy_sendout_cry_once() -> void:
 	if enemy_sendout_cry_key.empty():
 		log_debug("Skipping enemy cry: no resolved cry key")
-		print("[Battle] Skipping enemy cry: no resolved cry key")
+		return
+
+	var now_msec = OS.get_ticks_msec()
+	if enemy_sendout_cry_key == last_enemy_cry_key and last_enemy_cry_played_at_msec >= 0 and (now_msec - last_enemy_cry_played_at_msec) <= SENDOUT_CRY_DEDUPE_WINDOW_MSEC:
 		return
 
 	var cry_candidates = [
@@ -5731,13 +6273,11 @@ func _play_enemy_sendout_cry_once() -> void:
 
 	if cry_path.empty():
 		log_debug("Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
-		print("[Battle] Skipping enemy cry: no cry file found for key %s" % enemy_sendout_cry_key)
 		return
 
 	var cry_stream = load(cry_path)
 	if cry_stream == null:
 		log_debug("Skipping enemy cry: failed to load stream %s" % cry_path)
-		print("[Battle] Skipping enemy cry: failed to load stream %s" % cry_path)
 		return
 
 	# Some imported streams may carry loop metadata. Force one-shot behavior.
@@ -5754,7 +6294,8 @@ func _play_enemy_sendout_cry_once() -> void:
 	enemy_cry_audio_player.stream = cry_stream
 	enemy_cry_audio_player.play()
 	log_debug("Played enemy cry: %s" % cry_path)
-	print("[Battle] Played enemy cry: %s" % cry_path)
+	last_enemy_cry_key = enemy_sendout_cry_key
+	last_enemy_cry_played_at_msec = now_msec
 
 func _ensure_player_pokeball_sprite() -> bool:
 	if player_pokeball_sprite != null:
