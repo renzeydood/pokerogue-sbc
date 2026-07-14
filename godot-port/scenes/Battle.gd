@@ -187,6 +187,9 @@ var encounter_transition_intro_phase_script = load("res://logic/phases/Encounter
 var encounter_transition_seed_load_phase_script = load("res://logic/phases/EncounterTransitionSeedLoadPhase.gd")
 var encounter_transition_presentation_phase_script = load("res://logic/phases/EncounterTransitionPresentationPhase.gd")
 var encounter_transition_finalize_phase_script = load("res://logic/phases/EncounterTransitionFinalizePhase.gd")
+var opening_prepare_phase_script = load("res://logic/phases/OpeningPreparePhase.gd")
+var opening_slide_phase_script = load("res://logic/phases/OpeningSlidePhase.gd")
+var opening_resolve_phase_script = load("res://logic/phases/OpeningResolvePhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 
@@ -395,6 +398,8 @@ var capture_in_progress := false
 var sendout_controls_locked := false
 var transition_run_counter := 0
 var active_transition_run_id := ""
+var opening_run_counter := 0
+var active_opening_run_id := ""
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -481,6 +486,21 @@ func _log_transition_checkpoint(label: String, details: Dictionary = {}) -> void
 func _next_transition_run_id() -> String:
 	transition_run_counter += 1
 	return "tx-%s" % String(transition_run_counter)
+
+func _log_opening_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Opening checkpoint: " + label
+	if not active_opening_run_id.empty():
+		message += " | run_id=%s" % active_opening_run_id
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
+
+func _next_opening_run_id() -> String:
+	opening_run_counter += 1
+	return "op-%s" % String(opening_run_counter)
 
 func _validate_encounter_cadence_settings() -> void:
 	if force_first_encounter_trainer:
@@ -5303,6 +5323,24 @@ func _load_enemy_trainer_sprite() -> void:
 	enemy_trainer_sprite.visible = false
 
 func _start_battle_opening_sequence() -> void:
+	active_opening_run_id = _next_opening_run_id()
+	_log_opening_checkpoint("entry")
+	var opening_context := {
+		"aborted": false,
+	}
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(opening_prepare_phase_script.new(self, opening_context))
+	phase_runner.push_phase(opening_slide_phase_script.new(self, opening_context))
+	phase_runner.push_phase(opening_resolve_phase_script.new(self, opening_context))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+	_log_opening_checkpoint("queue_idle")
+	active_opening_run_id = ""
+
+	return
+
+func _prepare_opening_phase_state() -> Dictionary:
 	var use_player_trainer_intro = _is_active_trainer_encounter() and player_trainer_enabled and player_trainer_sprite != null and not player_trainer_idle_frame.empty()
 	if player_trainer_sprite != null:
 		player_trainer_choreo_playing = false
@@ -5331,13 +5369,39 @@ func _start_battle_opening_sequence() -> void:
 		if enemy_pokemon_sprite != null:
 			enemy_pokemon_sprite.visible = true
 
+	var opening_state := {
+		"use_trainer_intro": use_trainer_intro,
+		"use_player_trainer_intro": use_player_trainer_intro,
+	}
+	_log_opening_checkpoint("prepared", opening_state)
+	return opening_state
+
+func _run_opening_slide_phase_state(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_trainer_intro = bool(opening_state.get("use_trainer_intro", false))
+	_log_opening_checkpoint("slide.start", {
+		"include_enemy_panel": not use_trainer_intro,
+	})
+
 	var slide = _run_enemy_opening_slide_in(not use_trainer_intro)
 	if slide is GDScriptFunctionState:
 		yield(slide, "completed")
+	_log_opening_checkpoint("slide.complete")
+	return null
 
+
+func _run_opening_resolve_phase_state(opening_state: Dictionary):
+	if typeof(opening_state) != TYPE_DICTIONARY:
+		return null
+	var use_trainer_intro = bool(opening_state.get("use_trainer_intro", false))
+	_log_opening_checkpoint("resolve.start", {
+		"use_trainer_intro": use_trainer_intro,
+	})
 	if use_trainer_intro:
 		var trainer_sequence = _run_enemy_trainer_intro_post_slide_sequence()
 		if trainer_sequence is GDScriptFunctionState:
+			_log_opening_checkpoint("resolve.trainer_sequence_async")
 			return
 	else:
 		_play_enemy_sendout_cry_once()
@@ -5345,6 +5409,8 @@ func _start_battle_opening_sequence() -> void:
 			start_player_trainer_summon_choreography()
 		else:
 			_show_main_controls_unlocked()
+	_log_opening_checkpoint("resolve.complete")
+	return null
 
 func _run_enemy_opening_slide_in(include_enemy_panel: bool = true):
 	if include_enemy_panel and enemy_panel != null:
