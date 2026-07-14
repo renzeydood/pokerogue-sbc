@@ -19,6 +19,11 @@ func _on_start() -> void:
 	if _battle == null:
 		complete()
 		return
+	if _battle.has_method("_log_transition_checkpoint"):
+		_battle._log_transition_checkpoint("phase.intro.start", {
+			"fainted_species_id": _fainted_species_id,
+			"active_turn_token": _active_turn_token,
+		})
 
 	if _include_fainted_text and not _fainted_species_id.empty():
 		_battle.set_battle_text("%s fainted!" % _fainted_species_id)
@@ -28,5 +33,10 @@ func _on_start() -> void:
 		yield(_battle.get_tree().create_timer(delay_sec), "timeout")
 		if _active_turn_token != -1 and _active_turn_token != int(_battle.turn_token):
 			_context["aborted"] = true
+			if _battle.has_method("_log_transition_checkpoint"):
+				_battle._log_transition_checkpoint("phase.intro.aborted")
+
+	if _battle.has_method("_log_transition_checkpoint"):
+		_battle._log_transition_checkpoint("phase.intro.complete")
 
 	complete()

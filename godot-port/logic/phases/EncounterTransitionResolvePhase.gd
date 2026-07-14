@@ -19,8 +19,15 @@ func _on_start() -> void:
 	if _battle == null:
 		complete()
 		return
+	if _battle.has_method("_log_transition_checkpoint"):
+		_battle._log_transition_checkpoint("phase.resolve.start", {
+			"fainted_species_id": _fainted_species_id,
+			"active_turn_token": _active_turn_token,
+		})
 
 	if bool(_context.get("aborted", false)):
+		if _battle.has_method("_log_transition_checkpoint"):
+			_battle._log_transition_checkpoint("phase.resolve.skipped_aborted")
 		complete()
 		return
 
@@ -31,5 +38,8 @@ func _on_start() -> void:
 	)
 	if resolve_flow is GDScriptFunctionState:
 		yield(resolve_flow, "completed")
+
+	if _battle.has_method("_log_transition_checkpoint"):
+		_battle._log_transition_checkpoint("phase.resolve.complete")
 
 	complete()

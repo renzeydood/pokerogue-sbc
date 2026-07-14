@@ -31,6 +31,7 @@ export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
 export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
 export(bool) var debug_open_party_menu_on_ready := false
+export(bool) var debug_transition_checkpoints := true
 export(float) var party_menu_overlay_fade_duration_sec := 0.12
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
@@ -461,6 +462,15 @@ func log_debug(message: String):
 	f.seek_end()
 	f.store_line("[%s] %s" % [str(OS.get_unix_time()), message])
 	f.close()
+
+func _log_transition_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_transition_checkpoints:
+		return
+	var message = "Transition checkpoint: " + label
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
 
 func _validate_encounter_cadence_settings() -> void:
 	if force_first_encounter_trainer:
@@ -3131,6 +3141,11 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
+	_log_transition_checkpoint("advance_to_next_enemy.entry", {
+		"fainted_species_id": fainted_species_id,
+		"active_turn_token": active_turn_token,
+		"include_fainted_text": include_fainted_text,
+	})
 
 	var transition_context := {
 		"aborted": false,
@@ -3157,6 +3172,7 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 
 	if phase_runner.is_running():
 		yield(phase_runner, "queue_idle")
+	_log_transition_checkpoint("advance_to_next_enemy.queue_idle")
 
 	return
 
@@ -3164,8 +3180,62 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
+	_log_transition_checkpoint("resolve_phase.entry", {
+		"fainted_species_id": fainted_species_id,
+		"active_turn_token": active_turn_token,
+	})
 
-	var trainer_party_switch = _is_active_trainer_encounter()
+	var transition_state = _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id, active_turn_token)
+	if transition_state is GDScriptFunctionState:
+		transition_state = yield(transition_state, "completed")
+
+	if typeof(transition_state) != TYPE_DICTIONARY:
+		_log_transition_checkpoint("resolve_phase.invalid_transition_state")
+		return
+	if bool(transition_state.get("cancelled", false)):
+		_log_transition_checkpoint("resolve_phase.cancelled_after_seed")
+		return
+	if not bool(transition_state.get("ok", false)):
+		_log_transition_checkpoint("resolve_phase.seed_not_ok")
+		return
+
+	var presentation_result = _advance_to_next_enemy_run_presentation_phase_state(transition_state, active_turn_token)
+	if presentation_result is GDScriptFunctionState:
+		yield(presentation_result, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			return
+
+	if bool(transition_state.get("cancelled", false)):
+		_log_transition_checkpoint("resolve_phase.cancelled_after_presentation")
+		return
+	if bool(transition_state.get("early_return", false)):
+		_log_transition_checkpoint("resolve_phase.early_return")
+		return
+
+	_advance_to_next_enemy_finalize_phase_state(transition_state, fainted_species_id, include_fainted_text)
+	_log_transition_checkpoint("resolve_phase.finalized")
+
+func _is_turn_token_cancelled(active_turn_token: int) -> bool:
+	return active_turn_token != -1 and active_turn_token != turn_token
+
+func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String, active_turn_token: int = -1) -> Dictionary:
+	_log_transition_checkpoint("seed_load.entry", {
+		"fainted_species_id": fainted_species_id,
+		"active_turn_token": active_turn_token,
+	})
+	var transition_state := {
+		"ok": false,
+		"cancelled": false,
+		"early_return": false,
+		"trainer_party_switch": _is_active_trainer_encounter(),
+		"next_is_seeded_trainer": false,
+		"next_trainer_seed_failed": false,
+		"next_enemy": null,
+		"next_trainer_seed": {},
+		"next_biome_state": {},
+	}
+
+	var trainer_party_switch = bool(transition_state["trainer_party_switch"])
 	var enemy_slide_out = null
 	if not trainer_party_switch:
 		enemy_slide_out = animate_enemy_layer_to(
@@ -3176,8 +3246,10 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 	_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 	if enemy_slide_out is GDScriptFunctionState:
 		yield(enemy_slide_out, "completed")
-		if active_turn_token != -1 and active_turn_token != turn_token:
-			return
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("seed_load.cancelled_after_slide_out")
+			return transition_state
 
 	var next_enemy_species_id = pick_random_enemy_species_id(fainted_species_id)
 	var next_enemy = null
@@ -3186,7 +3258,7 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 	var next_is_seeded_trainer := false
 	var next_trainer_seed_failed := false
 
-	if _is_active_trainer_encounter():
+	if trainer_party_switch:
 		next_enemy = _dequeue_next_trainer_enemy()
 		next_biome_state = _get_battle_biome_state().duplicate(true)
 		next_biome_state["transition_trigger"] = "trainer_party_progress"
@@ -3208,7 +3280,8 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 	if next_enemy == null:
 		enemy_layer.rect_position = enemy_layer_home_position
 		end_battle(true, fainted_species_id)
-		return
+		_log_transition_checkpoint("seed_load.no_next_enemy_end_battle")
+		return transition_state
 
 	battle_data["enemy"] = next_enemy
 	if not trainer_party_switch:
@@ -3242,13 +3315,41 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 	reset_pokemon_animation_state()
 	if trainer_party_switch and enemy_pokemon_sprite != null:
 		enemy_pokemon_sprite.visible = false
+
+	transition_state["ok"] = true
+	transition_state["next_enemy"] = next_enemy
+	transition_state["next_biome_state"] = next_biome_state
+	transition_state["next_trainer_seed"] = next_trainer_seed
+	transition_state["next_is_seeded_trainer"] = next_is_seeded_trainer
+	transition_state["next_trainer_seed_failed"] = next_trainer_seed_failed
+	_log_transition_checkpoint("seed_load.ready", {
+		"trainer_party_switch": trainer_party_switch,
+		"next_is_seeded_trainer": next_is_seeded_trainer,
+		"next_trainer_seed_failed": next_trainer_seed_failed,
+		"next_enemy_species": String(next_enemy.species_id),
+	})
+	return transition_state
+
+func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dictionary, active_turn_token: int = -1):
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return null
+
+	var trainer_party_switch = bool(transition_state.get("trainer_party_switch", false))
+	var next_is_seeded_trainer = bool(transition_state.get("next_is_seeded_trainer", false))
+	var next_enemy = transition_state.get("next_enemy", null)
+	var next_enemy_species_id = String(next_enemy.species_id) if next_enemy != null else ""
+
 	if trainer_party_switch:
-		var trainer_switch_sequence = _run_enemy_trainer_party_switch_sequence(String(next_enemy.species_id))
+		_log_transition_checkpoint("presentation.branch", {"type": "trainer_party_switch"})
+		var trainer_switch_sequence = _run_enemy_trainer_party_switch_sequence(next_enemy_species_id)
 		if trainer_switch_sequence is GDScriptFunctionState:
 			yield(trainer_switch_sequence, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.trainer_party_switch")
+				return null
 	elif next_is_seeded_trainer:
+		_log_transition_checkpoint("presentation.branch", {"type": "next_seeded_trainer"})
 		hide_all_command_menus()
 		set_sendout_controls_locked(true)
 		enemy_layer.rect_position = enemy_layer_home_position
@@ -3259,29 +3360,50 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 		var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
 		if recall_anim is GDScriptFunctionState:
 			yield(recall_anim, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.seeded_trainer_recall")
+				return null
 		var trainer_reentry = _run_player_trainer_reentry_sequence(active_turn_token)
 		if trainer_reentry is GDScriptFunctionState:
 			yield(trainer_reentry, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.seeded_trainer_reentry")
+				return null
 		_set_enemy_next_trainer_presentation_visible(true)
 		bind_battle_data()
 		_start_battle_opening_sequence()
-		return
+		transition_state["early_return"] = true
+		_log_transition_checkpoint("presentation.early_return_to_opening")
+		return null
 	else:
+		_log_transition_checkpoint("presentation.branch", {"type": "wild_slide_in"})
 		bind_battle_data()
 		var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
 		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 		if enemy_slide_in is GDScriptFunctionState:
 			yield(enemy_slide_in, "completed")
-			if active_turn_token != -1 and active_turn_token != turn_token:
-				return
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.wild_slide_in")
+				return null
+
 	if active_turn_token == -1:
 		_show_main_controls_unlocked()
 	else:
 		show_main_controls()
+	_log_transition_checkpoint("presentation.complete")
+
+	return null
+
+func _advance_to_next_enemy_finalize_phase_state(transition_state: Dictionary, fainted_species_id: String, include_fainted_text: bool = true) -> void:
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return
+	var next_enemy = transition_state.get("next_enemy", null)
+	if next_enemy == null:
+		return
+	var trainer_party_switch = bool(transition_state.get("trainer_party_switch", false))
 
 	var appeared_message = _build_enemy_appeared_message(String(next_enemy.species_id))
 	if include_fainted_text and not fainted_species_id.empty():
@@ -3290,6 +3412,10 @@ func _advance_to_next_enemy_resolve_phase(fainted_species_id: String, active_tur
 		set_battle_text(appeared_message)
 	if not trainer_party_switch:
 		_play_enemy_sendout_cry_once()
+	_log_transition_checkpoint("finalize.complete", {
+		"trainer_party_switch": trainer_party_switch,
+		"next_enemy_species": String(next_enemy.species_id),
+	})
 
 func animate_enemy_layer_to(target_position: Vector2, duration_sec: float, active_turn_token: int = -1):
 	if enemy_layer == null:
