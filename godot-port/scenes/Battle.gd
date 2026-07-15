@@ -26,6 +26,21 @@ export(int) var boss_pokemon_encounter_every := 10
 export(int) var boss_trainer_encounter_every := 30
 export(bool) var force_first_encounter_trainer := true
 export(bool) var debug_force_second_encounter_trainer := false
+export(bool) var debug_enemy_sprite_cycle_enabled := false
+export(float) var debug_enemy_sprite_cycle_interval_sec := 3.0
+export(bool) var debug_enemy_sprite_cycle_play_cries := false
+export(bool) var debug_player_sprite_cycle_enabled := false
+export(float) var debug_player_sprite_cycle_interval_sec := 3.0
+export(bool) var debug_player_sprite_cycle_play_cries := false
+export(bool) var debug_player_sprite_cycle_capture_screenshots := false
+export(bool) var debug_enemy_baseline_overlay_enabled := true
+export(bool) var debug_enemy_sprite_bounds_logging_enabled := false
+export(float) var debug_enemy_sprite_bounds_log_interval_sec := 1.0
+export(float) var debug_enemy_sprite_bounds_too_low_px := 2.0
+export(float) var debug_enemy_sprite_bounds_too_high_px := 16.0
+export(bool) var debug_enemy_sprite_bounds_capture_suspicious := false
+export(float) var debug_enemy_sprite_bounds_capture_cooldown_sec := 2.0
+export(String) var debug_enemy_sprite_bounds_capture_dir := "user://enemy_sprite_snapshots"
 export(float) var arena_switch_blend_duration_sec := 0.22
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
@@ -417,6 +432,19 @@ var turn_run_counter := 0
 var active_turn_run_id := ""
 var capture_run_counter := 0
 var active_capture_run_id := ""
+var debug_enemy_sprite_cycle_species_ids := []
+var debug_enemy_sprite_cycle_index := -1
+var debug_enemy_sprite_cycle_elapsed := 0.0
+var debug_enemy_sprite_cycle_running := false
+var debug_enemy_sprite_cycle_completed := false
+var debug_player_sprite_cycle_species_ids := []
+var debug_player_sprite_cycle_index := -1
+var debug_player_sprite_cycle_elapsed := 0.0
+var debug_player_sprite_cycle_running := false
+var debug_player_sprite_cycle_completed := false
+var debug_enemy_baseline_overlay: ColorRect = null
+var debug_enemy_sprite_bounds_log_elapsed := 0.0
+var debug_enemy_sprite_bounds_last_capture_msec := -1
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -461,6 +489,13 @@ func _ready():
 	add_blend_material = CanvasItemMaterial.new()
 	add_blend_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	setup_keyboard_controls()
+	if debug_enemy_baseline_overlay_enabled:
+		_ensure_debug_enemy_baseline_overlay()
+		_update_debug_enemy_baseline_overlay()
+	if debug_enemy_sprite_cycle_enabled:
+		_init_debug_enemy_sprite_cycle()
+	if debug_player_sprite_cycle_enabled:
+		_init_debug_player_sprite_cycle()
 	if debug_open_party_menu_on_ready:
 		call_deferred("_open_party_menu_on_ready")
 
@@ -1736,9 +1771,371 @@ func load_audio_assets():
 func _process(_delta):
 	update_pokemon_animations(_delta)
 	update_player_trainer_choreography(_delta)
+	if debug_enemy_baseline_overlay_enabled:
+		_update_debug_enemy_baseline_overlay()
+	_update_debug_enemy_sprite_bounds_logging(_delta)
+	_update_debug_enemy_sprite_cycle(_delta)
+	_update_debug_player_sprite_cycle(_delta)
 
 	if Input.is_action_just_pressed("ui_accept") and get_focus_owner() == null and not turn_in_progress and not battle_ended:
 		set_battle_text("Battle scene ready. Press the move button to continue.")
+
+func _update_debug_enemy_sprite_bounds_logging(delta: float) -> void:
+	if not debug_enemy_sprite_bounds_logging_enabled:
+		debug_enemy_sprite_bounds_log_elapsed = 0.0
+		return
+	if enemy_pokemon_sprite == null or enemy_layer == null:
+		return
+
+	debug_enemy_sprite_bounds_log_elapsed += max(0.0, delta)
+	if debug_enemy_sprite_bounds_log_elapsed < max(0.1, debug_enemy_sprite_bounds_log_interval_sec):
+		return
+	debug_enemy_sprite_bounds_log_elapsed = 0.0
+
+	var frame_h = 0.0
+	if enemy_pokemon_sprite.region_enabled:
+		frame_h = enemy_pokemon_sprite.region_rect.size.y
+	elif enemy_pokemon_sprite.texture != null:
+		frame_h = enemy_pokemon_sprite.texture.get_height()
+	if frame_h <= 0.0:
+		return
+
+	var scale_y = abs(enemy_pokemon_sprite.scale.y)
+	if scale_y <= 0.0:
+		scale_y = 1.0
+
+	var top_local_y = enemy_pokemon_sprite.offset.y
+	if enemy_pokemon_sprite.centered:
+		top_local_y -= frame_h / 2.0
+
+	var top_y = enemy_pokemon_sprite.global_position.y + (top_local_y * scale_y)
+	var bottom_y = top_y + (frame_h * scale_y)
+	var baseline_y = enemy_layer.rect_position.y + enemy_sprite_home_position.y
+	var baseline_delta = bottom_y - baseline_y
+
+	var suspicious_reasons := []
+	if baseline_delta > debug_enemy_sprite_bounds_too_low_px:
+		suspicious_reasons.append("too_low")
+	if baseline_delta < -debug_enemy_sprite_bounds_too_high_px:
+		suspicious_reasons.append("too_high")
+
+	var species_id = "UNKNOWN"
+	if battle_data != null and battle_data.has("enemy") and battle_data["enemy"] != null:
+		species_id = String(battle_data["enemy"].species_id)
+
+	var frame_name = ""
+	if enemy_anim_index >= 0 and enemy_anim_index < enemy_sprite_frames.size() and enemy_sprite_frames[enemy_anim_index] is Dictionary:
+		frame_name = String(enemy_sprite_frames[enemy_anim_index].get("filename", ""))
+
+	var suspicious_label = "ok"
+	if not suspicious_reasons.empty():
+		suspicious_label = ",".join(suspicious_reasons)
+
+	log_debug(
+		"EnemySpriteBounds species=%s frame=%s top_y=%.2f bottom_y=%.2f baseline_y=%.2f delta=%.2f suspicious=%s"
+		% [species_id, frame_name, top_y, bottom_y, baseline_y, baseline_delta, suspicious_label]
+	)
+
+	if not suspicious_reasons.empty() and debug_enemy_sprite_bounds_capture_suspicious:
+		_capture_sprite_debug_snapshot(species_id, frame_name, baseline_delta, suspicious_label)
+
+func _capture_sprite_debug_snapshot(species_id: String, frame_name: String, baseline_delta: float, suspicious_label: String) -> void:
+	var now_msec = OS.get_ticks_msec()
+	if debug_enemy_sprite_bounds_last_capture_msec >= 0:
+		var cooldown_msec = int(max(0.0, debug_enemy_sprite_bounds_capture_cooldown_sec) * 1000.0)
+		if now_msec - debug_enemy_sprite_bounds_last_capture_msec < cooldown_msec:
+			return
+
+	var image = get_viewport().get_texture().get_data()
+	if image == null:
+		return
+	image.flip_y()
+
+	var dir_path = debug_enemy_sprite_bounds_capture_dir.strip_edges()
+	if dir_path.empty():
+		dir_path = "user://enemy_sprite_snapshots"
+	var dir = Directory.new()
+	if not dir.dir_exists(dir_path):
+		var mk_err = dir.make_dir_recursive(dir_path)
+		if mk_err != OK:
+			log_debug("SpriteSnapshot failed to create dir: %s err=%d" % [dir_path, mk_err])
+			return
+
+	var safe_species = species_id.strip_edges().to_lower().replace("/", "_").replace("\\", "_")
+	if safe_species.empty():
+		safe_species = "unknown"
+	var safe_frame = frame_name.strip_edges().to_lower().replace("/", "_").replace("\\", "_").replace(".png", "")
+	if safe_frame.empty():
+		safe_frame = "frame"
+	var stamp = str(OS.get_unix_time())
+	var file_path = "%s/%s_%s_%s_d%.2f_%s.png" % [dir_path, safe_species, safe_frame, stamp, baseline_delta, suspicious_label]
+	var save_err = image.save_png(file_path)
+	if save_err == OK:
+		debug_enemy_sprite_bounds_last_capture_msec = now_msec
+		log_debug("SpriteSnapshot saved: %s" % file_path)
+		log_debug("SpriteSnapshot absolute: %s" % ProjectSettings.globalize_path(file_path))
+	else:
+		log_debug("SpriteSnapshot save failed: %s err=%d" % [file_path, save_err])
+		log_debug("SpriteSnapshot failed absolute target: %s" % ProjectSettings.globalize_path(file_path))
+
+func _init_debug_enemy_sprite_cycle() -> void:
+	debug_enemy_sprite_cycle_species_ids.clear()
+	debug_enemy_sprite_cycle_index = -1
+	debug_enemy_sprite_cycle_elapsed = 0.0
+	debug_enemy_sprite_cycle_completed = false
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		log_debug("Debug enemy cycle unavailable: catalog not loaded")
+		return
+
+	var all_species_ids = catalog_loader.get_all_species_ids()
+	var cycle_entries := []
+	for species_id in all_species_ids:
+		var sid = String(species_id)
+		var sprite_paths = get_species_sprite_paths(sid, false)
+		if sprite_paths.empty():
+			continue
+		var texture_path = minimal_assets_path + String(sprite_paths.get("texture_rel", ""))
+		var atlas_path = minimal_assets_path + String(sprite_paths.get("atlas_rel", ""))
+		if texture_path.empty() or atlas_path.empty():
+			continue
+		if not resource_exists(texture_path):
+			continue
+		if not _atlas_has_usable_frames(atlas_path):
+			continue
+		cycle_entries.append({
+			"species_id": sid,
+			"dex": catalog_loader.get_species_dex_number(sid),
+		})
+
+	cycle_entries.sort_custom(self, "_sort_species_cycle_entries")
+	for entry in cycle_entries:
+		debug_enemy_sprite_cycle_species_ids.append(String(entry.get("species_id", "")))
+
+	log_debug("Debug enemy cycle initialized with %d species" % debug_enemy_sprite_cycle_species_ids.size())
+	if debug_enemy_sprite_bounds_capture_suspicious:
+		log_debug("SpriteSnapshot output dir: %s" % ProjectSettings.globalize_path(debug_enemy_sprite_bounds_capture_dir))
+
+func _sort_species_cycle_entries(a: Dictionary, b: Dictionary) -> bool:
+	var a_dex = int(a.get("dex", -1))
+	var b_dex = int(b.get("dex", -1))
+	if a_dex == b_dex:
+		return String(a.get("species_id", "")) < String(b.get("species_id", ""))
+	if a_dex < 0:
+		return false
+	if b_dex < 0:
+		return true
+	return a_dex < b_dex
+
+func _atlas_has_usable_frames(atlas_path: String) -> bool:
+	var frames = parse_all_sprite_frames(atlas_path)
+	return not frames.empty()
+
+func _update_debug_enemy_sprite_cycle(delta: float) -> void:
+	if not debug_enemy_sprite_cycle_enabled:
+		return
+	if battle_ended or turn_in_progress or debug_enemy_sprite_cycle_running:
+		return
+	if debug_enemy_sprite_cycle_completed:
+		return
+	if debug_enemy_sprite_cycle_species_ids.empty():
+		_init_debug_enemy_sprite_cycle()
+		if debug_enemy_sprite_cycle_species_ids.empty():
+			return
+
+	debug_enemy_sprite_cycle_elapsed += max(0.0, delta)
+	if debug_enemy_sprite_cycle_elapsed < max(0.1, debug_enemy_sprite_cycle_interval_sec):
+		return
+	debug_enemy_sprite_cycle_elapsed = 0.0
+
+	var cycle_state = _run_debug_enemy_sprite_cycle_once()
+	if cycle_state is GDScriptFunctionState:
+		debug_enemy_sprite_cycle_running = true
+		_connect_once(cycle_state, "completed", "_on_debug_enemy_sprite_cycle_once_completed")
+
+func _on_debug_enemy_sprite_cycle_once_completed(_result = null) -> void:
+	debug_enemy_sprite_cycle_running = false
+
+func _init_debug_player_sprite_cycle() -> void:
+	debug_player_sprite_cycle_species_ids.clear()
+	debug_player_sprite_cycle_index = -1
+	debug_player_sprite_cycle_elapsed = 0.0
+	debug_player_sprite_cycle_completed = false
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		log_debug("Debug player cycle unavailable: catalog not loaded")
+		return
+
+	var cycle_entries := []
+	var all_species_ids = catalog_loader.get_all_species_ids()
+	for species_id in all_species_ids:
+		var sid = String(species_id)
+		var sprite_paths = get_species_sprite_paths(sid, true)
+		if sprite_paths.empty():
+			continue
+		var texture_path = minimal_assets_path + String(sprite_paths.get("texture_rel", ""))
+		var atlas_path = minimal_assets_path + String(sprite_paths.get("atlas_rel", ""))
+		if texture_path.empty() or atlas_path.empty():
+			continue
+		if not resource_exists(texture_path):
+			continue
+		if not _atlas_has_usable_frames(atlas_path):
+			continue
+		cycle_entries.append({
+			"species_id": sid,
+			"dex": catalog_loader.get_species_dex_number(sid),
+		})
+
+	cycle_entries.sort_custom(self, "_sort_species_cycle_entries")
+	for entry in cycle_entries:
+		debug_player_sprite_cycle_species_ids.append(String(entry.get("species_id", "")))
+
+	log_debug("Debug player cycle initialized with %d species" % debug_player_sprite_cycle_species_ids.size())
+
+func _update_debug_player_sprite_cycle(delta: float) -> void:
+	if not debug_player_sprite_cycle_enabled:
+		return
+	if battle_ended or turn_in_progress or debug_player_sprite_cycle_running:
+		return
+	if debug_player_sprite_cycle_completed:
+		return
+	if debug_enemy_sprite_cycle_running:
+		return
+	if debug_player_sprite_cycle_species_ids.empty():
+		_init_debug_player_sprite_cycle()
+		if debug_player_sprite_cycle_species_ids.empty():
+			return
+
+	debug_player_sprite_cycle_elapsed += max(0.0, delta)
+	if debug_player_sprite_cycle_elapsed < max(0.1, debug_player_sprite_cycle_interval_sec):
+		return
+	debug_player_sprite_cycle_elapsed = 0.0
+
+	var cycle_state = _run_debug_player_sprite_cycle_once()
+	if cycle_state is GDScriptFunctionState:
+		debug_player_sprite_cycle_running = true
+		_connect_once(cycle_state, "completed", "_on_debug_player_sprite_cycle_once_completed")
+
+func _on_debug_player_sprite_cycle_once_completed(_result = null) -> void:
+	debug_player_sprite_cycle_running = false
+
+func _run_debug_player_sprite_cycle_once():
+	if debug_player_sprite_cycle_species_ids.empty():
+		return null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+
+	var next_index = debug_player_sprite_cycle_index + 1
+	if next_index >= debug_player_sprite_cycle_species_ids.size():
+		debug_player_sprite_cycle_completed = true
+		log_debug("Debug player cycle completed at end of catalog (%d species)" % debug_player_sprite_cycle_species_ids.size())
+		set_battle_text("[DEBUG] Player back-sprite cycle completed (%d species)" % debug_player_sprite_cycle_species_ids.size())
+		return null
+
+	debug_player_sprite_cycle_index = next_index
+	var species_id = String(debug_player_sprite_cycle_species_ids[debug_player_sprite_cycle_index])
+	var debug_player = catalog_loader.build_pokemon_data(species_id, 5)
+	if debug_player == null:
+		return null
+
+	battle_data["player"] = debug_player
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+	reset_pokemon_animation_state()
+
+	if debug_player_sprite_cycle_play_cries:
+		_play_player_sendout_cry_once()
+	if debug_player_sprite_cycle_capture_screenshots:
+		var frame_name = ""
+		if player_anim_index >= 0 and player_anim_index < player_sprite_frames.size() and player_sprite_frames[player_anim_index] is Dictionary:
+			frame_name = String(player_sprite_frames[player_anim_index].get("filename", ""))
+		_capture_sprite_debug_snapshot(species_id, frame_name, 0.0, "player_cycle")
+	set_battle_text("[DEBUG] Player back-sprite cycle: %s" % species_id)
+	return null
+
+func _run_debug_enemy_sprite_cycle_once():
+	if debug_enemy_sprite_cycle_species_ids.empty():
+		return null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+
+	var slide_out = animate_enemy_layer_to(
+		enemy_layer_home_position + Vector2(enemy_switch_slide_distance_px, 0),
+		enemy_switch_slide_duration_sec,
+		-1
+	)
+	_animate_enemy_panel_to(_enemy_panel_hidden_position(), max(0.0, enemy_panel_slide_duration_sec), -1)
+	if slide_out is GDScriptFunctionState:
+		yield(slide_out, "completed")
+
+	var next_index = debug_enemy_sprite_cycle_index + 1
+	if next_index >= debug_enemy_sprite_cycle_species_ids.size():
+		debug_enemy_sprite_cycle_completed = true
+		log_debug("Debug enemy cycle completed at end of catalog (%d species)" % debug_enemy_sprite_cycle_species_ids.size())
+		set_battle_text("[DEBUG] Enemy sprite cycle completed (%d species)" % debug_enemy_sprite_cycle_species_ids.size())
+		return null
+	debug_enemy_sprite_cycle_index = next_index
+	var species_id = String(debug_enemy_sprite_cycle_species_ids[debug_enemy_sprite_cycle_index])
+	var debug_enemy = catalog_loader.build_pokemon_data(species_id, 5)
+	if debug_enemy == null:
+		return null
+
+	battle_data["enemy"] = debug_enemy
+	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+	if enemy_panel != null:
+		enemy_panel.rect_position = _enemy_panel_hidden_position()
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+
+	var slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, -1)
+	_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), -1)
+	if slide_in is GDScriptFunctionState:
+		yield(slide_in, "completed")
+
+	if debug_enemy_sprite_cycle_play_cries:
+		_play_enemy_sendout_cry_once()
+	set_battle_text("[DEBUG] Enemy sprite cycle: %s" % species_id)
+	return null
+
+func _ensure_debug_enemy_baseline_overlay() -> void:
+	if debug_enemy_baseline_overlay != null:
+		return
+	if battlefield_layer == null:
+		return
+
+	debug_enemy_baseline_overlay = ColorRect.new()
+	debug_enemy_baseline_overlay.name = "DebugEnemyBaselineOverlay"
+	debug_enemy_baseline_overlay.color = Color(1.0, 0.2, 0.2, 0.8)
+	debug_enemy_baseline_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battlefield_layer.add_child(debug_enemy_baseline_overlay)
+
+func _update_debug_enemy_baseline_overlay() -> void:
+	if not debug_enemy_baseline_overlay_enabled:
+		if debug_enemy_baseline_overlay != null:
+			debug_enemy_baseline_overlay.visible = false
+		return
+	if debug_enemy_baseline_overlay == null:
+		_ensure_debug_enemy_baseline_overlay()
+	if debug_enemy_baseline_overlay == null or battlefield_layer == null or enemy_layer == null:
+		return
+
+	var baseline_y = enemy_layer.rect_position.y + enemy_sprite_home_position.y
+	debug_enemy_baseline_overlay.visible = true
+	debug_enemy_baseline_overlay.rect_position = Vector2(0.0, baseline_y)
+	debug_enemy_baseline_overlay.rect_size = Vector2(max(1.0, battlefield_layer.rect_size.x), 1.0)
 
 # Input and command dispatch.
 func _input(event):
@@ -5284,21 +5681,77 @@ func parse_all_sprite_frames(json_path: String) -> Array:
 		return []
 
 	var data = result.result
-	if not data.has("textures"):
-		log_debug("Atlas missing textures key: %s" % json_path)
+	if typeof(data) != TYPE_DICTIONARY:
+		log_debug("Atlas payload is not a dictionary: %s" % json_path)
 		return []
 
-	var textures = data["textures"]
-	if textures.size() == 0:
-		log_debug("Atlas textures list empty: %s" % json_path)
+	var root_scale = _parse_atlas_scale(data.get("meta", {}).get("scale", 1.0))
+	# Support both TexturePacker-style atlases (`textures[].frames`) and
+	# Aseprite-style atlases (`frames` at the root).
+	if data.has("textures"):
+		var textures = data["textures"]
+		if textures.size() == 0:
+			log_debug("Atlas textures list empty: %s" % json_path)
+			return []
+
+		var merged_frames := []
+		for texture_entry in textures:
+			if typeof(texture_entry) != TYPE_DICTIONARY:
+				continue
+			var texture_scale = _parse_atlas_scale(texture_entry.get("scale", root_scale))
+			var texture_frames = _normalize_atlas_frames_container(texture_entry.get("frames", null), texture_scale)
+			if texture_frames.empty():
+				continue
+			for frame in texture_frames:
+				merged_frames.append(frame)
+
+		if not merged_frames.empty():
+			return merged_frames
+
+	if data.has("frames"):
+		var root_frames = _normalize_atlas_frames_container(data.get("frames", null), root_scale)
+		if not root_frames.empty():
+			return root_frames
+
+	log_debug("Atlas has no usable frames: %s" % json_path)
+	return []
+
+func _normalize_atlas_frames_container(frames_container, atlas_scale: float = 1.0) -> Array:
+	if frames_container == null:
 		return []
 
-	var frames = textures[0].get("frames", null)
-	if frames == null:
-		log_debug("Atlas has no frames: %s" % json_path)
-		return []
+	if typeof(frames_container) == TYPE_ARRAY:
+		var normalized_array := []
+		for frame_entry in frames_container:
+			if typeof(frame_entry) != TYPE_DICTIONARY:
+				continue
+			var normalized_frame = frame_entry.duplicate(true)
+			normalized_frame["_atlas_scale"] = atlas_scale
+			normalized_array.append(normalized_frame)
+		return normalized_array
 
-	return frames
+	if typeof(frames_container) == TYPE_DICTIONARY:
+		var keys = frames_container.keys()
+		keys.sort()
+		var normalized := []
+		for key in keys:
+			var frame_entry = frames_container[key]
+			if typeof(frame_entry) != TYPE_DICTIONARY:
+				continue
+			frame_entry = frame_entry.duplicate(true)
+			if not frame_entry.has("filename"):
+				frame_entry["filename"] = String(key)
+			frame_entry["_atlas_scale"] = atlas_scale
+			normalized.append(frame_entry)
+		return normalized
+
+	return []
+
+func _parse_atlas_scale(value) -> float:
+	var scale = float(value)
+	if scale <= 0.0:
+		return 1.0
+	return scale
 
 func get_all_numeric_frames(json_path: String) -> Array:
 	var frames = parse_all_sprite_frames(json_path)
