@@ -210,7 +210,51 @@ func build_sprite_resource_paths(species_id: String, is_back: bool = false, form
 		sprite_paths["texture_rel"] = "%s%s.png" % [root, base_key]
 		sprite_paths["atlas_rel"] = "%s%s.json" % [root, base_key]
 
+	# Some species atlases reference texture filenames that differ from dex-number naming
+	# (for example variant-tagged PNG files). Resolve texture path from atlas metadata.
+	if not _resource_file_exists(sprite_paths["texture_rel"]) and _resource_file_exists(sprite_paths["atlas_rel"]):
+		var atlas_texture_rel = _resolve_texture_rel_from_atlas(String(sprite_paths["atlas_rel"]))
+		if not atlas_texture_rel.empty() and _resource_file_exists(atlas_texture_rel):
+			sprite_paths["texture_rel"] = atlas_texture_rel
+			sprite_paths["sprite_key"] = atlas_texture_rel.get_file().get_basename()
+
 	return sprite_paths
+
+func _resolve_texture_rel_from_atlas(atlas_rel: String) -> String:
+	var absolute_atlas_path = "res://godot-minimal-assets/" + atlas_rel
+	var file = File.new()
+	if not file.file_exists(absolute_atlas_path):
+		return ""
+
+	var open_error = file.open(absolute_atlas_path, File.READ)
+	if open_error != OK:
+		return ""
+	var json_text = file.get_as_text()
+	file.close()
+
+	var parse_result = JSON.parse(json_text)
+	if parse_result.error != OK:
+		return ""
+	if typeof(parse_result.result) != TYPE_DICTIONARY:
+		return ""
+
+	var data = parse_result.result
+	var image_name = ""
+	if data.has("textures") and typeof(data["textures"]) == TYPE_ARRAY and not data["textures"].empty():
+		var texture_entry = data["textures"][0]
+		if typeof(texture_entry) == TYPE_DICTIONARY:
+			image_name = String(texture_entry.get("image", "")).strip_edges()
+	if image_name.empty() and data.has("meta") and typeof(data["meta"]) == TYPE_DICTIONARY:
+		image_name = String(data["meta"].get("image", "")).strip_edges()
+	if image_name.empty():
+		return ""
+
+	var atlas_dir = atlas_rel.get_base_dir()
+	var texture_rel = image_name
+	if image_name.find("/") == -1 and image_name.find("\\") == -1:
+		texture_rel = "%s/%s" % [atlas_dir, image_name]
+
+	return texture_rel.replace("\\", "/")
 
 func _index_catalog_entries(payload, index_map: Dictionary, id_key: String) -> bool:
 	index_map.clear()

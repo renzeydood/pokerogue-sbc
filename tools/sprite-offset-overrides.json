@@ -1,0 +1,43 @@
+{
+  "description": "Per-sprite baseline override list for odd atlas offsets. Add entries here as new outliers are found.",
+  "overrides": [
+    {
+      "enabled": true,
+      "atlas": "godot-port/godot-minimal-assets/assets/images/pokemon/back/254.json",
+      "mode": "shift_y",
+      "delta_y": 12,
+      "allow_crop": true,
+      "note": "Use constant shift so frame-relative pose motion is preserved and tail-heavy frames do not drive baseline anchoring."
+    },
+    {
+      "enabled": true,
+      "atlas": "godot-port/godot-minimal-assets/assets/images/pokemon/back/656.json",
+      "mode": "bottom_align",
+      "margin": 5,
+      "note": "Froakie back sprite appears high/floating during player back-sprite debug cycle."
+    },
+    {
+      "enabled": true,
+      "atlas": "godot-port/godot-minimal-assets/assets/images/pokemon/656.json",
+      "mode": "bottom_align",
+      "margin": 15,
+      "note": "Froakie front sprite appears high/floating during player back-sprite debug cycle."
+    },
+    {
+      "enabled": true,
+      "atlas": "godot-port/godot-minimal-assets/assets/images/pokemon/662.json",
+      "mode": "shift_y",
+      "delta_y": -20,
+      "allow_crop": true,
+      "note": "Fletchinder front sprite appears too low during player back-sprite debug cycle."
+    },
+    {
+      "enabled": true,
+      "atlas": "godot-port/godot-minimal-assets/assets/images/pokemon/back/914.json",
+      "mode": "shift_y",
+      "delta_y": 12,
+      "allow_crop": true,
+      "note": "Already at floor (bottom padding 0); margin below 0 has no effect with clamped baseline mode."
+    }
+  ]
+}

@@ -34,6 +34,13 @@ def run_exporter(exporter_path: Path, dry_run=False):
     run_command(cmd, dry_run=dry_run)
 
 
+def run_python_script(script_path: Path, args: list[str] | None = None, dry_run: bool = False):
+    cmd = [sys.executable, str(script_path)]
+    if args:
+        cmd.extend(args)
+    run_command(cmd, dry_run=dry_run)
+
+
 def main():
     repo_root = Path(__file__).resolve().parents[1]
     pokerogue_root = repo_root / "dependency" / "pokerogue"
@@ -46,6 +53,9 @@ def main():
     parser.add_argument("--refresh-fixtures", action="store_true", help="Update checked-in data fixtures from current generated catalogs (requires --validate-data)")
     parser.add_argument("--validate-regression", action="store_true", help="Run focused prototype snapshot regression checks on generated catalogs")
     parser.add_argument("--refresh-regression-fixtures", action="store_true", help="Update the focused regression snapshot fixture from current catalogs (requires --validate-regression)")
+    parser.add_argument("--validate-sprites", action="store_true", help="Run sprite atlas/offset regression validator and write actionable report")
+    parser.add_argument("--validate-sprites-strict", action="store_true", help="Fail pipeline when sprite validator finds high-severity issues (requires --validate-sprites)")
+    parser.add_argument("--normalize-sprite-baselines", action="store_true", help="Adjust Gen 9 sprite atlas metadata so visible art sits on the bottom baseline")
     parser.add_argument("--export-all", action="store_true", help="Run both minimal asset and minimal data exporters")
     parser.add_argument("--skip-missing-scripts", action="store_true", default=True, help="Skip preprocessing scripts if source files don't exist (default: True)")
     parser.add_argument("--dry-run", action="store_true", help="Print the preprocessing/export steps without executing them")
@@ -60,6 +70,7 @@ def main():
         args.export_data = True
         args.validate_data = True
         args.validate_regression = True
+        args.validate_sprites = True
 
     if args.refresh_fixtures:
         args.validate_data = True
@@ -67,7 +78,7 @@ def main():
     if args.refresh_regression_fixtures:
         args.validate_regression = True
 
-    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression:
+    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression and not args.validate_sprites and not args.normalize_sprite_baselines:
         # Default to export if neither flag specified
         args.export = True
     
@@ -129,7 +140,23 @@ def main():
         else:
             run_exporter(regression_validator, dry_run=args.dry_run)
 
-    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression:
+    if args.validate_sprites:
+        sprite_validator = tools_root / "validate_sprite_regression.py"
+        if not sprite_validator.exists():
+            raise SystemExit(f"Sprite regression validator not found: {sprite_validator}")
+        cmd = [sys.executable, str(sprite_validator)]
+        if args.validate_sprites_strict:
+            cmd.append("--strict")
+        run_command(cmd, dry_run=args.dry_run)
+
+    if args.normalize_sprite_baselines:
+        baseline_preprocessor = tools_root / "preprocess_sprite_baselines.py"
+        if not baseline_preprocessor.exists():
+            raise SystemExit(f"Sprite baseline preprocessor not found: {baseline_preprocessor}")
+        preprocessor_args = ["--apply"]
+        run_python_script(baseline_preprocessor, preprocessor_args, dry_run=args.dry_run)
+
+    if not args.preprocess and not args.export and not args.export_data and not args.validate_data and not args.validate_regression and not args.validate_sprites and not args.normalize_sprite_baselines:
         parser.print_help()
 
 
