@@ -19,6 +19,9 @@ export(bool) var use_debug_seed_profile := false
 export(String) var debug_seed_profile_id := "ui_party_showcase"
 export(bool) var play_title_bgm := true
 export(String) var title_bgm_path := "res://godot-minimal-assets/assets/audio/bgm/title.mp3"
+export(float) var title_bgm_volume_db := 0.0
+export(float) var title_bgm_fade_in_sec := 0.4
+export(float) var scene_change_bgm_fade_out_sec := 0.35
 export(bool) var open_overlay_buttons_as_preview := true
 
 onready var pokemon_select_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/PokemonSelectButton")
@@ -28,6 +31,7 @@ onready var pokedex_entry_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/
 onready var party_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/PartyButton")
 
 var title_bgm_player: AudioStreamPlayer = null
+var title_bgm_tween: Tween = null
 var active_debug_overlay: Control = null
 
 func _ready():
@@ -78,7 +82,7 @@ func _on_scene_button_pressed(scene_path: String) -> void:
 	entry_scene_path = scene_path
 	_debug_log("Changing scene to %s" % entry_scene_path)
 	if title_bgm_player != null and title_bgm_player.playing:
-		title_bgm_player.stop()
+		yield(_fade_out_title_bgm(scene_change_bgm_fade_out_sec), "completed")
 	var result = get_tree().change_scene(entry_scene_path)
 	if result != OK:
 		push_error("Failed to open entry scene: %s" % entry_scene_path)
@@ -226,9 +230,72 @@ func _play_title_bgm_if_enabled() -> void:
 		if not title_bgm_player.is_connected("finished", self, "_on_title_bgm_finished"):
 			title_bgm_player.connect("finished", self, "_on_title_bgm_finished")
 
+	if stream is AudioStreamMP3:
+		stream.loop = true
+	elif stream is AudioStreamOGGVorbis:
+		stream.loop = true
+	elif stream is AudioStreamSample:
+		stream.loop_mode = AudioStreamSample.LOOP_FORWARD
+
 	title_bgm_player.stream = stream
+	_stop_title_bgm_tween()
+	title_bgm_player.volume_db = -80.0
 	title_bgm_player.play()
+	if title_bgm_fade_in_sec > 0.0:
+		title_bgm_tween = Tween.new()
+		add_child(title_bgm_tween)
+		title_bgm_tween.interpolate_property(
+			title_bgm_player,
+			"volume_db",
+			title_bgm_player.volume_db,
+			title_bgm_volume_db,
+			max(0.01, title_bgm_fade_in_sec),
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+		title_bgm_tween.start()
+	else:
+		title_bgm_player.volume_db = title_bgm_volume_db
 	_debug_log("Title BGM playing from %s" % resolved_bgm_path)
+
+func _stop_title_bgm_tween() -> void:
+	if title_bgm_tween != null and is_instance_valid(title_bgm_tween):
+		title_bgm_tween.stop_all()
+		title_bgm_tween.queue_free()
+	title_bgm_tween = null
+
+func _fade_out_title_bgm(duration_sec: float) -> void:
+	if title_bgm_player == null:
+		yield(get_tree(), "idle_frame")
+		return
+
+	_stop_title_bgm_tween()
+	var fade_duration = max(0.0, duration_sec)
+	if fade_duration <= 0.0:
+		title_bgm_player.stop()
+		title_bgm_player.volume_db = title_bgm_volume_db
+		yield(get_tree(), "idle_frame")
+		return
+
+	title_bgm_tween = Tween.new()
+	add_child(title_bgm_tween)
+	title_bgm_tween.interpolate_property(
+		title_bgm_player,
+		"volume_db",
+		title_bgm_player.volume_db,
+		-80.0,
+		fade_duration,
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	title_bgm_tween.start()
+
+	var timer = get_tree().create_timer(fade_duration)
+	yield(timer, "timeout")
+	if title_bgm_player != null:
+		title_bgm_player.stop()
+		title_bgm_player.volume_db = title_bgm_volume_db
+	_stop_title_bgm_tween()
 
 func _resolve_title_bgm_path() -> String:
 	var preferred_path = title_bgm_path.strip_edges()

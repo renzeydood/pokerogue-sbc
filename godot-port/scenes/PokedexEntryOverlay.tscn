@@ -69,31 +69,41 @@ margin_bottom = 238.0
 rect_scale = Vector2( 2, 2 )
 
 [node name="CurrentPokemonSprite" type="Sprite" parent="Panel/UiScaleRoot"]
-position = Vector2( 72.5, 122.5 )
+position = Vector2( 72.5, 112 )
 texture = ExtResource( 4 )
 offset = Vector2( -0.5, -17 )
 region_enabled = true
 region_rect = Rect2( 0, 109, 36, 34 )
 
 [node name="DetailsType1Sprite" type="Sprite" parent="Panel/UiScaleRoot"]
-position = Vector2( 9.5, 132 )
+position = Vector2( 9.5, 123 )
 texture = ExtResource( 2 )
 centered = false
 region_enabled = true
 region_rect = Rect2( 0, 140, 32, 14 )
 
 [node name="DetailsType2Sprite" type="Sprite" parent="Panel/UiScaleRoot"]
-position = Vector2( 44, 132 )
+position = Vector2( 44, 123 )
 texture = ExtResource( 2 )
 centered = false
 region_enabled = true
 region_rect = Rect2( 0, 196, 32, 14 )
 
+[node name="GrowthRateLabel" type="Label" parent="Panel/UiScaleRoot"]
+margin_left = 9.0
+margin_top = 137.0
+margin_right = 82.0
+margin_bottom = 149.0
+theme = ExtResource( 8 )
+custom_colors/font_color = Color( 0, 0, 0, 1 )
+text = "Growth Rate:"
+autowrap = true
+
 [node name="SpeciesLabel" type="Label" parent="Panel/UiScaleRoot"]
-margin_left = 6.5
+margin_left = 7.0
 margin_top = 152.0
-margin_right = 118.5
-margin_bottom = 170.0
+margin_right = 119.0
+margin_bottom = 166.0
 text = "BULBASAUR"
 autowrap = true
 
@@ -105,10 +115,10 @@ margin_bottom = 185.0
 text = "Status: Not Caught"
 
 [node name="PokemonNumberLabel" type="Label" parent="Panel/UiScaleRoot"]
-margin_left = 8.5
+margin_left = 18.0
 margin_top = 4.0
-margin_right = 35.5
-margin_bottom = 23.0
+margin_right = 54.0
+margin_bottom = 20.0
 text = "001"
 autowrap = true
 
