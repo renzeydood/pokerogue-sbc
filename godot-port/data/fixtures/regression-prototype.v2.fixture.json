@@ -1,10 +1,15 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generated_from": "dependency/pokerogue",
   "species": [
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BULBASAUR",
+      "starter_species_id": "BULBASAUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "IVYSAUR"
+      ],
       "pokedex_number": 1,
       "name": "Bulbasaur",
       "types": [
@@ -28,93 +33,15 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 64,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3
     },
     {
-      "schema_version": 1,
-      "species_id": "IVYSAUR",
-      "pokedex_number": 2,
-      "name": "Ivysaur",
-      "types": [
-        "GRASS",
-        "POISON"
-      ],
-      "base_stats": {
-        "hp": 60,
-        "atk": 62,
-        "def": 63,
-        "sp_atk": 80,
-        "sp_def": 80,
-        "spd": 60
-      },
-      "source": {
-        "repo": "dependency/pokerogue",
-        "species_enum_name": "IVYSAUR",
-        "generation": 1,
-        "form_key": "DEFAULT"
-      },
-      "catch_rate": 45,
-      "base_friendship": 50,
-      "base_exp": 142,
-      "growth_rate": "MEDIUM_SLOW"
-    },
-    {
-      "schema_version": 1,
-      "species_id": "CHARMANDER",
-      "pokedex_number": 4,
-      "name": "Charmander",
-      "types": [
-        "FIRE"
-      ],
-      "base_stats": {
-        "hp": 39,
-        "atk": 52,
-        "def": 43,
-        "sp_atk": 60,
-        "sp_def": 50,
-        "spd": 65
-      },
-      "source": {
-        "repo": "dependency/pokerogue",
-        "species_enum_name": "CHARMANDER",
-        "generation": 1,
-        "form_key": "DEFAULT"
-      },
-      "catch_rate": 45,
-      "base_friendship": 50,
-      "base_exp": 62,
-      "growth_rate": "MEDIUM_SLOW"
-    },
-    {
-      "schema_version": 1,
-      "species_id": "CHARMELEON",
-      "pokedex_number": 5,
-      "name": "Charmeleon",
-      "types": [
-        "FIRE"
-      ],
-      "base_stats": {
-        "hp": 58,
-        "atk": 64,
-        "def": 58,
-        "sp_atk": 80,
-        "sp_def": 65,
-        "spd": 80
-      },
-      "source": {
-        "repo": "dependency/pokerogue",
-        "species_enum_name": "CHARMELEON",
-        "generation": 1,
-        "form_key": "DEFAULT"
-      },
-      "catch_rate": 45,
-      "base_friendship": 50,
-      "base_exp": 142,
-      "growth_rate": "MEDIUM_SLOW"
-    },
-    {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHARIZARD",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 6,
       "name": "Charizard",
       "types": [
@@ -138,26 +65,111 @@
       "catch_rate": 45,
       "base_friendship": 50,
       "base_exp": 267,
-      "growth_rate": "MEDIUM_SLOW"
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": null
+    },
+    {
+      "schema_version": 2,
+      "species_id": "CHARMANDER",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHARMELEON"
+      ],
+      "pokedex_number": 4,
+      "name": "Charmander",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 39,
+        "atk": 52,
+        "def": 43,
+        "sp_atk": 60,
+        "sp_def": 50,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARMANDER",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 62,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3
+    },
+    {
+      "schema_version": 2,
+      "species_id": "CHARMELEON",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHARIZARD"
+      ],
+      "pokedex_number": 5,
+      "name": "Charmeleon",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 58,
+        "atk": 64,
+        "def": 58,
+        "sp_atk": 80,
+        "sp_def": 65,
+        "spd": 80
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHARMELEON",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 142,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": null
+    },
+    {
+      "schema_version": 2,
+      "species_id": "IVYSAUR",
+      "starter_species_id": "BULBASAUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "VENUSAUR"
+      ],
+      "pokedex_number": 2,
+      "name": "Ivysaur",
+      "types": [
+        "GRASS",
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 62,
+        "def": 63,
+        "sp_atk": 80,
+        "sp_def": 80,
+        "spd": 60
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "IVYSAUR",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 142,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": null
     }
   ],
   "moves": [
-    {
-      "schema_version": 1,
-      "move_id": "TACKLE",
-      "name": "Tackle",
-      "type": "NORMAL",
-      "category": "PHYSICAL",
-      "power": 40,
-      "source": {
-        "repo": "dependency/pokerogue",
-        "move_enum_name": "TACKLE",
-        "generation": 1
-      },
-      "accuracy": 100,
-      "pp": 35,
-      "priority": 0
-    },
     {
       "schema_version": 1,
       "move_id": "EMBER",
@@ -172,6 +184,22 @@
       },
       "accuracy": 100,
       "pp": 25,
+      "priority": 0
+    },
+    {
+      "schema_version": 1,
+      "move_id": "TACKLE",
+      "name": "Tackle",
+      "type": "NORMAL",
+      "category": "PHYSICAL",
+      "power": 40,
+      "source": {
+        "repo": "dependency/pokerogue",
+        "move_enum_name": "TACKLE",
+        "generation": 1
+      },
+      "accuracy": 100,
+      "pp": 35,
       "priority": 0
     },
     {

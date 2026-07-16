@@ -1,7 +1,7 @@
 tool
 extends Control
 
-const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v1.json"
+const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
 const BASE_FORM_OVERRIDES_PATH := "res://data/selection-roster-base-form-overrides.json"
 const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const POKEDEX_ENTRY_OVERLAY_PATH := "res://scenes/PokedexEntryOverlay.tscn"
@@ -408,7 +408,7 @@ func _resolve_menu_bgm_path() -> String:
 
 func _stop_menu_bgm_tween() -> void:
 	if menu_bgm_tween != null and is_instance_valid(menu_bgm_tween):
-		menu_bgm_tween.stop_all()
+		var _stop_result = menu_bgm_tween.stop_all()
 		menu_bgm_tween.queue_free()
 	menu_bgm_tween = null
 
@@ -450,7 +450,7 @@ func _play_menu_bgm_if_enabled() -> void:
 	if menu_bgm_fade_in_sec > 0.0:
 		menu_bgm_tween = Tween.new()
 		add_child(menu_bgm_tween)
-		menu_bgm_tween.interpolate_property(
+		var _tween_result = menu_bgm_tween.interpolate_property(
 			menu_bgm_player,
 			"volume_db",
 			menu_bgm_player.volume_db,
@@ -459,7 +459,7 @@ func _play_menu_bgm_if_enabled() -> void:
 			Tween.TRANS_SINE,
 			Tween.EASE_IN_OUT
 		)
-		menu_bgm_tween.start()
+		var _start_result = menu_bgm_tween.start()
 	else:
 		menu_bgm_player.volume_db = menu_bgm_volume_db
 
@@ -478,7 +478,7 @@ func _fade_out_menu_bgm(duration_sec: float):
 
 	menu_bgm_tween = Tween.new()
 	add_child(menu_bgm_tween)
-	menu_bgm_tween.interpolate_property(
+	var _tween_result = menu_bgm_tween.interpolate_property(
 		menu_bgm_player,
 		"volume_db",
 		menu_bgm_player.volume_db,
@@ -487,7 +487,7 @@ func _fade_out_menu_bgm(duration_sec: float):
 		Tween.TRANS_SINE,
 		Tween.EASE_IN_OUT
 	)
-	menu_bgm_tween.start()
+	var _start_result = menu_bgm_tween.start()
 	yield(get_tree().create_timer(fade_duration), "timeout")
 	if menu_bgm_player != null:
 		menu_bgm_player.stop()

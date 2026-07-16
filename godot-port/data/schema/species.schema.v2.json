@@ -1,24 +1,44 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pokerogue-sbc.local/schema/species.schema.v1.json",
-  "title": "Pokemon Species Schema v1",
+  "$id": "https://pokerogue-sbc.local/schema/species.schema.v2.json",
+  "title": "Pokemon Species Schema v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "species_id",
+    "starter_species_id",
     "name",
     "types",
     "base_stats"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "species_id": {
       "type": "string",
       "pattern": "^[A-Z0-9_]+$",
       "description": "Stable enum-like ID aligned to Pokerogue SpeciesId naming."
+    },
+    "starter_species_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]+$",
+      "description": "Root starter species id for this species lineage (Pokerogue 'starter')."
+    },
+    "prevolution_species_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z0-9_]+$",
+      "description": "Direct prevolution species id when present; null for base forms."
+    },
+    "evolution_species_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z0-9_]+$"
+      },
+      "uniqueItems": true,
+      "description": "Direct evolution species ids for this species."
     },
     "pokedex_number": {
       "type": "integer",
@@ -63,6 +83,20 @@
         "SLOW",
         "FLUCTUATING"
       ]
+    },
+    "starter_cost": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Pokerogue starter cost for this species."
+    },
+    "starter_moves": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z0-9_]+$"
+      },
+      "description": "First N unique level-up moves exported for starter loadout seeding."
     },
     "source": {
       "$ref": "#/$defs/source"

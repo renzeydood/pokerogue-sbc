@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pokerogue-sbc.local/schema/species-catalog.schema.v1.json",
-  "title": "Species Catalog Schema v1",
+  "$id": "https://pokerogue-sbc.local/schema/species-catalog.schema.v2.json",
+  "title": "Species Catalog Schema v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "generated_from": {
       "type": "string",
@@ -25,7 +25,7 @@
     "items": {
       "type": "array",
       "items": {
-        "$ref": "species.schema.v1.json"
+        "$ref": "species.schema.v2.json"
       }
     }
   }

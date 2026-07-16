@@ -197,6 +197,21 @@ def _extract_species_entry(species_name: str, source_files: list[Path]) -> dict[
             continue
 
         parsed = _extract_species_fields(species_match.group("species"))
+
+        starter_match = re.search(r"\bstarter:\s*SpeciesId\.([A-Z0-9_]+)", body)
+        prevolution_match = re.search(r"\bprevolution:\s*SpeciesId\.([A-Z0-9_]+)", body)
+        starter_cost_match = re.search(r"\bstarterCost:\s*(\d+)", body)
+
+        evolutions_body = _extract_array_literal(body, "evolutions")
+        evolution_species_ids: list[str] = []
+        if evolutions_body is not None:
+            evolution_species_ids = re.findall(r"speciesId:\s*SpeciesId\.([A-Z0-9_]+)", evolutions_body)
+
+        parsed["starter_species_id"] = starter_match.group(1) if starter_match else species_name
+        parsed["prevolution_species_id"] = prevolution_match.group(1) if prevolution_match else None
+        parsed["evolution_species_ids"] = list(dict.fromkeys(evolution_species_ids))
+        parsed["starter_cost"] = int(starter_cost_match.group(1)) if starter_cost_match else None
+
         level_moves_body = _extract_array_literal(body, "levelMoves")
         if level_moves_body is not None:
             parsed["level_moves"] = re.findall(r"MoveId\.([A-Z0-9_]+)", level_moves_body)
@@ -265,8 +280,11 @@ def _build_species_catalog(
             continue
 
         item = {
-            "schema_version": 1,
+            "schema_version": 2,
             "species_id": species_name,
+            "starter_species_id": parsed["starter_species_id"],
+            "prevolution_species_id": parsed["prevolution_species_id"],
+            "evolution_species_ids": parsed["evolution_species_ids"],
             "pokedex_number": dex_num,
             "name": _enum_name_to_title(species_name),
             "types": parsed["types"],
@@ -287,6 +305,8 @@ def _build_species_catalog(
             item["base_exp"] = parsed["base_exp"]
         if parsed["growth_rate"] is not None:
             item["growth_rate"] = parsed["growth_rate"]
+        if parsed["starter_cost"] is not None:
+            item["starter_cost"] = parsed["starter_cost"]
 
         if starter_moves_count is not None and starter_moves_count > 0:
             starter_moves = _first_n_unique(parsed.get("level_moves", []), starter_moves_count)
@@ -374,7 +394,7 @@ def main() -> None:
     generated_at = datetime.now(timezone.utc).isoformat()
 
     species_catalog = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_from": "dependency/pokerogue",
         "generated_at": generated_at,
         "items": species_items,
@@ -388,7 +408,7 @@ def main() -> None:
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    species_out = OUT_DIR / "species-catalog.v1.json"
+    species_out = OUT_DIR / "species-catalog.v2.json"
     moves_out = OUT_DIR / "moves-catalog.v1.json"
 
     species_out.write_text(json.dumps(species_catalog, indent=2), encoding="utf-8")

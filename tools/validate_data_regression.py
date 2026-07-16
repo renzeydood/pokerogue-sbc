@@ -7,8 +7,8 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
-FIXTURE_FILE = REPO_ROOT / "godot-port" / "data" / "fixtures" / "regression-prototype.v1.fixture.json"
-SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v1.json"
+FIXTURE_FILE = REPO_ROOT / "godot-port" / "data" / "fixtures" / "regression-prototype.v2.fixture.json"
+SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v2.json"
 MOVES_CATALOG_FILE = DATA_DIR / "moves-catalog.v1.json"
 
 EXPECTED_SPECIES_IDS = [
@@ -45,6 +45,9 @@ def _project_species_item(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": item.get("schema_version"),
         "species_id": item.get("species_id"),
+        "starter_species_id": item.get("starter_species_id"),
+        "prevolution_species_id": item.get("prevolution_species_id"),
+        "evolution_species_ids": item.get("evolution_species_ids"),
         "pokedex_number": item.get("pokedex_number"),
         "name": item.get("name"),
         "types": item.get("types"),
@@ -54,6 +57,7 @@ def _project_species_item(item: dict[str, Any]) -> dict[str, Any]:
         "base_friendship": item.get("base_friendship"),
         "base_exp": item.get("base_exp"),
         "growth_rate": item.get("growth_rate"),
+        "starter_cost": item.get("starter_cost"),
     }
 
 
@@ -111,7 +115,7 @@ def _build_snapshot(species_payload: Any, moves_payload: Any, errors: list[str])
     move_items = _select_items(moves_payload, "move_id", EXPECTED_MOVE_IDS, "moves", errors)
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_from": "dependency/pokerogue",
         "species": [_project_species_item(item) for item in species_items],
         "moves": [_project_move_item(item) for item in move_items],

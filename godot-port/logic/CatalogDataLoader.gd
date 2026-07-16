@@ -1,9 +1,8 @@
 extends Reference
-class_name CatalogDataLoader
 
 const MoveData = preload("res://data/MoveData.gd")
 
-const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v1.json"
+const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
 const MOVES_CATALOG_PATH := "res://godot-minimal-assets/data/moves-catalog.v1.json"
 const POKEMON_SPRITE_ROOT := "assets/images/pokemon/"
 const DEFAULT_MOVE_ID := "TACKLE"
