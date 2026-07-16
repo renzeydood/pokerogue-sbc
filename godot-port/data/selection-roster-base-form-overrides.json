@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "description": "Maps caught species ids to the base-form species id used by starter selection availability.",
+  "overrides": {
+    "IVYSAUR": "BULBASAUR",
+    "VENUSAUR": "BULBASAUR",
+    "CHARMELEON": "CHARMANDER",
+    "CHARIZARD": "CHARMANDER",
+    "WARTORTLE": "SQUIRTLE",
+    "BLASTOISE": "SQUIRTLE",
+
+    "BAYLEEF": "CHIKORITA",
+    "MEGANIUM": "CHIKORITA",
+    "QUILAVA": "CYNDAQUIL",
+    "TYPHLOSION": "CYNDAQUIL",
+    "CROCONAW": "TOTODILE",
+    "FERALIGATR": "TOTODILE",
+
+    "GROVYLE": "TREECKO",
+    "SCEPTILE": "TREECKO",
+    "COMBUSKEN": "TORCHIC",
+    "BLAZIKEN": "TORCHIC",
+    "MARSHTOMP": "MUDKIP",
+    "SWAMPERT": "MUDKIP",
+
+    "GROTLE": "TURTWIG",
+    "TORTERRA": "TURTWIG",
+    "MONFERNO": "CHIMCHAR",
+    "INFERNAPE": "CHIMCHAR",
+    "PRINPLUP": "PIPLUP",
+    "EMPOLEON": "PIPLUP",
+
+    "SERVINE": "SNIVY",
+    "SERPERIOR": "SNIVY",
+    "PIGNITE": "TEPIG",
+    "EMBOAR": "TEPIG",
+    "DEWOTT": "OSHAWOTT",
+    "SAMUROTT": "OSHAWOTT",
+
+    "QUILLADIN": "CHESPIN",
+    "CHESNAUGHT": "CHESPIN",
+    "BRAIXEN": "FENNEKIN",
+    "DELPHOX": "FENNEKIN",
+    "FROGADIER": "FROAKIE",
+    "GRENINJA": "FROAKIE",
+
+    "DARTRIX": "ROWLET",
+    "DECIDUEYE": "ROWLET",
+    "TORRACAT": "LITTEN",
+    "INCINEROAR": "LITTEN",
+    "BRIONNE": "POPPLIO",
+    "PRIMARINA": "POPPLIO",
+
+    "THWACKEY": "GROOKEY",
+    "RILLABOOM": "GROOKEY",
+    "RABOOT": "SCORBUNNY",
+    "CINDERACE": "SCORBUNNY",
+    "DRIZZILE": "SOBBLE",
+    "INTELEON": "SOBBLE",
+
+    "FLORAGATO": "SPRIGATITO",
+    "MEOWSCARADA": "SPRIGATITO",
+    "CROCALOR": "FUECOCO",
+    "SKELEDIRGE": "FUECOCO",
+    "QUAXWELL": "QUAXLY",
+    "QUAQUAVAL": "QUAXLY"
+  }
+}

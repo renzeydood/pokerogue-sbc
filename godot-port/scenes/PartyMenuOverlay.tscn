@@ -104,7 +104,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot1"]
-position = Vector2( -7.5833, -0.33333 )
+position = Vector2( -7.5833, -1.33333 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -169,7 +169,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot2"]
-position = Vector2( -16.5833, -4.33334 )
+position = Vector2( -16.5833, -5.33334 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -233,7 +233,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot3"]
-position = Vector2( -7.5833, 0.66669 )
+position = Vector2( -7.5833, -0.33331 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -298,7 +298,7 @@ position = Vector2( 78.75, 7.08334 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot4"]
-position = Vector2( -8.5833, -3.33334 )
+position = Vector2( -8.5833, -4.33334 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -362,7 +362,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot5"]
-position = Vector2( -18.5833, -7.33335 )
+position = Vector2( -18.5833, -8.33335 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -427,7 +427,7 @@ position = Vector2( 35.4167, 30 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/LeftSlot"]
-position = Vector2( 88.0833, -11.4167 )
+position = Vector2( 88.0833, -13.4167 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true

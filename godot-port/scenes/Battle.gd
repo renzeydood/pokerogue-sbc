@@ -44,6 +44,7 @@ export(String) var debug_enemy_sprite_bounds_capture_dir := "user://enemy_sprite
 export(float) var arena_switch_blend_duration_sec := 0.22
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
+export(float) var scene_change_bgm_fade_out_sec := 0.35
 export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
 export(bool) var debug_open_party_menu_on_ready := false
 export(bool) var debug_transition_checkpoints := true
@@ -1386,8 +1387,30 @@ func _play_named_bgm_track(track_id: String, force_restart: bool = false) -> boo
 	var crossfade_duration = max(0.0, biome_bgm_crossfade_duration_sec)
 	if outgoing_player == null or force_restart:
 		_stop_biome_bgm_crossfade_tween()
-		incoming_player.volume_db = biome_bgm_volume_db
+		if crossfade_duration > 0.0:
+			incoming_player.volume_db = -80.0
+		else:
+			incoming_player.volume_db = biome_bgm_volume_db
 		incoming_player.play()
+		if crossfade_duration > 0.0:
+			biome_bgm_crossfade_tween = Tween.new()
+			add_child(biome_bgm_crossfade_tween)
+			biome_bgm_crossfade_tween.interpolate_property(
+				incoming_player,
+				"volume_db",
+				incoming_player.volume_db,
+				biome_bgm_volume_db,
+				crossfade_duration,
+				Tween.TRANS_SINE,
+				Tween.EASE_IN_OUT
+			)
+			_connect_once(
+				biome_bgm_crossfade_tween,
+				"tween_all_completed",
+				"_on_biome_bgm_crossfade_completed",
+				[null]
+			)
+			biome_bgm_crossfade_tween.start()
 		biome_bgm_active_player = incoming_player
 		current_bgm_arena_asset_id = resolved_track_id
 		return true
@@ -1488,8 +1511,30 @@ func _play_biome_bgm_for_arena(arena_asset_id: String, force_restart: bool = fal
 	var crossfade_duration = max(0.0, biome_bgm_crossfade_duration_sec)
 	if outgoing_player == null or force_restart:
 		_stop_biome_bgm_crossfade_tween()
-		incoming_player.volume_db = biome_bgm_volume_db
+		if crossfade_duration > 0.0:
+			incoming_player.volume_db = -80.0
+		else:
+			incoming_player.volume_db = biome_bgm_volume_db
 		incoming_player.play()
+		if crossfade_duration > 0.0:
+			biome_bgm_crossfade_tween = Tween.new()
+			add_child(biome_bgm_crossfade_tween)
+			biome_bgm_crossfade_tween.interpolate_property(
+				incoming_player,
+				"volume_db",
+				incoming_player.volume_db,
+				biome_bgm_volume_db,
+				crossfade_duration,
+				Tween.TRANS_SINE,
+				Tween.EASE_IN_OUT
+			)
+			_connect_once(
+				biome_bgm_crossfade_tween,
+				"tween_all_completed",
+				"_on_biome_bgm_crossfade_completed",
+				[null]
+			)
+			biome_bgm_crossfade_tween.start()
 		biome_bgm_active_player = incoming_player
 		current_bgm_arena_asset_id = resolved_track_id
 		return
@@ -3428,6 +3473,43 @@ func _return_to_selection_scene():
 	var tree = get_tree()
 	if tree == null:
 		return
+
+	_stop_biome_bgm_crossfade_tween()
+	var fade_duration = max(0.0, scene_change_bgm_fade_out_sec)
+	var has_playing_bgm := false
+	for player in [biome_bgm_primary_player, biome_bgm_secondary_player]:
+		if player == null or not is_instance_valid(player):
+			continue
+		if not player.playing:
+			continue
+		has_playing_bgm = true
+		if fade_duration > 0.0:
+			if biome_bgm_crossfade_tween == null:
+				biome_bgm_crossfade_tween = Tween.new()
+				add_child(biome_bgm_crossfade_tween)
+			biome_bgm_crossfade_tween.interpolate_property(
+				player,
+				"volume_db",
+				player.volume_db,
+				-80.0,
+				fade_duration,
+				Tween.TRANS_SINE,
+				Tween.EASE_IN_OUT
+			)
+
+	if has_playing_bgm and fade_duration > 0.0 and biome_bgm_crossfade_tween != null:
+		biome_bgm_crossfade_tween.start()
+		yield(tree.create_timer(fade_duration), "timeout")
+
+	for player in [biome_bgm_primary_player, biome_bgm_secondary_player]:
+		if player == null or not is_instance_valid(player):
+			continue
+		player.stop()
+	if biome_bgm_primary_player != null and is_instance_valid(biome_bgm_primary_player):
+		biome_bgm_primary_player.volume_db = biome_bgm_volume_db
+	if biome_bgm_secondary_player != null and is_instance_valid(biome_bgm_secondary_player):
+		biome_bgm_secondary_player.volume_db = -80.0
+	_stop_biome_bgm_crossfade_tween()
 
 	var result = tree.change_scene(SELECTION_SCENE_PATH)
 	if result != OK:
