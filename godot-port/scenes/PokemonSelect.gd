@@ -2,7 +2,6 @@ tool
 extends Control
 
 const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
-const BASE_FORM_OVERRIDES_PATH := "res://data/selection-roster-base-form-overrides.json"
 const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const POKEDEX_ENTRY_OVERLAY_PATH := "res://scenes/PokedexEntryOverlay.tscn"
 const MENU_BGM_CANDIDATE_PATHS := [
@@ -113,7 +112,6 @@ var preview_sprite_base_scale := Vector2.ONE
 var editor_preview_seeded := false
 var editor_preview_last_pokedex := -1
 var editor_preview_list_seeded := false
-var base_form_overrides := {}
 var starter_grid_slots := []
 
 func _resolve_first_existing(paths: Array):
@@ -925,8 +923,6 @@ func _load_species_catalog():
 		_set_status_text("Species catalog items are missing.")
 		return
 
-	base_form_overrides = _load_base_form_overrides()
-
 	for item in items:
 		if item is Dictionary:
 			species_entries.append(item)
@@ -935,39 +931,12 @@ func _load_species_catalog():
 	species_entries = _filter_species_entries_by_roster(species_entries)
 	_populate_species_grid(species_entries)
 
-func _load_base_form_overrides() -> Dictionary:
-	var loaded_overrides := {}
-	var file := File.new()
-	if not file.file_exists(BASE_FORM_OVERRIDES_PATH):
-		return loaded_overrides
-
-	if file.open(BASE_FORM_OVERRIDES_PATH, File.READ) != OK:
-		return loaded_overrides
-
-	var parse_result = JSON.parse(file.get_as_text())
-	file.close()
-	if parse_result.error != OK or typeof(parse_result.result) != TYPE_DICTIONARY:
-		return loaded_overrides
-
-	var payload: Dictionary = parse_result.result
-	var overrides = payload.get("overrides", {})
-	if typeof(overrides) != TYPE_DICTIONARY:
-		return loaded_overrides
-
-	for raw_key in overrides.keys():
-		var key = String(raw_key).strip_edges().to_upper()
-		var value = String(overrides[raw_key]).strip_edges().to_upper()
-		if key.empty() or value.empty():
-			continue
-		loaded_overrides[key] = value
-
-	return loaded_overrides
-
 func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
 	if all_species_entries.empty():
 		return []
 
 	var species_entry_by_id := {}
+	var starter_species_by_id := {}
 	for species_entry in all_species_entries:
 		if typeof(species_entry) != TYPE_DICTIONARY:
 			continue
@@ -975,6 +944,10 @@ func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
 		if sid.empty():
 			continue
 		species_entry_by_id[sid] = species_entry
+		var starter_species_id = String(species_entry.get("starter_species_id", sid)).strip_edges().to_upper()
+		if starter_species_id.empty():
+			starter_species_id = sid
+		starter_species_by_id[sid] = starter_species_id
 
 	var unlocked_species_ids := []
 	for starter_species_id in CANONICAL_STARTER_BASE_SPECIES_IDS:
@@ -990,7 +963,7 @@ func _filter_species_entries_by_roster(all_species_entries: Array) -> Array:
 				var normalized_species_id = String(raw_species_id).strip_edges().to_upper()
 				if normalized_species_id.empty():
 					continue
-				var normalized_base_species_id = String(base_form_overrides.get(normalized_species_id, normalized_species_id)).strip_edges().to_upper()
+				var normalized_base_species_id = String(starter_species_by_id.get(normalized_species_id, normalized_species_id)).strip_edges().to_upper()
 				if species_entry_by_id.has(normalized_base_species_id) and not unlocked_species_ids.has(normalized_base_species_id):
 					unlocked_species_ids.append(normalized_base_species_id)
 	if use_temporary_seed_species:
