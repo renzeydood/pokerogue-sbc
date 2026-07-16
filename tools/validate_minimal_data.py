@@ -11,9 +11,9 @@ ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 DATA_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
 FIXTURE_DIR = REPO_ROOT / "godot-port" / "data" / "fixtures"
 
-SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v1.json"
+SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v2.json"
 MOVES_CATALOG_FILE = DATA_DIR / "moves-catalog.v1.json"
-SPECIES_FIXTURE_FILE = FIXTURE_DIR / "species-catalog.v1.fixture.json"
+SPECIES_FIXTURE_FILE = FIXTURE_DIR / "species-catalog.v2.fixture.json"
 MOVES_FIXTURE_FILE = FIXTURE_DIR / "moves-catalog.v1.fixture.json"
 
 TYPE_VALUES = {
@@ -121,19 +121,47 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
         errors.append(f"{context}: expected object")
         return
 
-    required = {"schema_version", "species_id", "name", "types", "base_stats"}
+    required = {"schema_version", "species_id", "starter_species_id", "name", "types", "base_stats"}
     allowed = required | {
-        "pokedex_number", "catch_rate", "base_friendship", "base_exp", "growth_rate", "source", "starter_moves",
+        "prevolution_species_id", "evolution_species_ids", "pokedex_number", "catch_rate", "base_friendship",
+        "base_exp", "growth_rate", "starter_cost", "source", "starter_moves",
     }
     _require_keys(item, required, context, errors)
     _reject_unknown_keys(item, allowed, context, errors)
 
-    if item.get("schema_version") != 1:
-        errors.append(f"{context}.schema_version: expected 1")
+    if item.get("schema_version") != 2:
+        errors.append(f"{context}.schema_version: expected 2")
 
     species_id = item.get("species_id")
     if not isinstance(species_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", species_id):
         errors.append(f"{context}.species_id: expected uppercase enum string")
+
+    starter_species_id = item.get("starter_species_id")
+    if not isinstance(starter_species_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", starter_species_id):
+        errors.append(f"{context}.starter_species_id: expected uppercase enum string")
+
+    if "prevolution_species_id" in item:
+        prevolution_species_id = item["prevolution_species_id"]
+        if prevolution_species_id is not None and (
+            not isinstance(prevolution_species_id, str)
+            or not re.fullmatch(r"^[A-Z0-9_]+$", prevolution_species_id)
+        ):
+            errors.append(f"{context}.prevolution_species_id: expected uppercase enum string or null")
+
+    if "evolution_species_ids" in item:
+        evolution_species_ids = item["evolution_species_ids"]
+        evolution_species_ids_context = f"{context}.evolution_species_ids"
+        if not isinstance(evolution_species_ids, list):
+            errors.append(f"{evolution_species_ids_context}: expected array")
+        else:
+            seen_evolution_ids: set[str] = set()
+            for evo_index, evo_species_id in enumerate(evolution_species_ids):
+                if not isinstance(evo_species_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", evo_species_id):
+                    errors.append(f"{evolution_species_ids_context}[{evo_index}]: expected uppercase enum string")
+                    continue
+                if evo_species_id in seen_evolution_ids:
+                    errors.append(f"{evolution_species_ids_context}[{evo_index}]: duplicate value '{evo_species_id}'")
+                seen_evolution_ids.add(evo_species_id)
 
     name = item.get("name")
     if not isinstance(name, str) or not name.strip():
@@ -170,6 +198,8 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
         _validate_int_range(item["base_exp"], 1, 99999, f"{context}.base_exp", errors)
     if "growth_rate" in item and item["growth_rate"] not in GROWTH_RATE_VALUES:
         errors.append(f"{context}.growth_rate: invalid value '{item['growth_rate']}'")
+    if "starter_cost" in item:
+        _validate_int_range(item["starter_cost"], 1, 99, f"{context}.starter_cost", errors)
 
     if "source" in item:
         source = item["source"]
@@ -264,7 +294,7 @@ def _validate_move_item(item: Any, index: int, errors: list[str]) -> None:
                 _validate_int_range(source["generation"], 1, 9, f"{source_context}.generation", errors)
 
 
-def _validate_catalog_wrapper(payload: Any, context: str, errors: list[str]) -> list[Any]:
+def _validate_catalog_wrapper(payload: Any, context: str, expected_schema_version: int, errors: list[str]) -> list[Any]:
     if not isinstance(payload, dict):
         errors.append(f"{context}: expected object")
         return []
@@ -273,8 +303,8 @@ def _validate_catalog_wrapper(payload: Any, context: str, errors: list[str]) -> 
     _require_keys(payload, required, context, errors)
     _reject_unknown_keys(payload, required, context, errors)
 
-    if payload.get("schema_version") != 1:
-        errors.append(f"{context}.schema_version: expected 1")
+    if payload.get("schema_version") != expected_schema_version:
+        errors.append(f"{context}.schema_version: expected {expected_schema_version}")
 
     if payload.get("generated_from") != "dependency/pokerogue":
         errors.append(f"{context}.generated_from: expected 'dependency/pokerogue'")
@@ -408,8 +438,8 @@ def main() -> None:
     species_payload = _load_json(SPECIES_CATALOG_FILE)
     moves_payload = _load_json(MOVES_CATALOG_FILE)
 
-    species_items = _validate_catalog_wrapper(species_payload, "species_catalog", errors)
-    moves_items = _validate_catalog_wrapper(moves_payload, "moves_catalog", errors)
+    species_items = _validate_catalog_wrapper(species_payload, "species_catalog", 2, errors)
+    moves_items = _validate_catalog_wrapper(moves_payload, "moves_catalog", 1, errors)
 
     for index, item in enumerate(species_items):
         _validate_species_item(item, index, errors)

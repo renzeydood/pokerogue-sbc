@@ -48,7 +48,7 @@ def main():
     parser = argparse.ArgumentParser(description="Asset pipeline wrapper for godot-port")
     parser.add_argument("--preprocess", action="store_true", help="Run sprite preprocessing scripts in the submodule before export (only needed if you have raw sprite sources)")
     parser.add_argument("--export", action="store_true", help="Run the Python exporter to copy minimal assets")
-    parser.add_argument("--export-data", action="store_true", help="Run the Python exporter to generate minimal species/move data catalogs")
+    parser.add_argument("--export-data", action="store_true", help="Run the Python exporter to generate minimal species/move data catalogs (including species lineage metadata)")
     parser.add_argument("--validate-data", action="store_true", help="Run validation checks on generated minimal species/move catalogs")
     parser.add_argument("--refresh-fixtures", action="store_true", help="Update checked-in data fixtures from current generated catalogs (requires --validate-data)")
     parser.add_argument("--validate-regression", action="store_true", help="Run focused prototype snapshot regression checks on generated catalogs")

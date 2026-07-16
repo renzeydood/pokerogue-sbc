@@ -1,11 +1,16 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generated_from": "dependency/pokerogue",
-  "generated_at": "2026-07-13T02:23:43.002819+00:00",
+  "generated_at": "2026-07-16T07:53:40.924906+00:00",
   "items": [
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BULBASAUR",
+      "starter_species_id": "BULBASAUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "IVYSAUR"
+      ],
       "pokedex_number": 1,
       "name": "Bulbasaur",
       "types": [
@@ -30,6 +35,7 @@
       "base_friendship": 50,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -38,8 +44,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "IVYSAUR",
+      "starter_species_id": "BULBASAUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "VENUSAUR"
+      ],
       "pokedex_number": 2,
       "name": "Ivysaur",
       "types": [
@@ -72,8 +83,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "VENUSAUR",
+      "starter_species_id": "BULBASAUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 3,
       "name": "Venusaur",
       "types": [
@@ -106,8 +120,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHARMANDER",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHARMELEON"
+      ],
       "pokedex_number": 4,
       "name": "Charmander",
       "types": [
@@ -131,6 +150,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -139,8 +159,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHARMELEON",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHARIZARD"
+      ],
       "pokedex_number": 5,
       "name": "Charmeleon",
       "types": [
@@ -172,8 +197,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHARIZARD",
+      "starter_species_id": "CHARMANDER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 6,
       "name": "Charizard",
       "types": [
@@ -206,8 +234,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SQUIRTLE",
+      "starter_species_id": "SQUIRTLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "WARTORTLE"
+      ],
       "pokedex_number": 7,
       "name": "Squirtle",
       "types": [
@@ -231,6 +264,7 @@
       "base_friendship": 50,
       "base_exp": 63,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -239,8 +273,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "WARTORTLE",
+      "starter_species_id": "SQUIRTLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BLASTOISE"
+      ],
       "pokedex_number": 8,
       "name": "Wartortle",
       "types": [
@@ -272,8 +311,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BLASTOISE",
+      "starter_species_id": "SQUIRTLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 9,
       "name": "Blastoise",
       "types": [
@@ -305,8 +347,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CATERPIE",
+      "starter_species_id": "CATERPIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "METAPOD"
+      ],
       "pokedex_number": 10,
       "name": "Caterpie",
       "types": [
@@ -330,6 +377,7 @@
       "base_friendship": 50,
       "base_exp": 39,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "STRING_SHOT",
@@ -337,8 +385,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "METAPOD",
+      "starter_species_id": "CATERPIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BUTTERFREE"
+      ],
       "pokedex_number": 11,
       "name": "Metapod",
       "types": [
@@ -368,8 +421,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BUTTERFREE",
+      "starter_species_id": "CATERPIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 12,
       "name": "Butterfree",
       "types": [
@@ -402,8 +458,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "WEEDLE",
+      "starter_species_id": "WEEDLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "KAKUNA"
+      ],
       "pokedex_number": 13,
       "name": "Weedle",
       "types": [
@@ -428,6 +489,7 @@
       "base_friendship": 70,
       "base_exp": 39,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "POISON_STING",
         "STRING_SHOT",
@@ -435,8 +497,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "KAKUNA",
+      "starter_species_id": "WEEDLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BEEDRILL"
+      ],
       "pokedex_number": 14,
       "name": "Kakuna",
       "types": [
@@ -466,8 +533,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BEEDRILL",
+      "starter_species_id": "WEEDLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 15,
       "name": "Beedrill",
       "types": [
@@ -500,8 +570,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIDGEY",
+      "starter_species_id": "PIDGEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PIDGEOTTO"
+      ],
       "pokedex_number": 16,
       "name": "Pidgey",
       "types": [
@@ -526,6 +601,7 @@
       "base_friendship": 70,
       "base_exp": 50,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -534,8 +610,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIDGEOTTO",
+      "starter_species_id": "PIDGEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PIDGEOT"
+      ],
       "pokedex_number": 17,
       "name": "Pidgeotto",
       "types": [
@@ -568,8 +649,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIDGEOT",
+      "starter_species_id": "PIDGEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 18,
       "name": "Pidgeot",
       "types": [
@@ -602,8 +686,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "RATTATA",
+      "starter_species_id": "RATTATA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "RATICATE"
+      ],
       "pokedex_number": 19,
       "name": "Rattata",
       "types": [
@@ -627,6 +716,7 @@
       "base_friendship": 70,
       "base_exp": 51,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -635,8 +725,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "RATICATE",
+      "starter_species_id": "RATTATA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 20,
       "name": "Raticate",
       "types": [
@@ -668,8 +761,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHIKORITA",
+      "starter_species_id": "CHIKORITA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BAYLEEF"
+      ],
       "pokedex_number": 152,
       "name": "Chikorita",
       "types": [
@@ -693,6 +791,7 @@
       "base_friendship": 70,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -701,8 +800,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BAYLEEF",
+      "starter_species_id": "CHIKORITA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MEGANIUM"
+      ],
       "pokedex_number": 153,
       "name": "Bayleef",
       "types": [
@@ -734,8 +838,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MEGANIUM",
+      "starter_species_id": "CHIKORITA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 154,
       "name": "Meganium",
       "types": [
@@ -767,8 +874,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CYNDAQUIL",
+      "starter_species_id": "CYNDAQUIL",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "QUILAVA"
+      ],
       "pokedex_number": 155,
       "name": "Cyndaquil",
       "types": [
@@ -792,6 +904,7 @@
       "base_friendship": 70,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -800,8 +913,14 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "QUILAVA",
+      "starter_species_id": "CYNDAQUIL",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "HISUI_TYPHLOSION",
+        "TYPHLOSION"
+      ],
       "pokedex_number": 156,
       "name": "Quilava",
       "types": [
@@ -833,8 +952,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TYPHLOSION",
+      "starter_species_id": "CYNDAQUIL",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 157,
       "name": "Typhlosion",
       "types": [
@@ -866,8 +988,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TOTODILE",
+      "starter_species_id": "TOTODILE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CROCONAW"
+      ],
       "pokedex_number": 158,
       "name": "Totodile",
       "types": [
@@ -891,6 +1018,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "LEER",
@@ -899,8 +1027,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CROCONAW",
+      "starter_species_id": "TOTODILE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FERALIGATR"
+      ],
       "pokedex_number": 159,
       "name": "Croconaw",
       "types": [
@@ -932,8 +1065,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FERALIGATR",
+      "starter_species_id": "TOTODILE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 160,
       "name": "Feraligatr",
       "types": [
@@ -965,8 +1101,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SENTRET",
+      "starter_species_id": "SENTRET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FURRET"
+      ],
       "pokedex_number": 161,
       "name": "Sentret",
       "types": [
@@ -990,6 +1131,7 @@
       "base_friendship": 70,
       "base_exp": 43,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -998,8 +1140,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FURRET",
+      "starter_species_id": "SENTRET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 162,
       "name": "Furret",
       "types": [
@@ -1031,8 +1176,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "HOOTHOOT",
+      "starter_species_id": "HOOTHOOT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NOCTOWL"
+      ],
       "pokedex_number": 163,
       "name": "Hoothoot",
       "types": [
@@ -1057,6 +1207,7 @@
       "base_friendship": 50,
       "base_exp": 52,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "GROWL",
         "PECK",
@@ -1065,8 +1216,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "NOCTOWL",
+      "starter_species_id": "HOOTHOOT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 164,
       "name": "Noctowl",
       "types": [
@@ -1099,8 +1253,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LEDYBA",
+      "starter_species_id": "LEDYBA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LEDIAN"
+      ],
       "pokedex_number": 165,
       "name": "Ledyba",
       "types": [
@@ -1125,6 +1284,7 @@
       "base_friendship": 70,
       "base_exp": 53,
       "growth_rate": "FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "SUPERSONIC",
@@ -1133,8 +1293,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LEDIAN",
+      "starter_species_id": "LEDYBA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 166,
       "name": "Ledian",
       "types": [
@@ -1167,8 +1330,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SPINARAK",
+      "starter_species_id": "SPINARAK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "ARIADOS"
+      ],
       "pokedex_number": 167,
       "name": "Spinarak",
       "types": [
@@ -1193,6 +1361,7 @@
       "base_friendship": 70,
       "base_exp": 50,
       "growth_rate": "FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "POISON_STING",
         "STRING_SHOT",
@@ -1201,8 +1370,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ARIADOS",
+      "starter_species_id": "SPINARAK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 168,
       "name": "Ariados",
       "types": [
@@ -1235,8 +1407,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CROBAT",
+      "starter_species_id": "ZUBAT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 169,
       "name": "Crobat",
       "types": [
@@ -1269,8 +1444,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHINCHOU",
+      "starter_species_id": "CHINCHOU",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LANTURN"
+      ],
       "pokedex_number": 170,
       "name": "Chinchou",
       "types": [
@@ -1295,6 +1475,7 @@
       "base_friendship": 50,
       "base_exp": 66,
       "growth_rate": "SLOW",
+      "starter_cost": 2,
       "starter_moves": [
         "SUPERSONIC",
         "WATER_GUN",
@@ -1303,8 +1484,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LANTURN",
+      "starter_species_id": "CHINCHOU",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 171,
       "name": "Lanturn",
       "types": [
@@ -1337,8 +1521,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TREECKO",
+      "starter_species_id": "TREECKO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GROVYLE"
+      ],
       "pokedex_number": 252,
       "name": "Treecko",
       "types": [
@@ -1362,6 +1551,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "POUND",
         "LEER",
@@ -1370,8 +1560,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GROVYLE",
+      "starter_species_id": "TREECKO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SCEPTILE"
+      ],
       "pokedex_number": 253,
       "name": "Grovyle",
       "types": [
@@ -1403,8 +1598,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SCEPTILE",
+      "starter_species_id": "TREECKO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 254,
       "name": "Sceptile",
       "types": [
@@ -1436,8 +1634,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TORCHIC",
+      "starter_species_id": "TORCHIC",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "COMBUSKEN"
+      ],
       "pokedex_number": 255,
       "name": "Torchic",
       "types": [
@@ -1461,6 +1664,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -1469,8 +1673,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "COMBUSKEN",
+      "starter_species_id": "TORCHIC",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BLAZIKEN"
+      ],
       "pokedex_number": 256,
       "name": "Combusken",
       "types": [
@@ -1503,8 +1712,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BLAZIKEN",
+      "starter_species_id": "TORCHIC",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 257,
       "name": "Blaziken",
       "types": [
@@ -1537,8 +1749,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MUDKIP",
+      "starter_species_id": "MUDKIP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MARSHTOMP"
+      ],
       "pokedex_number": 258,
       "name": "Mudkip",
       "types": [
@@ -1562,6 +1779,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -1570,8 +1788,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MARSHTOMP",
+      "starter_species_id": "MUDKIP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SWAMPERT"
+      ],
       "pokedex_number": 259,
       "name": "Marshtomp",
       "types": [
@@ -1604,8 +1827,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SWAMPERT",
+      "starter_species_id": "MUDKIP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 260,
       "name": "Swampert",
       "types": [
@@ -1638,8 +1864,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "POOCHYENA",
+      "starter_species_id": "POOCHYENA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MIGHTYENA"
+      ],
       "pokedex_number": 261,
       "name": "Poochyena",
       "types": [
@@ -1663,6 +1894,7 @@
       "base_friendship": 70,
       "base_exp": 56,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -1671,8 +1903,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MIGHTYENA",
+      "starter_species_id": "POOCHYENA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 262,
       "name": "Mightyena",
       "types": [
@@ -1704,8 +1939,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ZIGZAGOON",
+      "starter_species_id": "ZIGZAGOON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LINOONE"
+      ],
       "pokedex_number": 263,
       "name": "Zigzagoon",
       "types": [
@@ -1729,6 +1969,7 @@
       "base_friendship": 50,
       "base_exp": 56,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -1737,8 +1978,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LINOONE",
+      "starter_species_id": "ZIGZAGOON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 264,
       "name": "Linoone",
       "types": [
@@ -1770,8 +2014,14 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "WURMPLE",
+      "starter_species_id": "WURMPLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SILCOON",
+        "CASCOON"
+      ],
       "pokedex_number": 265,
       "name": "Wurmple",
       "types": [
@@ -1795,6 +2045,7 @@
       "base_friendship": 70,
       "base_exp": 56,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "STRING_SHOT",
@@ -1803,8 +2054,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SILCOON",
+      "starter_species_id": "WURMPLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BEAUTIFLY"
+      ],
       "pokedex_number": 266,
       "name": "Silcoon",
       "types": [
@@ -1833,8 +2089,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BEAUTIFLY",
+      "starter_species_id": "WURMPLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 267,
       "name": "Beautifly",
       "types": [
@@ -1867,8 +2126,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CASCOON",
+      "starter_species_id": "WURMPLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DUSTOX"
+      ],
       "pokedex_number": 268,
       "name": "Cascoon",
       "types": [
@@ -1897,8 +2161,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DUSTOX",
+      "starter_species_id": "WURMPLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 269,
       "name": "Dustox",
       "types": [
@@ -1931,8 +2198,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LOTAD",
+      "starter_species_id": "LOTAD",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LOMBRE"
+      ],
       "pokedex_number": 270,
       "name": "Lotad",
       "types": [
@@ -1957,6 +2229,7 @@
       "base_friendship": 50,
       "base_exp": 44,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "GROWL",
         "ASTONISH",
@@ -1965,8 +2238,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LOMBRE",
+      "starter_species_id": "LOTAD",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LUDICOLO"
+      ],
       "pokedex_number": 271,
       "name": "Lombre",
       "types": [
@@ -1999,8 +2277,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TURTWIG",
+      "starter_species_id": "TURTWIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GROTLE"
+      ],
       "pokedex_number": 387,
       "name": "Turtwig",
       "types": [
@@ -2024,6 +2307,7 @@
       "base_friendship": 70,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "ABSORB",
@@ -2032,8 +2316,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GROTLE",
+      "starter_species_id": "TURTWIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "TORTERRA"
+      ],
       "pokedex_number": 388,
       "name": "Grotle",
       "types": [
@@ -2065,8 +2354,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TORTERRA",
+      "starter_species_id": "TURTWIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 389,
       "name": "Torterra",
       "types": [
@@ -2099,8 +2391,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHIMCHAR",
+      "starter_species_id": "CHIMCHAR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MONFERNO"
+      ],
       "pokedex_number": 390,
       "name": "Chimchar",
       "types": [
@@ -2124,6 +2421,7 @@
       "base_friendship": 70,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "LEER",
@@ -2132,8 +2430,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MONFERNO",
+      "starter_species_id": "CHIMCHAR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "INFERNAPE"
+      ],
       "pokedex_number": 391,
       "name": "Monferno",
       "types": [
@@ -2166,8 +2469,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "INFERNAPE",
+      "starter_species_id": "CHIMCHAR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 392,
       "name": "Infernape",
       "types": [
@@ -2200,8 +2506,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIPLUP",
+      "starter_species_id": "PIPLUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PRINPLUP"
+      ],
       "pokedex_number": 393,
       "name": "Piplup",
       "types": [
@@ -2225,6 +2536,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -2233,8 +2545,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PRINPLUP",
+      "starter_species_id": "PIPLUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "EMPOLEON"
+      ],
       "pokedex_number": 394,
       "name": "Prinplup",
       "types": [
@@ -2266,8 +2583,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "EMPOLEON",
+      "starter_species_id": "PIPLUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 395,
       "name": "Empoleon",
       "types": [
@@ -2300,8 +2620,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "STARLY",
+      "starter_species_id": "STARLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "STARAVIA"
+      ],
       "pokedex_number": 396,
       "name": "Starly",
       "types": [
@@ -2326,6 +2651,7 @@
       "base_friendship": 70,
       "base_exp": 49,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -2334,8 +2660,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "STARAVIA",
+      "starter_species_id": "STARLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "STARAPTOR"
+      ],
       "pokedex_number": 397,
       "name": "Staravia",
       "types": [
@@ -2368,8 +2699,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "STARAPTOR",
+      "starter_species_id": "STARLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 398,
       "name": "Staraptor",
       "types": [
@@ -2402,8 +2736,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BIDOOF",
+      "starter_species_id": "BIDOOF",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BIBAREL"
+      ],
       "pokedex_number": 399,
       "name": "Bidoof",
       "types": [
@@ -2427,6 +2766,7 @@
       "base_friendship": 70,
       "base_exp": 50,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TAUNT",
         "TACKLE",
@@ -2435,8 +2775,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BIBAREL",
+      "starter_species_id": "BIDOOF",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 400,
       "name": "Bibarel",
       "types": [
@@ -2469,8 +2812,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "KRICKETOT",
+      "starter_species_id": "KRICKETOT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "KRICKETUNE"
+      ],
       "pokedex_number": 401,
       "name": "Kricketot",
       "types": [
@@ -2494,6 +2842,7 @@
       "base_friendship": 70,
       "base_exp": 39,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -2502,8 +2851,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "KRICKETUNE",
+      "starter_species_id": "KRICKETOT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 402,
       "name": "Kricketune",
       "types": [
@@ -2535,8 +2887,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SHINX",
+      "starter_species_id": "SHINX",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LUXIO"
+      ],
       "pokedex_number": 403,
       "name": "Shinx",
       "types": [
@@ -2560,6 +2917,7 @@
       "base_friendship": 50,
       "base_exp": 53,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -2568,8 +2926,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LUXIO",
+      "starter_species_id": "SHINX",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LUXRAY"
+      ],
       "pokedex_number": 404,
       "name": "Luxio",
       "types": [
@@ -2601,8 +2964,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LUXRAY",
+      "starter_species_id": "SHINX",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 405,
       "name": "Luxray",
       "types": [
@@ -2634,8 +3000,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BUDEW",
+      "starter_species_id": "BUDEW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "ROSELIA"
+      ],
       "pokedex_number": 406,
       "name": "Budew",
       "types": [
@@ -2660,6 +3031,7 @@
       "base_friendship": 50,
       "base_exp": 56,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "ABSORB",
         "CHARM",
@@ -2668,8 +3040,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SNIVY",
+      "starter_species_id": "SNIVY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SERVINE"
+      ],
       "pokedex_number": 495,
       "name": "Snivy",
       "types": [
@@ -2693,6 +3070,7 @@
       "base_friendship": 70,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -2701,8 +3079,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SERVINE",
+      "starter_species_id": "SNIVY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SERPERIOR"
+      ],
       "pokedex_number": 496,
       "name": "Servine",
       "types": [
@@ -2734,8 +3117,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SERPERIOR",
+      "starter_species_id": "SNIVY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 497,
       "name": "Serperior",
       "types": [
@@ -2767,8 +3153,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TEPIG",
+      "starter_species_id": "TEPIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PIGNITE"
+      ],
       "pokedex_number": 498,
       "name": "Tepig",
       "types": [
@@ -2792,6 +3183,7 @@
       "base_friendship": 70,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -2800,8 +3192,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIGNITE",
+      "starter_species_id": "TEPIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "EMBOAR"
+      ],
       "pokedex_number": 499,
       "name": "Pignite",
       "types": [
@@ -2834,8 +3231,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "EMBOAR",
+      "starter_species_id": "TEPIG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 500,
       "name": "Emboar",
       "types": [
@@ -2868,8 +3268,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "OSHAWOTT",
+      "starter_species_id": "OSHAWOTT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DEWOTT"
+      ],
       "pokedex_number": 501,
       "name": "Oshawott",
       "types": [
@@ -2893,6 +3298,7 @@
       "base_friendship": 70,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -2901,8 +3307,14 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DEWOTT",
+      "starter_species_id": "OSHAWOTT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "HISUI_SAMUROTT",
+        "SAMUROTT"
+      ],
       "pokedex_number": 502,
       "name": "Dewott",
       "types": [
@@ -2934,8 +3346,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SAMUROTT",
+      "starter_species_id": "OSHAWOTT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 503,
       "name": "Samurott",
       "types": [
@@ -2967,8 +3382,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PATRAT",
+      "starter_species_id": "PATRAT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "WATCHOG"
+      ],
       "pokedex_number": 504,
       "name": "Patrat",
       "types": [
@@ -2992,6 +3412,7 @@
       "base_friendship": 70,
       "base_exp": 51,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -3000,8 +3421,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "WATCHOG",
+      "starter_species_id": "PATRAT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 505,
       "name": "Watchog",
       "types": [
@@ -3033,8 +3457,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LILLIPUP",
+      "starter_species_id": "LILLIPUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "HERDIER"
+      ],
       "pokedex_number": 506,
       "name": "Lillipup",
       "types": [
@@ -3058,6 +3487,7 @@
       "base_friendship": 50,
       "base_exp": 55,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -3066,8 +3496,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "HERDIER",
+      "starter_species_id": "LILLIPUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "STOUTLAND"
+      ],
       "pokedex_number": 507,
       "name": "Herdier",
       "types": [
@@ -3099,8 +3534,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "STOUTLAND",
+      "starter_species_id": "LILLIPUP",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 508,
       "name": "Stoutland",
       "types": [
@@ -3132,8 +3570,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PURRLOIN",
+      "starter_species_id": "PURRLOIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LIEPARD"
+      ],
       "pokedex_number": 509,
       "name": "Purrloin",
       "types": [
@@ -3157,6 +3600,7 @@
       "base_friendship": 50,
       "base_exp": 56,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "SCRATCH",
         "SAND_ATTACK",
@@ -3165,8 +3609,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LIEPARD",
+      "starter_species_id": "PURRLOIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 510,
       "name": "Liepard",
       "types": [
@@ -3198,8 +3645,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PANSAGE",
+      "starter_species_id": "PANSAGE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SIMISAGE"
+      ],
       "pokedex_number": 511,
       "name": "Pansage",
       "types": [
@@ -3223,6 +3675,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "SCRATCH",
         "LEECH_SEED",
@@ -3231,8 +3684,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SIMISAGE",
+      "starter_species_id": "PANSAGE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 512,
       "name": "Simisage",
       "types": [
@@ -3264,8 +3720,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PANSEAR",
+      "starter_species_id": "PANSEAR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SIMISEAR"
+      ],
       "pokedex_number": 513,
       "name": "Pansear",
       "types": [
@@ -3289,6 +3750,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "SCRATCH",
         "FIRE_SPIN",
@@ -3297,8 +3759,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SIMISEAR",
+      "starter_species_id": "PANSEAR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 514,
       "name": "Simisear",
       "types": [
@@ -3330,8 +3795,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHESPIN",
+      "starter_species_id": "CHESPIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "QUILLADIN"
+      ],
       "pokedex_number": 650,
       "name": "Chespin",
       "types": [
@@ -3355,6 +3825,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -3363,8 +3834,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "QUILLADIN",
+      "starter_species_id": "CHESPIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHESNAUGHT"
+      ],
       "pokedex_number": 651,
       "name": "Quilladin",
       "types": [
@@ -3396,8 +3872,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHESNAUGHT",
+      "starter_species_id": "CHESPIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 652,
       "name": "Chesnaught",
       "types": [
@@ -3430,8 +3909,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FENNEKIN",
+      "starter_species_id": "FENNEKIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BRAIXEN"
+      ],
       "pokedex_number": 653,
       "name": "Fennekin",
       "types": [
@@ -3455,6 +3939,7 @@
       "base_friendship": 70,
       "base_exp": 61,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "TAIL_WHIP",
@@ -3463,8 +3948,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BRAIXEN",
+      "starter_species_id": "FENNEKIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DELPHOX"
+      ],
       "pokedex_number": 654,
       "name": "Braixen",
       "types": [
@@ -3496,8 +3986,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DELPHOX",
+      "starter_species_id": "FENNEKIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 655,
       "name": "Delphox",
       "types": [
@@ -3530,8 +4023,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FROAKIE",
+      "starter_species_id": "FROAKIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FROGADIER"
+      ],
       "pokedex_number": 656,
       "name": "Froakie",
       "types": [
@@ -3555,6 +4053,7 @@
       "base_friendship": 70,
       "base_exp": 63,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -3563,8 +4062,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FROGADIER",
+      "starter_species_id": "FROAKIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GRENINJA"
+      ],
       "pokedex_number": 657,
       "name": "Frogadier",
       "types": [
@@ -3596,8 +4100,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GRENINJA",
+      "starter_species_id": "FROAKIE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 658,
       "name": "Greninja",
       "types": [
@@ -3630,8 +4137,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BUNNELBY",
+      "starter_species_id": "BUNNELBY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DIGGERSBY"
+      ],
       "pokedex_number": 659,
       "name": "Bunnelby",
       "types": [
@@ -3655,6 +4167,7 @@
       "base_friendship": 50,
       "base_exp": 47,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -3663,8 +4176,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DIGGERSBY",
+      "starter_species_id": "BUNNELBY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 660,
       "name": "Diggersby",
       "types": [
@@ -3697,8 +4213,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FLETCHLING",
+      "starter_species_id": "FLETCHLING",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FLETCHINDER"
+      ],
       "pokedex_number": 661,
       "name": "Fletchling",
       "types": [
@@ -3723,6 +4244,7 @@
       "base_friendship": 50,
       "base_exp": 56,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -3731,8 +4253,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FLETCHINDER",
+      "starter_species_id": "FLETCHLING",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "TALONFLAME"
+      ],
       "pokedex_number": 662,
       "name": "Fletchinder",
       "types": [
@@ -3765,8 +4292,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TALONFLAME",
+      "starter_species_id": "FLETCHLING",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 663,
       "name": "Talonflame",
       "types": [
@@ -3799,8 +4329,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SCATTERBUG",
+      "starter_species_id": "SCATTERBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SPEWPA"
+      ],
       "pokedex_number": 664,
       "name": "Scatterbug",
       "types": [
@@ -3824,6 +4359,7 @@
       "base_friendship": 70,
       "base_exp": 40,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "STRING_SHOT",
@@ -3832,8 +4368,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SPEWPA",
+      "starter_species_id": "SCATTERBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "VIVILLON"
+      ],
       "pokedex_number": 665,
       "name": "Spewpa",
       "types": [
@@ -3863,8 +4404,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "VIVILLON",
+      "starter_species_id": "SCATTERBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 666,
       "name": "Vivillon",
       "types": [
@@ -3897,8 +4441,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LITLEO",
+      "starter_species_id": "LITLEO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PYROAR"
+      ],
       "pokedex_number": 667,
       "name": "Litleo",
       "types": [
@@ -3923,6 +4472,7 @@
       "base_friendship": 70,
       "base_exp": 74,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -3931,8 +4481,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PYROAR",
+      "starter_species_id": "LITLEO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 668,
       "name": "Pyroar",
       "types": [
@@ -3965,8 +4518,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FLABEBE",
+      "starter_species_id": "FLABEBE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FLOETTE"
+      ],
       "pokedex_number": 669,
       "name": "Flabebe",
       "types": [
@@ -3990,6 +4548,7 @@
       "base_friendship": 70,
       "base_exp": 61,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "VINE_WHIP",
         "TACKLE",
@@ -3998,8 +4557,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ROWLET",
+      "starter_species_id": "ROWLET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DARTRIX"
+      ],
       "pokedex_number": 722,
       "name": "Rowlet",
       "types": [
@@ -4024,6 +4588,7 @@
       "base_friendship": 50,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -4032,8 +4597,14 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DARTRIX",
+      "starter_species_id": "ROWLET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "HISUI_DECIDUEYE",
+        "DECIDUEYE"
+      ],
       "pokedex_number": 723,
       "name": "Dartrix",
       "types": [
@@ -4066,8 +4637,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DECIDUEYE",
+      "starter_species_id": "ROWLET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 724,
       "name": "Decidueye",
       "types": [
@@ -4100,8 +4674,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LITTEN",
+      "starter_species_id": "LITTEN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "TORRACAT"
+      ],
       "pokedex_number": 725,
       "name": "Litten",
       "types": [
@@ -4125,6 +4704,7 @@
       "base_friendship": 50,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -4133,8 +4713,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TORRACAT",
+      "starter_species_id": "LITTEN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "INCINEROAR"
+      ],
       "pokedex_number": 726,
       "name": "Torracat",
       "types": [
@@ -4166,8 +4751,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "INCINEROAR",
+      "starter_species_id": "LITTEN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 727,
       "name": "Incineroar",
       "types": [
@@ -4200,8 +4788,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "POPPLIO",
+      "starter_species_id": "POPPLIO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BRIONNE"
+      ],
       "pokedex_number": 728,
       "name": "Popplio",
       "types": [
@@ -4225,6 +4818,7 @@
       "base_friendship": 50,
       "base_exp": 64,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -4233,8 +4827,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BRIONNE",
+      "starter_species_id": "POPPLIO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PRIMARINA"
+      ],
       "pokedex_number": 729,
       "name": "Brionne",
       "types": [
@@ -4266,8 +4865,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PRIMARINA",
+      "starter_species_id": "POPPLIO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 730,
       "name": "Primarina",
       "types": [
@@ -4300,8 +4902,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PIKIPEK",
+      "starter_species_id": "PIKIPEK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "TRUMBEAK"
+      ],
       "pokedex_number": 731,
       "name": "Pikipek",
       "types": [
@@ -4326,6 +4933,7 @@
       "base_friendship": 70,
       "base_exp": 53,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "PECK",
         "GROWL",
@@ -4334,8 +4942,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TRUMBEAK",
+      "starter_species_id": "PIKIPEK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "TOUCANNON"
+      ],
       "pokedex_number": 732,
       "name": "Trumbeak",
       "types": [
@@ -4368,8 +4981,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TOUCANNON",
+      "starter_species_id": "PIKIPEK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 733,
       "name": "Toucannon",
       "types": [
@@ -4402,8 +5018,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "YUNGOOS",
+      "starter_species_id": "YUNGOOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GUMSHOOS"
+      ],
       "pokedex_number": 734,
       "name": "Yungoos",
       "types": [
@@ -4427,6 +5048,7 @@
       "base_friendship": 70,
       "base_exp": 51,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -4435,8 +5057,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GUMSHOOS",
+      "starter_species_id": "YUNGOOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 735,
       "name": "Gumshoos",
       "types": [
@@ -4468,8 +5093,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GRUBBIN",
+      "starter_species_id": "GRUBBIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHARJABUG"
+      ],
       "pokedex_number": 736,
       "name": "Grubbin",
       "types": [
@@ -4493,6 +5123,7 @@
       "base_friendship": 50,
       "base_exp": 60,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "VISE_GRIP",
         "MUD_SLAP",
@@ -4501,8 +5132,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CHARJABUG",
+      "starter_species_id": "GRUBBIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "VIKAVOLT"
+      ],
       "pokedex_number": 737,
       "name": "Charjabug",
       "types": [
@@ -4535,8 +5171,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "VIKAVOLT",
+      "starter_species_id": "GRUBBIN",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 738,
       "name": "Vikavolt",
       "types": [
@@ -4569,8 +5208,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CRABRAWLER",
+      "starter_species_id": "CRABRAWLER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CRABOMINABLE"
+      ],
       "pokedex_number": 739,
       "name": "Crabrawler",
       "types": [
@@ -4594,6 +5238,7 @@
       "base_friendship": 70,
       "base_exp": 68,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "SLAM",
         "VISE_GRIP",
@@ -4602,8 +5247,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CRABOMINABLE",
+      "starter_species_id": "CRABRAWLER",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 740,
       "name": "Crabominable",
       "types": [
@@ -4636,8 +5284,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ORICORIO",
+      "starter_species_id": "ORICORIO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 741,
       "name": "Oricorio",
       "types": [
@@ -4662,6 +5313,7 @@
       "base_friendship": 70,
       "base_exp": 167,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -4670,8 +5322,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GROOKEY",
+      "starter_species_id": "GROOKEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "THWACKEY"
+      ],
       "pokedex_number": 810,
       "name": "Grookey",
       "types": [
@@ -4695,6 +5352,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -4703,8 +5361,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "THWACKEY",
+      "starter_species_id": "GROOKEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "RILLABOOM"
+      ],
       "pokedex_number": 811,
       "name": "Thwackey",
       "types": [
@@ -4736,8 +5399,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "RILLABOOM",
+      "starter_species_id": "GROOKEY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 812,
       "name": "Rillaboom",
       "types": [
@@ -4769,8 +5435,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SCORBUNNY",
+      "starter_species_id": "SCORBUNNY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "RABOOT"
+      ],
       "pokedex_number": 813,
       "name": "Scorbunny",
       "types": [
@@ -4794,6 +5465,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "TACKLE",
         "GROWL",
@@ -4802,8 +5474,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "RABOOT",
+      "starter_species_id": "SCORBUNNY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CINDERACE"
+      ],
       "pokedex_number": 814,
       "name": "Raboot",
       "types": [
@@ -4835,8 +5512,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CINDERACE",
+      "starter_species_id": "SCORBUNNY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 815,
       "name": "Cinderace",
       "types": [
@@ -4868,8 +5548,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SOBBLE",
+      "starter_species_id": "SOBBLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DRIZZILE"
+      ],
       "pokedex_number": 816,
       "name": "Sobble",
       "types": [
@@ -4893,6 +5578,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -4901,8 +5587,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DRIZZILE",
+      "starter_species_id": "SOBBLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "INTELEON"
+      ],
       "pokedex_number": 817,
       "name": "Drizzile",
       "types": [
@@ -4934,8 +5625,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "INTELEON",
+      "starter_species_id": "SOBBLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 818,
       "name": "Inteleon",
       "types": [
@@ -4967,8 +5661,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SKWOVET",
+      "starter_species_id": "SKWOVET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GREEDENT"
+      ],
       "pokedex_number": 819,
       "name": "Skwovet",
       "types": [
@@ -4992,6 +5691,7 @@
       "base_friendship": 50,
       "base_exp": 55,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -5000,8 +5700,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GREEDENT",
+      "starter_species_id": "SKWOVET",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 820,
       "name": "Greedent",
       "types": [
@@ -5033,8 +5736,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ROOKIDEE",
+      "starter_species_id": "ROOKIDEE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CORVISQUIRE"
+      ],
       "pokedex_number": 821,
       "name": "Rookidee",
       "types": [
@@ -5058,6 +5766,7 @@
       "base_friendship": 50,
       "base_exp": 49,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
       "starter_moves": [
         "LEER",
         "PECK",
@@ -5066,8 +5775,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CORVISQUIRE",
+      "starter_species_id": "ROOKIDEE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CORVIKNIGHT"
+      ],
       "pokedex_number": 822,
       "name": "Corvisquire",
       "types": [
@@ -5099,8 +5813,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CORVIKNIGHT",
+      "starter_species_id": "ROOKIDEE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 823,
       "name": "Corviknight",
       "types": [
@@ -5133,8 +5850,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "BLIPBUG",
+      "starter_species_id": "BLIPBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DOTTLER"
+      ],
       "pokedex_number": 824,
       "name": "Blipbug",
       "types": [
@@ -5158,13 +5880,19 @@
       "base_friendship": 50,
       "base_exp": 36,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "STRUGGLE_BUG"
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "DOTTLER",
+      "starter_species_id": "BLIPBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "ORBEETLE"
+      ],
       "pokedex_number": 825,
       "name": "Dottler",
       "types": [
@@ -5197,8 +5925,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "ORBEETLE",
+      "starter_species_id": "BLIPBUG",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 826,
       "name": "Orbeetle",
       "types": [
@@ -5231,8 +5962,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "NICKIT",
+      "starter_species_id": "NICKIT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "THIEVUL"
+      ],
       "pokedex_number": 827,
       "name": "Nickit",
       "types": [
@@ -5256,6 +5992,7 @@
       "base_friendship": 50,
       "base_exp": 49,
       "growth_rate": "FAST",
+      "starter_cost": 1,
       "starter_moves": [
         "TAIL_WHIP",
         "QUICK_ATTACK",
@@ -5264,8 +6001,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "THIEVUL",
+      "starter_species_id": "NICKIT",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 828,
       "name": "Thievul",
       "types": [
@@ -5297,8 +6037,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "GOSSIFLEUR",
+      "starter_species_id": "GOSSIFLEUR",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "ELDEGOSS"
+      ],
       "pokedex_number": 829,
       "name": "Gossifleur",
       "types": [
@@ -5322,6 +6067,7 @@
       "base_friendship": 50,
       "base_exp": 50,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "SING",
         "LEAFAGE",
@@ -5330,8 +6076,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SPRIGATITO",
+      "starter_species_id": "SPRIGATITO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FLORAGATO"
+      ],
       "pokedex_number": 906,
       "name": "Sprigatito",
       "types": [
@@ -5355,6 +6106,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "SCRATCH",
         "TAIL_WHIP",
@@ -5363,8 +6115,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FLORAGATO",
+      "starter_species_id": "SPRIGATITO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MEOWSCARADA"
+      ],
       "pokedex_number": 907,
       "name": "Floragato",
       "types": [
@@ -5396,8 +6153,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MEOWSCARADA",
+      "starter_species_id": "SPRIGATITO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 908,
       "name": "Meowscarada",
       "types": [
@@ -5430,8 +6190,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "FUECOCO",
+      "starter_species_id": "FUECOCO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CROCALOR"
+      ],
       "pokedex_number": 909,
       "name": "Fuecoco",
       "types": [
@@ -5455,6 +6220,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -5463,8 +6229,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "CROCALOR",
+      "starter_species_id": "FUECOCO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SKELEDIRGE"
+      ],
       "pokedex_number": 910,
       "name": "Crocalor",
       "types": [
@@ -5496,8 +6267,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SKELEDIRGE",
+      "starter_species_id": "FUECOCO",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 911,
       "name": "Skeledirge",
       "types": [
@@ -5530,8 +6304,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "QUAXLY",
+      "starter_species_id": "QUAXLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "QUAXWELL"
+      ],
       "pokedex_number": 912,
       "name": "Quaxly",
       "types": [
@@ -5555,6 +6334,7 @@
       "base_friendship": 50,
       "base_exp": 62,
       "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 4,
       "starter_moves": [
         "POUND",
         "GROWL",
@@ -5563,8 +6343,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "QUAXWELL",
+      "starter_species_id": "QUAXLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "QUAQUAVAL"
+      ],
       "pokedex_number": 913,
       "name": "Quaxwell",
       "types": [
@@ -5596,8 +6381,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "QUAQUAVAL",
+      "starter_species_id": "QUAXLY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 914,
       "name": "Quaquaval",
       "types": [
@@ -5630,8 +6418,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LECHONK",
+      "starter_species_id": "LECHONK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "OINKOLOGNE"
+      ],
       "pokedex_number": 915,
       "name": "Lechonk",
       "types": [
@@ -5655,6 +6448,7 @@
       "base_friendship": 50,
       "base_exp": 51,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
       "starter_moves": [
         "TACKLE",
         "TAIL_WHIP",
@@ -5663,8 +6457,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "OINKOLOGNE",
+      "starter_species_id": "LECHONK",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 916,
       "name": "Oinkologne",
       "types": [
@@ -5696,8 +6493,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TAROUNTULA",
+      "starter_species_id": "TAROUNTULA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SPIDOPS"
+      ],
       "pokedex_number": 917,
       "name": "Tarountula",
       "types": [
@@ -5721,6 +6523,7 @@
       "base_friendship": 50,
       "base_exp": 42,
       "growth_rate": "ERRATIC",
+      "starter_cost": 1,
       "starter_moves": [
         "TACKLE",
         "STRING_SHOT",
@@ -5729,8 +6532,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "SPIDOPS",
+      "starter_species_id": "TAROUNTULA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 918,
       "name": "Spidops",
       "types": [
@@ -5762,8 +6568,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "NYMBLE",
+      "starter_species_id": "NYMBLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "LOKIX"
+      ],
       "pokedex_number": 919,
       "name": "Nymble",
       "types": [
@@ -5787,6 +6598,7 @@
       "base_friendship": 20,
       "base_exp": 42,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "TACKLE",
         "LEER",
@@ -5795,8 +6607,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "LOKIX",
+      "starter_species_id": "NYMBLE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 920,
       "name": "Lokix",
       "types": [
@@ -5829,8 +6644,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PAWMI",
+      "starter_species_id": "PAWMI",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PAWMO"
+      ],
       "pokedex_number": 921,
       "name": "Pawmi",
       "types": [
@@ -5854,6 +6674,7 @@
       "base_friendship": 50,
       "base_exp": 48,
       "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
       "starter_moves": [
         "SCRATCH",
         "GROWL",
@@ -5862,8 +6683,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PAWMO",
+      "starter_species_id": "PAWMI",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "PAWMOT"
+      ],
       "pokedex_number": 922,
       "name": "Pawmo",
       "types": [
@@ -5896,8 +6722,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "PAWMOT",
+      "starter_species_id": "PAWMI",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 923,
       "name": "Pawmot",
       "types": [
@@ -5930,8 +6759,13 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "TANDEMAUS",
+      "starter_species_id": "TANDEMAUS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MAUSHOLD"
+      ],
       "pokedex_number": 924,
       "name": "Tandemaus",
       "types": [
@@ -5955,6 +6789,7 @@
       "base_friendship": 50,
       "base_exp": 61,
       "growth_rate": "FAST",
+      "starter_cost": 4,
       "starter_moves": [
         "POUND",
         "BABY_DOLL_EYES",
@@ -5963,8 +6798,11 @@
       ]
     },
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "species_id": "MAUSHOLD",
+      "starter_species_id": "TANDEMAUS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
       "pokedex_number": 925,
       "name": "Maushold",
       "types": [

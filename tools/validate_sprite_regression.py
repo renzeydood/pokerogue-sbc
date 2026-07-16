@@ -8,7 +8,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "assets" / "images" / "pokemon"
 BACK_ASSET_ROOT = ASSET_ROOT / "back"
-SPECIES_CATALOG = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data" / "species-catalog.v1.json"
+SPECIES_CATALOG = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data" / "species-catalog.v2.json"
 DEFAULT_OUTPUT = REPO_ROOT / "godot-port" / "data" / "reports" / "sprite-regression-report.json"
 
 
