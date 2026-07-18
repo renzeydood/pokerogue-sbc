@@ -9,9 +9,12 @@ const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const POKEDEX_SCENE_PATH := "res://scenes/PokedexScreen.tscn"
 const POKEDEX_ENTRY_OVERLAY_PATH := "res://scenes/PokedexEntryOverlay.tscn"
 const PARTY_MENU_OVERLAY_PATH := "res://scenes/PartyMenuOverlay.tscn"
+const EVOLUTION_OVERLAY_PATH := "res://scenes/PokemonEvolutionOverlay.tscn"
 
 var entry_scene_path := "res://scenes/BattleScreen.tscn"
 var runtime_state_script = load("res://logic/RuntimeState.gd")
+var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
+var catalog_loader = null
 
 export(bool) var debug_seed_full_party_for_ui := false
 export(int) var debug_seed_party_level := 5
@@ -29,6 +32,7 @@ onready var battle_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRo
 onready var pokedex_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/PokedexButton")
 onready var pokedex_entry_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/PokedexEntryButton")
 onready var party_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/PartyButton")
+onready var evolution_button = get_node_or_null("Backdrop/Panel/UiScaleRoot/ModalRoot/MenuWindow/ActionContentMargin/ActionButtonList/EvolutionButton")
 
 var title_bgm_player: AudioStreamPlayer = null
 var title_bgm_tween: Tween = null
@@ -56,6 +60,7 @@ func _wire_menu_buttons() -> void:
 	_connect_button_scene(pokemon_select_button, POKEMON_SELECT_SCENE_PATH)
 	_connect_button_scene(battle_button, BATTLE_SCENE_PATH)
 	_connect_button_scene(pokedex_button, POKEDEX_SCENE_PATH)
+	_connect_button_action(evolution_button, "evolution_preview")
 	if open_overlay_buttons_as_preview:
 		_connect_button_action(pokedex_entry_button, "pokedex_entry_preview")
 		_connect_button_action(party_button, "party_preview")
@@ -68,14 +73,14 @@ func _connect_button_scene(button: Button, scene_path: String) -> void:
 		return
 	if button.is_connected("pressed", self, "_on_scene_button_pressed"):
 		return
-	button.connect("pressed", self, "_on_scene_button_pressed", [scene_path])
+	var _scene_connect_result = button.connect("pressed", self, "_on_scene_button_pressed", [scene_path])
 
 func _connect_button_action(button: Button, action_name: String) -> void:
 	if button == null:
 		return
 	if button.is_connected("pressed", self, "_on_debug_action_button_pressed"):
 		return
-	button.connect("pressed", self, "_on_debug_action_button_pressed", [action_name])
+	var _action_connect_result = button.connect("pressed", self, "_on_debug_action_button_pressed", [action_name])
 
 func _on_scene_button_pressed(scene_path: String) -> void:
 	_close_debug_overlay()
@@ -93,6 +98,9 @@ func _on_debug_action_button_pressed(action_name: String) -> void:
 		return
 	if action_name == "pokedex_entry_preview":
 		_open_pokedex_entry_overlay_preview()
+		return
+	if action_name == "evolution_preview":
+		_open_evolution_overlay_preview()
 		return
 	_debug_log("Unknown debug action: %s" % action_name)
 
@@ -152,12 +160,46 @@ func _open_pokedex_entry_overlay_preview() -> void:
 		overlay.focus_default()
 	_debug_log("Opened Pokedex Entry overlay preview for %s (caught=%s)." % [species_id, str(is_caught)])
 
+func _open_evolution_overlay_preview() -> void:
+	var overlay_scene = load(EVOLUTION_OVERLAY_PATH)
+	if overlay_scene == null:
+		push_warning("Evolution overlay preview scene missing: %s" % EVOLUTION_OVERLAY_PATH)
+		return
+
+	var overlay = overlay_scene.instance()
+	if overlay == null:
+		push_warning("Failed to instance evolution overlay preview.")
+		return
+
+	var evolution_pair = _get_debug_evolution_pair()
+	var from_species_id = String(evolution_pair.get("from_species_id", "BULBASAUR")).strip_edges().to_upper()
+	var to_species_id = String(evolution_pair.get("to_species_id", "IVYSAUR")).strip_edges().to_upper()
+	if from_species_id.empty():
+		from_species_id = "BULBASAUR"
+	if to_species_id.empty():
+		to_species_id = "IVYSAUR"
+
+	_close_debug_overlay()
+	add_child(overlay)
+	overlay.raise()
+	active_debug_overlay = overlay
+
+	if overlay.has_signal("sequence_completed"):
+		overlay.connect("sequence_completed", self, "_on_debug_overlay_sequence_completed", [overlay])
+
+	if overlay.has_method("open_sequence"):
+		overlay.call_deferred("open_sequence", from_species_id, to_species_id)
+	_debug_log("Opened Evolution overlay preview for %s -> %s." % [from_species_id, to_species_id])
+
 func _on_debug_overlay_close_requested(overlay) -> void:
 	if overlay != null:
 		overlay.queue_free()
 	if overlay == active_debug_overlay:
 		active_debug_overlay = null
 	_focus_default_button()
+
+func _on_debug_overlay_sequence_completed(_success, overlay) -> void:
+	_on_debug_overlay_close_requested(overlay)
 
 func _close_debug_overlay() -> void:
 	if active_debug_overlay != null:
@@ -199,6 +241,85 @@ func _get_debug_preview_species_id() -> String:
 
 	return "BULBASAUR"
 
+func _get_debug_evolution_pair() -> Dictionary:
+	var from_species_id = _get_debug_preview_species_id()
+	var to_species_id = _resolve_level_up_evolution_target_species_id(from_species_id, 999)
+	if to_species_id.empty():
+		var fallback_species_ids = _get_debug_party_species_ids()
+		for fallback_species_id in fallback_species_ids:
+			to_species_id = _resolve_level_up_evolution_target_species_id(fallback_species_id, 999)
+			if not to_species_id.empty():
+				from_species_id = fallback_species_id
+				break
+	if to_species_id.empty():
+		from_species_id = "BULBASAUR"
+		to_species_id = "IVYSAUR"
+	return {
+		"from_species_id": from_species_id,
+		"to_species_id": to_species_id,
+	}
+
+func _get_debug_party_species_ids() -> Array:
+	var party_members = _get_debug_party_members()
+	var species_ids := []
+	for member in party_members:
+		if typeof(member) != TYPE_DICTIONARY:
+			continue
+		var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+		if species_id.empty() or species_ids.has(species_id):
+			continue
+		species_ids.append(species_id)
+	return species_ids
+
+func _resolve_level_up_evolution_target_species_id(species_id: String, level_after: int) -> String:
+	var safe_species_id = species_id.strip_edges().to_upper()
+	if safe_species_id.empty():
+		return ""
+
+	var species_entry = _get_species_entry(safe_species_id)
+	if species_entry.empty():
+		return ""
+
+	var evolution_rules = species_entry.get("evolution_rules", [])
+	if typeof(evolution_rules) != TYPE_ARRAY:
+		return ""
+
+	for raw_rule in evolution_rules:
+		if typeof(raw_rule) != TYPE_DICTIONARY:
+			continue
+
+		var target_species_id = String(raw_rule.get("target_species_id", "")).strip_edges().to_upper()
+		if target_species_id.empty() or target_species_id == safe_species_id:
+			continue
+
+		var min_level = max(1, int(raw_rule.get("min_level", 1)))
+		if level_after < min_level:
+			continue
+
+		if raw_rule.has("item") and not String(raw_rule.get("item", "")).strip_edges().empty():
+			continue
+
+		if raw_rule.has("pre_form_key") and not String(raw_rule.get("pre_form_key", "")).strip_edges().empty():
+			continue
+
+		if raw_rule.has("evo_form_key") and not String(raw_rule.get("evo_form_key", "")).strip_edges().empty():
+			continue
+
+		var conditions = raw_rule.get("conditions", [])
+		if typeof(conditions) != TYPE_ARRAY or not conditions.empty():
+			continue
+
+		return target_species_id
+
+	return ""
+
+func _get_species_entry(species_id: String) -> Dictionary:
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return {}
+	return catalog_loader.get_species(species_id)
+
 func _build_fallback_preview_party() -> Array:
 	return [
 		{"species_id": "BULBASAUR", "level": 5, "current_hp": -1, "move_ids": []},
@@ -228,7 +349,7 @@ func _play_title_bgm_if_enabled() -> void:
 		title_bgm_player.name = "TitleAudioPlayer"
 		add_child(title_bgm_player)
 		if not title_bgm_player.is_connected("finished", self, "_on_title_bgm_finished"):
-			title_bgm_player.connect("finished", self, "_on_title_bgm_finished")
+			var _title_finished_connect_result = title_bgm_player.connect("finished", self, "_on_title_bgm_finished")
 
 	if stream is AudioStreamMP3:
 		stream.loop = true
@@ -244,7 +365,7 @@ func _play_title_bgm_if_enabled() -> void:
 	if title_bgm_fade_in_sec > 0.0:
 		title_bgm_tween = Tween.new()
 		add_child(title_bgm_tween)
-		title_bgm_tween.interpolate_property(
+		var _title_fade_interp = title_bgm_tween.interpolate_property(
 			title_bgm_player,
 			"volume_db",
 			title_bgm_player.volume_db,
@@ -253,14 +374,14 @@ func _play_title_bgm_if_enabled() -> void:
 			Tween.TRANS_SINE,
 			Tween.EASE_IN_OUT
 		)
-		title_bgm_tween.start()
+		var _title_fade_start = title_bgm_tween.start()
 	else:
 		title_bgm_player.volume_db = title_bgm_volume_db
 	_debug_log("Title BGM playing from %s" % resolved_bgm_path)
 
 func _stop_title_bgm_tween() -> void:
 	if title_bgm_tween != null and is_instance_valid(title_bgm_tween):
-		title_bgm_tween.stop_all()
+		var _title_stop_result = title_bgm_tween.stop_all()
 		title_bgm_tween.queue_free()
 	title_bgm_tween = null
 
@@ -279,7 +400,7 @@ func _fade_out_title_bgm(duration_sec: float) -> void:
 
 	title_bgm_tween = Tween.new()
 	add_child(title_bgm_tween)
-	title_bgm_tween.interpolate_property(
+	var _title_out_interp = title_bgm_tween.interpolate_property(
 		title_bgm_player,
 		"volume_db",
 		title_bgm_player.volume_db,
@@ -288,7 +409,7 @@ func _fade_out_title_bgm(duration_sec: float) -> void:
 		Tween.TRANS_SINE,
 		Tween.EASE_IN_OUT
 	)
-	title_bgm_tween.start()
+	var _title_out_start = title_bgm_tween.start()
 
 	var timer = get_tree().create_timer(fade_duration)
 	yield(timer, "timeout")
