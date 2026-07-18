@@ -40,11 +40,6 @@ _global_script_classes=[ {
 "path": "res://logic/phases/CaptureSequencePhase.gd"
 }, {
 "base": "Reference",
-"class": "CatalogDataLoader",
-"language": "GDScript",
-"path": "res://logic/CatalogDataLoader.gd"
-}, {
-"base": "Reference",
 "class": "EditorPreviewSync",
 "language": "GDScript",
 "path": "res://logic/EditorPreviewSync.gd"
@@ -131,7 +126,6 @@ _global_script_class_icons={
 "CaptureBeginPhase": "",
 "CapturePostEncounterPhase": "",
 "CaptureSequencePhase": "",
-"CatalogDataLoader": "",
 "EditorPreviewSync": "",
 "EncounterTransitionFinalizePhase": "",
 "EncounterTransitionIntroPhase": "",

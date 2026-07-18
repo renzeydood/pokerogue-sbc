@@ -142,6 +142,8 @@ func _refresh_entry_text() -> void:
 		return
 
 	var display_species = current_species_id if not current_species_id.empty() else "UNKNOWN"
+	if not current_is_caught:
+		display_species = "----------"
 	species_label.text = display_species
 	pokemon_number_label.text = _format_species_number(_get_species_dex_number(current_species_id))
 	status_label.text = "Status: Caught" if current_is_caught else "Status: Not Caught"
@@ -458,6 +460,7 @@ func _load_species_sprite() -> void:
 	var atlas_path = minimal_assets_path + String(sprite_paths.get("atlas_rel", ""))
 	if not ResourceLoader.exists(texture_path):
 		current_pokemon_sprite.visible = false
+		current_pokemon_sprite.modulate = Color(1, 1, 1, 1)
 		sprite_frames.clear()
 		return
 
@@ -475,12 +478,14 @@ func _load_species_sprite() -> void:
 	if sprite_frames.empty():
 		current_pokemon_sprite.region_enabled = false
 		current_pokemon_sprite.offset = sprite_editor_base_offset
+		current_pokemon_sprite.modulate = Color(1, 1, 1, 1) if current_is_caught else Color(0, 0, 0, 1)
 		current_pokemon_sprite.visible = true
 		return
 
 	sprite_anim_index = 0
 	sprite_anim_elapsed = 0.0
 	_apply_sprite_frame(current_pokemon_sprite, sprite_frames[0])
+	current_pokemon_sprite.modulate = Color(1, 1, 1, 1) if current_is_caught else Color(0, 0, 0, 1)
 	current_pokemon_sprite.visible = true
 
 func _update_sprite_animation(delta: float) -> void:
@@ -696,21 +701,6 @@ func _resolve_species_caught_state(species_id: String, fallback_is_caught: bool)
 
 	if runtime_state_script != null and runtime_state_script.has_caught_species(tree, normalized_species_id):
 		return true
-
-	if runtime_state_script != null:
-		var runtime_party = runtime_state_script.get_party(tree)
-		if runtime_party != null and runtime_party.has_method("get_members_copy"):
-			for member in runtime_party.get_members_copy():
-				if typeof(member) != TYPE_DICTIONARY:
-					continue
-				var member_species_id = String(member.get("species_id", "")).strip_edges().to_upper()
-				if member_species_id == normalized_species_id:
-					return true
-
-	if tree.has_meta("selected_species_id"):
-		var selected_species_id = String(tree.get_meta("selected_species_id")).strip_edges().to_upper()
-		if selected_species_id == normalized_species_id:
-			return true
 
 	return false
 

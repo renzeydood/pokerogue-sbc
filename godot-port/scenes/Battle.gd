@@ -111,7 +111,7 @@ export(int) var trainer_pb_tray_slot_count := 6
 export(int) var trainer_pb_player_active_count := 1
 export(int) var trainer_pb_enemy_active_count := 2
 const SELECTED_SPECIES_META_KEY := "selected_species_id"
-const SELECTION_SCENE_PATH := "res://scenes/PokemonSelectScreen.tscn"
+const MAIN_SCENE_PATH := "res://scenes/MainScreen.tscn"
 const ENCOUNTER_ARCHETYPE_NORMAL_POKEMON := "normal_pokemon"
 const ENCOUNTER_ARCHETYPE_BOSS_POKEMON := "boss_pokemon"
 const ENCOUNTER_ARCHETYPE_NORMAL_TRAINER := "normal_trainer"
@@ -3287,12 +3287,12 @@ func end_battle(player_won: bool, fainted_species_id: String):
 		set_battle_text("%s fainted! You win! Press Ball to restart." % fainted_species_id)
 		return
 
-	# Defeat recovery path: return to starter selection.
+	# Defeat recovery path: return to main menu.
 	_animate_player_panel_to(_player_panel_hidden_position(), max(0.0, player_panel_switch_slide_duration_sec))
 	_enter_action_locked_state()
-	set_battle_text("%s fainted! You lose! Returning to selection..." % fainted_species_id)
+	set_battle_text("%s fainted! You lose! Returning to main menu..." % fainted_species_id)
 	var timer = get_tree().create_timer(max(0.0, defeat_return_delay_sec))
-	_connect_once(timer, "timeout", "_return_to_selection_scene")
+	_connect_once(timer, "timeout", "_return_to_main_scene")
 
 func _resolve_trainer_defeat_message() -> String:
 	var trainer_name = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges()
@@ -3469,7 +3469,7 @@ func _run_trainer_victory_outro_and_start_next_encounter(fainted_species_id: Str
 	if next_transition is GDScriptFunctionState:
 		yield(next_transition, "completed")
 
-func _return_to_selection_scene():
+func _return_to_main_scene():
 	var tree = get_tree()
 	if tree == null:
 		return
@@ -3511,9 +3511,9 @@ func _return_to_selection_scene():
 		biome_bgm_secondary_player.volume_db = -80.0
 	_stop_biome_bgm_crossfade_tween()
 
-	var result = tree.change_scene(SELECTION_SCENE_PATH)
+	var result = tree.change_scene(MAIN_SCENE_PATH)
 	if result != OK:
-		set_battle_text("Failed to open selection scene.")
+		set_battle_text("Failed to open main menu.")
 		show_main_controls()
 		ball_button.disabled = false
 		ball_button.grab_focus()
