@@ -64,6 +64,16 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://logic/phases/EncounterTransitionSeedLoadPhase.gd"
 }, {
+"base": "BattlePhase",
+"class": "ExpApplyPhase",
+"language": "GDScript",
+"path": "res://logic/phases/ExpApplyPhase.gd"
+}, {
+"base": "BattlePhase",
+"class": "ExpResolvePhase",
+"language": "GDScript",
+"path": "res://logic/phases/ExpResolvePhase.gd"
+}, {
 "base": "Reference",
 "class": "MoveData",
 "language": "GDScript",
@@ -141,6 +151,8 @@ _global_script_class_icons={
 "EncounterTransitionIntroPhase": "",
 "EncounterTransitionPresentationPhase": "",
 "EncounterTransitionSeedLoadPhase": "",
+"ExpApplyPhase": "",
+"ExpResolvePhase": "",
 "MoveData": "",
 "OpeningPreparePhase": "",
 "OpeningResolvePhase": "",

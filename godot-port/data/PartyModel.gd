@@ -165,12 +165,14 @@ func _normalize_member(member_data: Dictionary) -> Dictionary:
 		return {}
 
 	var level = max(1, int(member_data.get("level", 5)))
+	var exp_value = int(member_data.get("exp", -1))
 	var current_hp = int(member_data.get("current_hp", -1))
 	var move_ids = _normalize_move_ids(member_data.get("move_ids", []))
 
 	return {
 		"species_id": species_id,
 		"level": level,
+		"exp": exp_value,
 		"current_hp": current_hp,
 		"move_ids": move_ids,
 	}

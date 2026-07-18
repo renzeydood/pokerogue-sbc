@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=2]
+[gd_scene load_steps=23 format=2]
 
 [ext_resource path="res://scenes/Battle.gd" type="Script" id=1]
 [ext_resource path="res://godot-minimal-assets/assets/images/arenas/abyss_bg.png" type="Texture" id=2]
@@ -19,12 +19,16 @@
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_overlay_enemy.png" type="Texture" id=17]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_overlay_player.png" type="Texture" id=18]
 [ext_resource path="res://godot-minimal-assets/assets/images/ui/pb_tray_ball.png" type="Texture" id=19]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/overlay_exp.png" type="Texture" id=20]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/party_exp_bar.png" type="Texture" id=21]
+[ext_resource path="res://godot-minimal-assets/assets/images/pokemon_icons_1.png" type="Texture" id=22]
 
 [node name="Battle" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme = ExtResource( 15 )
 script = ExtResource( 1 )
+debug_ohko_enabled = true
 force_first_encounter_trainer = false
 debug_enemy_baseline_overlay_enabled = false
 player_trainer_exit_duration_sec = 0.7
@@ -243,6 +247,13 @@ texture = ExtResource( 5 )
 position = Vector2( 104, 54 )
 texture = ExtResource( 11 )
 
+[node name="PlayerExpValueLabel" type="Label" parent="UiScaleRoot/UILayer/PlayerPanel"]
+margin_left = 116.0
+margin_top = -5.0
+margin_right = 189.0
+margin_bottom = 19.0
+text = "0 / 0"
+
 [node name="HPTextSprite" type="Sprite" parent="UiScaleRoot/UILayer/PlayerPanel"]
 position = Vector2( 134.5, 37.5 )
 texture = ExtResource( 12 )
@@ -272,6 +283,15 @@ text = "100 / 100"
 position = Vector2( 143, 37.5 )
 scale = Vector2( 0.958333, 0.5 )
 texture = ExtResource( 14 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 0, 0, 48, 2 )
+
+[node name="PlayerExpBar" type="Sprite" parent="UiScaleRoot/UILayer/PlayerPanel"]
+visible = false
+position = Vector2( 105, 56 )
+scale = Vector2( 1.76042, 1 )
+texture = ExtResource( 20 )
 centered = false
 region_enabled = true
 region_rect = Rect2( 0, 0, 48, 2 )
@@ -634,6 +654,34 @@ margin_right = 295.0
 margin_bottom = 14.5
 text = "arena - 00"
 align = 2
+
+[node name="PartyExpContainer" type="Control" parent="UiScaleRoot/UILayer"]
+visible = false
+margin_left = 260.0
+margin_top = 60.0
+margin_right = 321.0
+margin_bottom = 78.0
+rect_pivot_offset = Vector2( -125.5, 14.5 )
+
+[node name="PartyExpBarSprite" type="Sprite" parent="UiScaleRoot/UILayer/PartyExpContainer"]
+position = Vector2( 30.5, 9.5 )
+scale = Vector2( 1.75, 1.25 )
+texture = ExtResource( 21 )
+
+[node name="PartyExpLabel" type="Label" parent="UiScaleRoot/UILayer/PartyExpContainer"]
+margin_left = 34.0
+margin_top = 4.0
+margin_right = 57.0
+margin_bottom = 15.0
+text = "+1000"
+
+[node name="PokemonIconSprite" type="Sprite" parent="UiScaleRoot/UILayer/PartyExpContainer"]
+position = Vector2( 16.5833, 2.0833 )
+scale = Vector2( 0.75, 0.75 )
+texture = ExtResource( 22 )
+centered = false
+region_enabled = true
+region_rect = Rect2( 134, 357, 20, 19 )
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 
