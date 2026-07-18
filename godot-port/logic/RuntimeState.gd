@@ -6,9 +6,22 @@ const ROSTER_META_KEY := "runtime_roster_v1"
 const BIOME_META_KEY := "runtime_biome_v1"
 const LEGACY_SELECTED_SPECIES_META_KEY := "selected_species_id"
 const DEBUG_SEED_PROFILES_PATH := "res://data/debug-seed-profiles.json"
+const STARTER_SPECIES_INDEX_META_KEY := "runtime_starter_species_index_v1"
+const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
 const PartyModel = preload("res://data/PartyModel.gd")
 const DEFAULT_BIOME_ID := "grass"
 const DEFAULT_BIOME_SOURCE := "baseline_rotation"
+const DEFAULT_CAUGHT_SPECIES_IDS := [
+	"BULBASAUR", "CHARMANDER", "SQUIRTLE",
+	"CHIKORITA", "CYNDAQUIL", "TOTODILE",
+	"TREECKO", "TORCHIC", "MUDKIP",
+	"TURTWIG", "CHIMCHAR", "PIPLUP",
+	"SNIVY", "TEPIG", "OSHAWOTT",
+	"CHESPIN", "FENNEKIN", "FROAKIE",
+	"ROWLET", "LITTEN", "POPPLIO",
+	"GROOKEY", "SCORBUNNY", "SOBBLE",
+	"SPRIGATITO", "FUECOCO", "QUAXLY",
+]
 const BIOME_ROTATION := [
 	"grass",
 	"forest",
@@ -54,14 +67,17 @@ static func get_roster(tree) -> Dictionary:
 		var stored_roster = tree.get_meta(ROSTER_META_KEY)
 		if typeof(stored_roster) == TYPE_DICTIONARY:
 			var normalized_roster = _normalize_roster(stored_roster)
+			normalized_roster = _backfill_roster_base_species_ids(tree, normalized_roster)
 			tree.set_meta(ROSTER_META_KEY, normalized_roster)
 			return normalized_roster.duplicate(true)
 		if typeof(stored_roster) == TYPE_ARRAY:
 			var legacy_roster = _normalize_roster({"caught_species_ids": stored_roster})
+			legacy_roster = _backfill_roster_base_species_ids(tree, legacy_roster)
 			tree.set_meta(ROSTER_META_KEY, legacy_roster)
 			return legacy_roster.duplicate(true)
 
 	var roster = _normalize_roster({})
+	roster = _backfill_roster_base_species_ids(tree, roster)
 	tree.set_meta(ROSTER_META_KEY, roster)
 	return roster.duplicate(true)
 
@@ -98,10 +114,20 @@ static func add_caught_species(tree, species_id: String) -> Dictionary:
 	if typeof(caught_species_ids) != TYPE_ARRAY:
 		caught_species_ids = []
 
-	if caught_species_ids.has(normalized_species_id):
+	var normalized_base_species_id = _resolve_starter_species_id(tree, normalized_species_id)
+	var changed := false
+
+	if not caught_species_ids.has(normalized_species_id):
+		caught_species_ids.append(normalized_species_id)
+		changed = true
+
+	if not normalized_base_species_id.empty() and not caught_species_ids.has(normalized_base_species_id):
+		caught_species_ids.append(normalized_base_species_id)
+		changed = true
+
+	if not changed:
 		return {"ok": true, "reason": "already_present", "added": false}
 
-	caught_species_ids.append(normalized_species_id)
 	roster["caught_species_ids"] = caught_species_ids
 	set_roster(tree, roster)
 	return {"ok": true, "reason": "ok", "added": true}
@@ -386,9 +412,77 @@ static func _normalize_roster(payload: Dictionary) -> Dictionary:
 			continue
 		caught_species_ids.append(normalized_species_id)
 
+	for default_species_id in DEFAULT_CAUGHT_SPECIES_IDS:
+		if caught_species_ids.has(default_species_id):
+			continue
+		caught_species_ids.append(default_species_id)
+
 	return {
 		"caught_species_ids": caught_species_ids,
 	}
+
+static func _backfill_roster_base_species_ids(tree, roster: Dictionary) -> Dictionary:
+	if tree == null:
+		return roster
+	if typeof(roster) != TYPE_DICTIONARY:
+		return _normalize_roster({})
+
+	var caught_species_ids = roster.get("caught_species_ids", [])
+	if typeof(caught_species_ids) != TYPE_ARRAY:
+		caught_species_ids = []
+
+	var normalized_caught_species_ids := []
+	for raw_species_id in caught_species_ids:
+		var species_id = String(raw_species_id).strip_edges().to_upper()
+		if species_id.empty() or normalized_caught_species_ids.has(species_id):
+			continue
+		normalized_caught_species_ids.append(species_id)
+		var base_species_id = _resolve_starter_species_id(tree, species_id)
+		if not base_species_id.empty() and not normalized_caught_species_ids.has(base_species_id):
+			normalized_caught_species_ids.append(base_species_id)
+
+	roster["caught_species_ids"] = normalized_caught_species_ids
+	return _normalize_roster(roster)
+
+static func _resolve_starter_species_id(tree, species_id: String) -> String:
+	var normalized_species_id = species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return ""
+
+	var starter_species_index = _get_starter_species_index(tree)
+	if starter_species_index.has(normalized_species_id):
+		return String(starter_species_index.get(normalized_species_id, normalized_species_id)).strip_edges().to_upper()
+
+	return normalized_species_id
+
+static func _get_starter_species_index(tree) -> Dictionary:
+	if tree != null and tree.has_meta(STARTER_SPECIES_INDEX_META_KEY):
+		var cached_index = tree.get_meta(STARTER_SPECIES_INDEX_META_KEY)
+		if typeof(cached_index) == TYPE_DICTIONARY and not cached_index.empty():
+			return cached_index
+
+	var index := {}
+	var file = File.new()
+	if file.file_exists(SPECIES_CATALOG_PATH) and file.open(SPECIES_CATALOG_PATH, File.READ) == OK:
+		var parse_result = JSON.parse(file.get_as_text())
+		file.close()
+		if parse_result.error == OK and typeof(parse_result.result) == TYPE_DICTIONARY:
+			var items = parse_result.result.get("items", [])
+			if typeof(items) == TYPE_ARRAY:
+				for item in items:
+					if typeof(item) != TYPE_DICTIONARY:
+						continue
+					var species_id = String(item.get("species_id", "")).strip_edges().to_upper()
+					if species_id.empty():
+						continue
+					var starter_species_id = String(item.get("starter_species_id", species_id)).strip_edges().to_upper()
+					if starter_species_id.empty():
+						starter_species_id = species_id
+					index[species_id] = starter_species_id
+
+	if tree != null:
+		tree.set_meta(STARTER_SPECIES_INDEX_META_KEY, index)
+	return index
 
 static func _normalize_biome_state(payload: Dictionary) -> Dictionary:
 	var current_biome_id = _normalize_biome_id(String(payload.get("current_biome_id", DEFAULT_BIOME_ID)))

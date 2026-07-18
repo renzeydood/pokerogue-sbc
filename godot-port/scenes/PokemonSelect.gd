@@ -3,6 +3,7 @@ extends Control
 
 const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
 const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
+const MAIN_SCENE_PATH := "res://scenes/MainScreen.tscn"
 const POKEDEX_ENTRY_OVERLAY_PATH := "res://scenes/PokedexEntryOverlay.tscn"
 const MENU_BGM_CANDIDATE_PATHS := [
 	"res://godot-minimal-assets/assets/audio/bgm/menu.mp3",
@@ -1065,14 +1066,13 @@ func _on_ActionCancelButton_pressed() -> void:
 	_set_action_window_visible(false)
 
 func _unhandled_input(event) -> void:
-	if active_overlay == null:
+	if not _is_back_input_event(event):
 		return
-	if not event.is_action_pressed("ui_back") and not event.is_action_pressed("ui_cancel"):
-		if event is InputEventKey and event.pressed and not event.echo:
-			if event.scancode != KEY_ESCAPE and event.scancode != KEY_BACKSPACE:
-				return
-		else:
-			return
+
+	if active_overlay == null:
+		_return_to_main_scene()
+		get_tree().set_input_as_handled()
+		return
 
 	if active_overlay.has_method("handle_back_action"):
 		if active_overlay.handle_back_action():
@@ -1080,6 +1080,22 @@ func _unhandled_input(event) -> void:
 			return
 	_close_active_overlay()
 	get_tree().set_input_as_handled()
+
+func _is_back_input_event(event) -> bool:
+	if event == null:
+		return false
+	if event.is_action_pressed("ui_back") or event.is_action_pressed("ui_cancel"):
+		return true
+	if event is InputEventKey and event.pressed and not event.echo:
+		return event.scancode == KEY_ESCAPE or event.scancode == KEY_BACKSPACE
+	return false
+
+func _return_to_main_scene() -> void:
+	if menu_bgm_player != null and menu_bgm_player.playing:
+		yield(_fade_out_menu_bgm(menu_bgm_fade_out_sec), "completed")
+	var result = get_tree().change_scene(MAIN_SCENE_PATH)
+	if result != OK:
+		_set_status_text("Failed to open main menu scene.")
 
 func refresh_type_badges(types):
 	if not (types is Array) or types.empty():

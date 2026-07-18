@@ -13,6 +13,10 @@ anchor_bottom = 1.0
 mouse_filter = 1
 theme = ExtResource( 2 )
 script = ExtResource( 1 )
+pokedex_list_global_icon_scale = 0.75
+pokedex_list_icon_cell_size = Vector2( 25, 25 )
+pokedex_list_h_separation = 5
+pokedex_list_v_separation = 0
 
 [node name="Backdrop" type="ColorRect" parent="."]
 anchor_right = 1.0
