@@ -7,8 +7,8 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
-FIXTURE_FILE = REPO_ROOT / "godot-port" / "data" / "fixtures" / "regression-prototype.v2.fixture.json"
-SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v2.json"
+FIXTURE_FILE = REPO_ROOT / "godot-port" / "data" / "fixtures" / "regression-prototype.v3.fixture.json"
+SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v3.json"
 MOVES_CATALOG_FILE = DATA_DIR / "moves-catalog.v1.json"
 
 EXPECTED_SPECIES_IDS = [
@@ -48,6 +48,7 @@ def _project_species_item(item: dict[str, Any]) -> dict[str, Any]:
         "starter_species_id": item.get("starter_species_id"),
         "prevolution_species_id": item.get("prevolution_species_id"),
         "evolution_species_ids": item.get("evolution_species_ids"),
+        "evolution_rules": item.get("evolution_rules"),
         "pokedex_number": item.get("pokedex_number"),
         "name": item.get("name"),
         "types": item.get("types"),
@@ -115,7 +116,7 @@ def _build_snapshot(species_payload: Any, moves_payload: Any, errors: list[str])
     move_items = _select_items(moves_payload, "move_id", EXPECTED_MOVE_IDS, "moves", errors)
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_from": "dependency/pokerogue",
         "species": [_project_species_item(item) for item in species_items],
         "moves": [_project_move_item(item) for item in move_items],

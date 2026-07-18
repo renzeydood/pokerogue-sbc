@@ -19,8 +19,10 @@ export(float) var run_escape_fade_duration_sec := 0.28
 export(int) var max_exp_level := 100
 export(float) var exp_gain_multiplier := 1.0
 export(int) var exp_override_value := -1
+export(int) var debug_defeat_exp_override := 650
 export(float) var exp_message_hold_sec := 1.05
 export(bool) var exp_growth_debug_line_enabled := true
+export(int) var debug_player_level_override := 15
 export(float) var exp_bar_anim_duration_sec := 0.45
 export(float) var exp_bar_level_up_pause_sec := 0.08
 export(float) var party_exp_slide_duration_sec := 0.28
@@ -231,6 +233,9 @@ var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolveP
 var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
 var exp_resolve_phase_script = load("res://logic/phases/ExpResolvePhase.gd")
 var exp_apply_phase_script = load("res://logic/phases/ExpApplyPhase.gd")
+var exp_evolution_phase_script = load("res://logic/phases/ExpEvolutionPhase.gd")
+var exp_party_apply_phase_script = load("res://logic/phases/ExpPartyApplyPhase.gd")
+var exp_party_evolution_phase_script = load("res://logic/phases/ExpPartyEvolutionPhase.gd")
 var run_resolve_phase_script = load("res://logic/phases/RunResolvePhase.gd")
 var run_finalize_phase_script = load("res://logic/phases/RunFinalizePhase.gd")
 var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
@@ -238,6 +243,7 @@ var capture_sequence_phase_script = load("res://logic/phases/CaptureSequencePhas
 var capture_post_encounter_phase_script = load("res://logic/phases/CapturePostEncounterPhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
+var pokemon_evolution_overlay_scene = load("res://scenes/PokemonEvolutionOverlay.tscn")
 
 func _resolve_first_existing(paths: Array):
 	for path in paths:
@@ -451,6 +457,8 @@ var party_menu_visible := false
 var party_menu_overlay = null
 var pokedex_overlay = null
 var pokedex_overlay_visible := false
+var pokemon_evolution_overlay = null
+var pokemon_evolution_overlay_visible := false
 var pokedex_return_to_party_menu := false
 var enemy_species_pool := []
 var trainers_catalog_by_id := {}
@@ -523,6 +531,7 @@ func _ready():
 	_setup_party_exp_container()
 	setup_party_menu_overlay()
 	setup_pokedex_overlay()
+	setup_pokemon_evolution_overlay()
 	reset_battle_state("Battle ready.")
 	if ball_menu_container != null:
 		ball_menu_container.visible = false
@@ -1210,6 +1219,39 @@ func setup_pokedex_overlay() -> void:
 	add_child(pokedex_overlay)
 	pokedex_overlay.raise()
 
+func setup_pokemon_evolution_overlay() -> void:
+	if pokemon_evolution_overlay_scene == null:
+		return
+
+	pokemon_evolution_overlay = pokemon_evolution_overlay_scene.instance()
+	if pokemon_evolution_overlay == null:
+		return
+
+	pokemon_evolution_overlay.visible = false
+	pokemon_evolution_overlay_visible = false
+	add_child(pokemon_evolution_overlay)
+	pokemon_evolution_overlay.raise()
+
+func _play_evolution_overlay_sequence(from_species_id: String, to_species_id: String, active_turn_token: int):
+	if pokemon_evolution_overlay == null:
+		return true
+	if from_species_id.strip_edges().empty() or to_species_id.strip_edges().empty():
+		return true
+
+	pokemon_evolution_overlay_visible = true
+	pokemon_evolution_overlay.open_sequence(from_species_id, to_species_id)
+	var overlay_result = yield(pokemon_evolution_overlay, "sequence_completed")
+	pokemon_evolution_overlay_visible = false
+
+	if _is_turn_token_cancelled(active_turn_token):
+		return false
+
+	if typeof(overlay_result) == TYPE_BOOL:
+		return bool(overlay_result)
+	if typeof(overlay_result) == TYPE_ARRAY and overlay_result.size() > 0:
+		return bool(overlay_result[0])
+	return true
+
 func _stop_party_menu_fade_tween() -> void:
 	if party_menu_fade_tween != null and is_instance_valid(party_menu_fade_tween):
 		party_menu_fade_tween.stop_all()
@@ -1601,11 +1643,19 @@ func _slide_party_exp_container(show: bool):
 
 func _run_party_exp_sequence(party, active_index: int, awarded_exp: int, active_turn_token: int):
 	if party == null or awarded_exp <= 0:
-		return true
+		return {
+			"ok": true,
+			"party_level_ups": [],
+		}
+
+	var party_level_ups := []
 
 	for slot_index in range(party.size()):
 		if _is_turn_token_cancelled(active_turn_token):
-			return false
+			return {
+				"ok": false,
+				"party_level_ups": party_level_ups,
+			}
 		if slot_index == active_index:
 			continue
 
@@ -1627,12 +1677,18 @@ func _run_party_exp_sequence(party, active_index: int, awarded_exp: int, active_
 		if show_state is GDScriptFunctionState:
 			yield(show_state, "completed")
 		if _is_turn_token_cancelled(active_turn_token):
-			return false
+			return {
+				"ok": false,
+				"party_level_ups": party_level_ups,
+			}
 
 		if party_exp_card_hold_sec > 0.0:
 			yield(get_tree().create_timer(party_exp_card_hold_sec), "timeout")
 			if _is_turn_token_cancelled(active_turn_token):
-				return false
+				return {
+					"ok": false,
+					"party_level_ups": party_level_ups,
+				}
 
 		var species_id = String(exp_result.get("species_id", ""))
 		var level_before = int(exp_result.get("level_before", 1))
@@ -1642,25 +1698,43 @@ func _run_party_exp_sequence(party, active_index: int, awarded_exp: int, active_
 		if exp_message_hold_sec > 0.0:
 			yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
 			if _is_turn_token_cancelled(active_turn_token):
-				return false
+				return {
+					"ok": false,
+					"party_level_ups": party_level_ups,
+				}
 
 		if level_after > level_before:
+			party_level_ups.append({
+				"slot_index": slot_index,
+				"species_id": species_id.strip_edges().to_upper(),
+				"level_before": level_before,
+				"level_after": level_after,
+			})
 			set_battle_text("%s grew to Lv.%d!" % [species_id, level_after])
 			if exp_message_hold_sec > 0.0:
 				yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
 				if _is_turn_token_cancelled(active_turn_token):
-					return false
+					return {
+						"ok": false,
+						"party_level_ups": party_level_ups,
+					}
 
 		var hide_state = _slide_party_exp_container(false)
 		if hide_state is GDScriptFunctionState:
 			yield(hide_state, "completed")
 		if _is_turn_token_cancelled(active_turn_token):
-			return false
+			return {
+				"ok": false,
+				"party_level_ups": party_level_ups,
+			}
 
 	if party_exp_container != null:
 		party_exp_container.visible = false
 		party_exp_container.rect_position = party_exp_container_hidden_position
-	return true
+	return {
+		"ok": true,
+		"party_level_ups": party_level_ups,
+	}
 
 func _get_battle_biome_state() -> Dictionary:
 	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("biome_state") and typeof(battle_data["biome_state"]) == TYPE_DICTIONARY:
@@ -3292,12 +3366,16 @@ func _award_exp_for_enemy_result(defeated_species_id: String, defeated_level: in
 			"awarded_exp": 0,
 			"level_before": 0,
 			"level_after": 0,
+			"party_level_ups": [],
 		},
 	}
 
 	var phase_runner = battle_phase_runner_script.new()
 	phase_runner.push_phase(exp_resolve_phase_script.new(self, exp_context, active_turn_token))
 	phase_runner.push_phase(exp_apply_phase_script.new(self, exp_context, active_turn_token))
+	phase_runner.push_phase(exp_evolution_phase_script.new(self, exp_context, active_turn_token))
+	phase_runner.push_phase(exp_party_apply_phase_script.new(self, exp_context, active_turn_token))
+	phase_runner.push_phase(exp_party_evolution_phase_script.new(self, exp_context, active_turn_token))
 
 	if phase_runner.is_running():
 		yield(phase_runner, "queue_idle")
@@ -3320,7 +3398,9 @@ func _run_exp_resolve_phase_state(exp_state: Dictionary, active_turn_token: int)
 		exp_value = int(floor(float(exp_value) * 1.5))
 
 	exp_value = int(floor(float(exp_value) * max(0.0, exp_gain_multiplier)))
-	if exp_override_value >= 0:
+	if debug_defeat_exp_override >= 0:
+		exp_value = max(0, debug_defeat_exp_override)
+	elif exp_override_value >= 0:
 		exp_value = max(0, exp_override_value)
 
 	exp_state["awarded_exp"] = max(0, exp_value)
@@ -3366,6 +3446,7 @@ func _run_exp_apply_phase_state(exp_state: Dictionary, active_turn_token: int):
 
 	exp_state["level_before"] = level_before
 	exp_state["level_after"] = level_after
+	exp_state["active_species_id"] = species_id
 
 	set_battle_text("%s gained %d EXP." % [species_id, awarded_exp])
 	var exp_anim_state = _animate_player_exp_gain_bar(member_exp, member_exp_after, level_before, level_after, growth_rate, active_turn_token)
@@ -3391,16 +3472,6 @@ func _run_exp_apply_phase_state(exp_state: Dictionary, active_turn_token: int):
 			exp_state["cancelled"] = true
 			return exp_state
 
-	var party_exp_state = _run_party_exp_sequence(party, active_index, awarded_exp, active_turn_token)
-	if party_exp_state is GDScriptFunctionState:
-		var party_exp_ok = yield(party_exp_state, "completed")
-		if not party_exp_ok:
-			exp_state["cancelled"] = true
-			return exp_state
-	elif not bool(party_exp_state):
-		exp_state["cancelled"] = true
-		return exp_state
-
 	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") and battle_data["player"] != null:
 		var player_data = battle_data["player"]
 		if String(player_data.species_id).strip_edges().to_upper() == species_id:
@@ -3408,6 +3479,195 @@ func _run_exp_apply_phase_state(exp_state: Dictionary, active_turn_token: int):
 			sync_active_party_member_from_battle()
 	_refresh_player_exp_label()
 
+	return exp_state
+
+func _run_exp_party_apply_phase_state(exp_state: Dictionary, active_turn_token: int):
+	if typeof(exp_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var awarded_exp = max(0, int(exp_state.get("awarded_exp", 0)))
+	if awarded_exp <= 0:
+		return exp_state
+
+	if runtime_state_script == null:
+		return exp_state
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return exp_state
+
+	var active_index = int(exp_state.get("party_member_index", -1))
+	if active_index < 0:
+		active_index = party.get_active_slot_index()
+
+	var party_exp_state = _run_party_exp_sequence(party, active_index, awarded_exp, active_turn_token)
+	if party_exp_state is GDScriptFunctionState:
+		party_exp_state = yield(party_exp_state, "completed")
+	if typeof(party_exp_state) != TYPE_DICTIONARY:
+		exp_state["cancelled"] = true
+		return exp_state
+	if not bool(party_exp_state.get("ok", false)):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	exp_state["party_level_ups"] = party_exp_state.get("party_level_ups", [])
+	return exp_state
+
+func _run_exp_evolution_phase_state(exp_state: Dictionary, active_turn_token: int):
+	if typeof(exp_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var level_before = int(exp_state.get("level_before", 0))
+	var level_after = int(exp_state.get("level_after", level_before))
+	if level_after <= level_before:
+		return exp_state
+
+	if runtime_state_script == null:
+		return exp_state
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return exp_state
+
+	var active_index = int(exp_state.get("party_member_index", -1))
+	if active_index < 0:
+		active_index = party.get_active_slot_index()
+	if active_index < 0:
+		return exp_state
+
+	var active_species_id = String(exp_state.get("active_species_id", "")).strip_edges().to_upper()
+	if active_species_id.empty():
+		var active_member = party.get_member_at(active_index)
+		if not active_member.empty():
+			active_species_id = String(active_member.get("species_id", "")).strip_edges().to_upper()
+
+	if active_species_id.empty():
+		return exp_state
+
+	var target_species_id = _resolve_level_up_evolution_target_species_id(active_species_id, level_after)
+	if target_species_id.empty():
+		return exp_state
+
+	var use_overlay_messages = pokemon_evolution_overlay != null
+	if not use_overlay_messages:
+		set_battle_text("What? %s is evolving!" % active_species_id)
+		if exp_message_hold_sec > 0.0:
+			yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			exp_state["cancelled"] = true
+			return exp_state
+
+	var overlay_state = _play_evolution_overlay_sequence(active_species_id, target_species_id, active_turn_token)
+	if overlay_state is GDScriptFunctionState:
+		overlay_state = yield(overlay_state, "completed")
+	if not bool(overlay_state):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var evolution_result = _apply_active_level_up_evolution_if_eligible(party, active_index, level_after)
+	if evolution_result.empty():
+		return exp_state
+
+	var from_species_id = String(evolution_result.get("from_species_id", active_species_id)).strip_edges().to_upper()
+	var to_species_id = String(evolution_result.get("to_species_id", "")).strip_edges().to_upper()
+	if to_species_id.empty():
+		return exp_state
+
+	exp_state["evolved"] = true
+	exp_state["evolved_from_species_id"] = from_species_id
+	exp_state["evolved_to_species_id"] = to_species_id
+	exp_state["active_species_id"] = to_species_id
+
+	if not use_overlay_messages:
+		set_battle_text("%s evolved into %s!" % [from_species_id, to_species_id])
+		if exp_message_hold_sec > 0.0:
+			yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			exp_state["cancelled"] = true
+			return exp_state
+
+	return exp_state
+
+func _run_exp_party_evolution_phase_state(exp_state: Dictionary, active_turn_token: int):
+	if typeof(exp_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var party_level_ups = exp_state.get("party_level_ups", [])
+	if typeof(party_level_ups) != TYPE_ARRAY or party_level_ups.empty():
+		return exp_state
+
+	if runtime_state_script == null:
+		return exp_state
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return exp_state
+
+	for entry in party_level_ups:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if _is_turn_token_cancelled(active_turn_token):
+			exp_state["cancelled"] = true
+			return exp_state
+
+		var slot_index = int(entry.get("slot_index", -1))
+		if slot_index < 0:
+			continue
+		var level_before = int(entry.get("level_before", 1))
+		var level_after = int(entry.get("level_after", level_before))
+		if level_after <= level_before:
+			continue
+
+		var member = party.get_member_at(slot_index)
+		if member.empty():
+			continue
+		var from_species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+		if from_species_id.empty():
+			continue
+		var target_species_id = _resolve_level_up_evolution_target_species_id(from_species_id, level_after)
+		if target_species_id.empty():
+			continue
+
+		var use_overlay_messages = pokemon_evolution_overlay != null
+		if not use_overlay_messages:
+			set_battle_text("What? %s is evolving!" % from_species_id)
+			if exp_message_hold_sec > 0.0:
+				yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				exp_state["cancelled"] = true
+				return exp_state
+
+		var overlay_state = _play_evolution_overlay_sequence(from_species_id, target_species_id, active_turn_token)
+		if overlay_state is GDScriptFunctionState:
+			overlay_state = yield(overlay_state, "completed")
+		if not bool(overlay_state):
+			exp_state["cancelled"] = true
+			return exp_state
+
+		var evolution_result = _apply_party_member_level_up_evolution_if_eligible(party, slot_index, level_after)
+		if evolution_result.empty():
+			continue
+
+		from_species_id = String(evolution_result.get("from_species_id", "")).strip_edges().to_upper()
+		var to_species_id = String(evolution_result.get("to_species_id", "")).strip_edges().to_upper()
+		if from_species_id.empty() or to_species_id.empty():
+			continue
+
+		if not use_overlay_messages:
+			set_battle_text("%s evolved into %s!" % [from_species_id, to_species_id])
+			if exp_message_hold_sec > 0.0:
+				yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				exp_state["cancelled"] = true
+				return exp_state
+
+	exp_state["party_level_ups"] = []
 	return exp_state
 
 func _get_species_entry(species_id: String) -> Dictionary:
@@ -3434,6 +3694,122 @@ func _get_species_growth_rate(species_id: String) -> String:
 		return "MEDIUM_FAST"
 	var growth_rate = String(species_entry.get("growth_rate", "MEDIUM_FAST")).strip_edges().to_upper()
 	return growth_rate if not growth_rate.empty() else "MEDIUM_FAST"
+
+func _resolve_level_up_evolution_target_species_id(species_id: String, level_after: int) -> String:
+	var safe_species_id = species_id.strip_edges().to_upper()
+	if safe_species_id.empty():
+		return ""
+
+	var species_entry = _get_species_entry(safe_species_id)
+	if species_entry.empty():
+		return ""
+
+	var evolution_rules = species_entry.get("evolution_rules", [])
+	if typeof(evolution_rules) != TYPE_ARRAY:
+		return ""
+
+	for raw_rule in evolution_rules:
+		if typeof(raw_rule) != TYPE_DICTIONARY:
+			continue
+
+		var target_species_id = String(raw_rule.get("target_species_id", "")).strip_edges().to_upper()
+		if target_species_id.empty() or target_species_id == safe_species_id:
+			continue
+
+		var min_level = max(1, int(raw_rule.get("min_level", 1)))
+		if level_after < min_level:
+			continue
+
+		if raw_rule.has("item") and not String(raw_rule.get("item", "")).strip_edges().empty():
+			continue
+
+		if raw_rule.has("pre_form_key") and not String(raw_rule.get("pre_form_key", "")).strip_edges().empty():
+			continue
+
+		if raw_rule.has("evo_form_key") and not String(raw_rule.get("evo_form_key", "")).strip_edges().empty():
+			continue
+
+		var conditions = raw_rule.get("conditions", [])
+		if typeof(conditions) != TYPE_ARRAY or not conditions.empty():
+			continue
+
+		return target_species_id
+
+	return ""
+
+func _apply_active_level_up_evolution_if_eligible(party, active_index: int, level_after: int) -> Dictionary:
+	if party == null or active_index < 0:
+		return {}
+
+	var member = party.get_member_at(active_index)
+	if member.empty():
+		return {}
+
+	var from_species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if from_species_id.empty():
+		return {}
+
+	var to_species_id = _resolve_level_up_evolution_target_species_id(from_species_id, level_after)
+	if to_species_id.empty():
+		return {}
+
+	var update_result = party.update_member_at(active_index, {
+		"species_id": to_species_id,
+		"level": level_after,
+	})
+	if typeof(update_result) == TYPE_DICTIONARY and not bool(update_result.get("ok", false)):
+		return {}
+
+	var updated_member = party.get_member_at(active_index)
+	if updated_member.empty():
+		return {}
+
+	var evolved_player_data = _build_player_data_from_party_member(updated_member)
+	if evolved_player_data != null and typeof(battle_data) == TYPE_DICTIONARY:
+		battle_data["player"] = evolved_player_data
+		selected_player_species_id = to_species_id
+
+	if runtime_state_script != null:
+		runtime_state_script.add_caught_species(get_tree(), to_species_id)
+
+	bind_battle_data()
+	load_battle_sprites()
+
+	return {
+		"from_species_id": from_species_id,
+		"to_species_id": to_species_id,
+	}
+
+func _apply_party_member_level_up_evolution_if_eligible(party, slot_index: int, level_after: int) -> Dictionary:
+	if party == null or slot_index < 0:
+		return {}
+
+	var member = party.get_member_at(slot_index)
+	if member.empty():
+		return {}
+
+	var from_species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if from_species_id.empty():
+		return {}
+
+	var to_species_id = _resolve_level_up_evolution_target_species_id(from_species_id, level_after)
+	if to_species_id.empty():
+		return {}
+
+	var update_result = party.update_member_at(slot_index, {
+		"species_id": to_species_id,
+		"level": level_after,
+	})
+	if typeof(update_result) == TYPE_DICTIONARY and not bool(update_result.get("ok", false)):
+		return {}
+
+	if runtime_state_script != null:
+		runtime_state_script.add_caught_species(get_tree(), to_species_id)
+
+	return {
+		"from_species_id": from_species_id,
+		"to_species_id": to_species_id,
+	}
 
 func _get_level_total_exp(level: int, growth_rate: String) -> int:
 	var safe_level = max(1, level)
@@ -4408,18 +4784,19 @@ func reset_battle_state(message: String):
 			runtime_state_script.add_caught_species(get_tree(), selected_player_species_id)
 
 	var active_party_member := {}
+	var runtime_party = null
 	if runtime_state_script != null:
-		var party = runtime_state_script.get_party(get_tree())
-		if party != null and not handoff_species_id.empty() and party.is_empty():
-			party.add_member({
+		runtime_party = runtime_state_script.get_party(get_tree())
+		if runtime_party != null and not handoff_species_id.empty() and runtime_party.is_empty():
+			runtime_party.add_member({
 				"species_id": handoff_species_id,
 				"level": 5,
 				"current_hp": -1,
 				"move_ids": [],
 			})
-			party.set_active_slot(0)
-		if party != null:
-			active_party_member = party.get_active_member()
+			runtime_party.set_active_slot(0)
+		if runtime_party != null:
+			active_party_member = runtime_party.get_active_member()
 
 	if active_party_member.empty() and not selected_player_species_id.empty():
 		active_party_member = {
@@ -4428,6 +4805,16 @@ func reset_battle_state(message: String):
 			"current_hp": -1,
 			"move_ids": [],
 		}
+
+	if not active_party_member.empty():
+		var resolved_level = _resolve_debug_player_level(int(active_party_member.get("level", 5)))
+		active_party_member["level"] = resolved_level
+		if runtime_party != null:
+			var active_slot_index = runtime_party.get_active_slot_index()
+			if active_slot_index >= 0:
+				runtime_party.update_member_at(active_slot_index, {
+					"level": resolved_level,
+				})
 
 	if runtime_state_script != null and not active_party_member.empty():
 		var active_species_id = String(active_party_member.get("species_id", "")).strip_edges().to_upper()
@@ -4543,7 +4930,7 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 
 	if catalog_loader != null and catalog_loader.load_catalogs():
 		if typeof(player_party_member) == TYPE_DICTIONARY and not player_party_member.empty():
-			var player_level = max(1, int(player_party_member.get("level", 5)))
+			var player_level = _resolve_debug_player_level(int(player_party_member.get("level", 5)))
 			var player_move_ids = player_party_member.get("move_ids", [])
 			if typeof(player_move_ids) != TYPE_ARRAY:
 				player_move_ids = []
@@ -4555,9 +4942,19 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 				"enemy": enemy_data,
 			}
 
-		return catalog_loader.build_battle_seed(player_species_id, enemy_species_id)
+		var player_data_default = catalog_loader.build_pokemon_data(player_species_id, _resolve_debug_player_level(5))
+		var enemy_data_default = catalog_loader.build_pokemon_data(enemy_species_id, 5)
+		return {
+			"player": player_data_default,
+			"enemy": enemy_data_default,
+		}
 
 	return pokemon_data_script.create_battle_02_test_data(player_species_id)
+
+func _resolve_debug_player_level(base_level: int) -> int:
+	if debug_player_level_override > 0:
+		return int(max(1, debug_player_level_override))
+	return int(max(1, base_level))
 
 func _ensure_runtime_biome_state() -> Dictionary:
 	if runtime_state_script == null:
