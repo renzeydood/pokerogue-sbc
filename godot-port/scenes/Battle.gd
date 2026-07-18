@@ -14,6 +14,8 @@ export(float) var faint_step_sec := 0.05
 export(float) var faint_drop_px := 20.0
 export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
+export(float) var run_return_delay_sec := 0.6
+export(float) var run_escape_fade_duration_sec := 0.28
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
 export(float) var enemy_panel_slide_distance_px := 180.0
@@ -211,6 +213,8 @@ var turn_player_move_phase_script = load("res://logic/phases/TurnPlayerMovePhase
 var turn_enemy_move_phase_script = load("res://logic/phases/TurnEnemyMovePhase.gd")
 var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolvePhase.gd")
 var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
+var run_resolve_phase_script = load("res://logic/phases/RunResolvePhase.gd")
+var run_finalize_phase_script = load("res://logic/phases/RunFinalizePhase.gd")
 var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
 var capture_sequence_phase_script = load("res://logic/phases/CaptureSequencePhase.gd")
 var capture_post_encounter_phase_script = load("res://logic/phases/CapturePostEncounterPhase.gd")
@@ -2633,14 +2637,162 @@ func _on_PokemonButton_pressed():
 	open_party_menu()
 
 func _on_RunButton_pressed():
-	if turn_in_progress:
+	if battle_ended or turn_in_progress or capture_in_progress:
 		return
 
-	battle_fx_enabled = not battle_fx_enabled
-	reset_pokemon_animation_state()
-	update_run_button_label()
-	var state_text = "ON" if battle_fx_enabled else "OFF"
-	set_battle_text("Battle FX toggled %s." % state_text)
+	attempt_run_from_battle()
+
+func attempt_run_from_battle() -> void:
+	if battle_ended or turn_in_progress or capture_in_progress:
+		return
+
+	turn_in_progress = true
+	var active_turn_token = turn_token
+
+	var run_context := {
+		"aborted": false,
+		"run_state": {
+			"active_turn_token": active_turn_token,
+			"cancelled": false,
+			"run_allowed": false,
+			"run_success": false,
+			"blocked_reason": "",
+		},
+	}
+
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(run_resolve_phase_script.new(self, run_context, active_turn_token))
+	phase_runner.push_phase(run_finalize_phase_script.new(self, run_context, active_turn_token))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+
+	if active_turn_token != turn_token:
+		turn_in_progress = false
+		return
+
+	var run_state = run_context.get("run_state", {})
+	if typeof(run_state) != TYPE_DICTIONARY:
+		_finish_turn()
+		return
+
+	if bool(run_state.get("run_success", false)):
+		turn_in_progress = false
+		return
+
+	_finish_turn()
+
+func _run_run_resolve_phase_state(run_state: Dictionary, _active_turn_token: int) -> Dictionary:
+	if typeof(run_state) != TYPE_DICTIONARY:
+		return {}
+
+	_enter_action_locked_state()
+
+	if _is_active_trainer_encounter():
+		run_state["run_allowed"] = false
+		run_state["blocked_reason"] = "trainer"
+		return run_state
+
+	run_state["run_allowed"] = true
+	run_state["blocked_reason"] = ""
+	return run_state
+
+func _run_run_finalize_phase_state(run_state: Dictionary, active_turn_token: int):
+	if typeof(run_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		run_state["cancelled"] = true
+		return run_state
+
+	if not bool(run_state.get("run_allowed", false)):
+		set_battle_text("You cannot run from a trainer battle.")
+		return run_state
+
+	run_state["run_success"] = true
+	set_battle_text("Got away safely!")
+	var timer = get_tree().create_timer(max(0.0, run_return_delay_sec))
+	yield(timer, "timeout")
+	if _is_turn_token_cancelled(active_turn_token):
+		run_state["cancelled"] = true
+		return run_state
+
+	var fade_out = _play_run_escape_fade_out(active_turn_token)
+	if fade_out is GDScriptFunctionState:
+		yield(fade_out, "completed")
+	if _is_turn_token_cancelled(active_turn_token):
+		run_state["cancelled"] = true
+		return run_state
+
+	battle_ended = false
+	capture_in_progress = false
+
+	var escaped_species_id = ""
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("enemy") and battle_data["enemy"] != null:
+		escaped_species_id = String(battle_data["enemy"].species_id).strip_edges().to_upper()
+	if escaped_species_id.empty():
+		escaped_species_id = "UNKNOWN"
+
+	var next_transition = advance_to_next_enemy(escaped_species_id, active_turn_token, false)
+	if next_transition is GDScriptFunctionState:
+		yield(next_transition, "completed")
+
+	_reset_run_escape_fade_visuals()
+	if not battle_ended:
+		_show_main_controls_unlocked()
+
+	return run_state
+
+func _play_run_escape_fade_out(active_turn_token: int):
+	var nodes := _get_run_escape_fade_nodes()
+	if nodes.empty():
+		return null
+
+	var duration = max(0.01, run_escape_fade_duration_sec)
+	var fade_tween = Tween.new()
+	add_child(fade_tween)
+
+	for node in nodes:
+		if node == null or not is_instance_valid(node):
+			continue
+		fade_tween.interpolate_property(
+			node,
+			"modulate:a",
+			node.modulate.a,
+			0.0,
+			duration,
+			Tween.TRANS_SINE,
+			Tween.EASE_IN_OUT
+		)
+
+	fade_tween.start()
+	yield(fade_tween, "tween_all_completed")
+	fade_tween.queue_free()
+
+	if _is_turn_token_cancelled(active_turn_token):
+		return null
+
+	return null
+
+func _get_run_escape_fade_nodes() -> Array:
+	var nodes := []
+	for arena_node in [enemy_arena_sprite, enemy_arena_sprite_1, enemy_arena_sprite_2, enemy_arena_sprite_3]:
+		if arena_node == null or not is_instance_valid(arena_node):
+			continue
+		nodes.append(arena_node)
+
+	for extra in [enemy_pokemon_sprite]:
+		if extra == null or not is_instance_valid(extra):
+			continue
+		if not nodes.has(extra):
+			nodes.append(extra)
+	return nodes
+
+func _reset_run_escape_fade_visuals() -> void:
+	for node in _get_run_escape_fade_nodes():
+		if node == null or not is_instance_valid(node):
+			continue
+		var color = node.modulate
+		node.modulate = Color(color.r, color.g, color.b, 1.0)
 
 # Capture flow and ball handling.
 func attempt_capture_with_ball(ball_key: String) -> void:
@@ -4496,7 +4648,7 @@ func update_run_button_label():
 		return
 
 	# Keep this short so the fixed two-column controls window does not resize at runtime.
-	run_button.text = "FX ON" if battle_fx_enabled else "FX OFF"
+	run_button.text = "Run"
 
 # Command menu visibility and panel layout.
 func show_attack_menu():
