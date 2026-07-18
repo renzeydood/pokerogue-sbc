@@ -25,6 +25,7 @@ onready var ui_scale_root = $Panel/UiScaleRoot
 onready var current_pokemon_sprite = $Panel/UiScaleRoot/CurrentPokemonSprite
 onready var details_type1_sprite = $Panel/UiScaleRoot/DetailsType1Sprite
 onready var details_type2_sprite = $Panel/UiScaleRoot/DetailsType2Sprite
+onready var growth_rate_label = get_node_or_null("Panel/UiScaleRoot/GrowthRateLabel")
 onready var species_label = get_node_or_null("Panel/UiScaleRoot/SpeciesLabel")
 onready var status_label = get_node_or_null("Panel/UiScaleRoot/StatusLabel")
 onready var body_label = get_node_or_null("Panel/UiScaleRoot/EntryWindow/EntryMargin/BodyLabel")
@@ -149,6 +150,30 @@ func _refresh_entry_text() -> void:
 	status_label.text = "Status: Caught" if current_is_caught else "Status: Not Caught"
 	if body_label != null:
 		body_label.text = "Pokedex overlays for %s are wired. Select Base Stats to continue." % display_species
+	_refresh_growth_rate_text()
+
+func _refresh_growth_rate_text() -> void:
+	if growth_rate_label == null:
+		return
+
+	var growth_rate_text = "----------"
+	if current_is_caught:
+		var species_entry = _get_species_entry(current_species_id)
+		if not species_entry.empty():
+			var raw_growth_rate = String(species_entry.get("growth_rate", "")).strip_edges().to_upper()
+			if not raw_growth_rate.empty():
+				growth_rate_text = _format_growth_rate(raw_growth_rate)
+
+	growth_rate_label.text = "Growth Rate: %s" % growth_rate_text
+
+func _format_growth_rate(raw_growth_rate: String) -> String:
+	var words = raw_growth_rate.split("_", false)
+	for i in range(words.size()):
+		var word = String(words[i]).strip_edges().to_lower()
+		if word.empty():
+			continue
+		words[i] = word.substr(0, 1).to_upper() + word.substr(1)
+	return " ".join(words)
 
 func _refresh_entry_view() -> void:
 	_refresh_entry_text()

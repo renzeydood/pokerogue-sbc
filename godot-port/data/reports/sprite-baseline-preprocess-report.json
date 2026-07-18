@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "inspected_files": 1,
+  "changed_files": 1,
+  "default_margin": 0,
+  "disable_gen9_batch": true,
+  "disable_overrides": false,
+  "overrides_config": "E:\\pokerogue-sbc\\tools\\sprite-offset-overrides.json",
+  "changes": [
+    {
+      "file": "godot-port/godot-minimal-assets/assets/images/pokemon/662.json",
+      "rule": {
+        "mode": "shift_y",
+        "allow_crop": true,
+        "delta_y": 5
+      },
+      "frame_changes": [
+        {
+          "mode": "shift_y",
+          "old_y": -15,
+          "new_y": -10,
+          "delta_y": 5,
+          "source_h": 59,
+          "frame_h": 59
+        }
+      ],
+      "effective_delta_y": 5
+    }
+  ]
+}

@@ -79,6 +79,7 @@ var starter_list = null
 var current_pokemon_sprite = null
 var pokemon_number_label = null
 var pokemon_label = null
+var growth_rate_label = null
 var details_type1_sprite = null
 var details_type2_sprite = null
 var start_button = null
@@ -160,6 +161,11 @@ func _ready():
 		"UiScaleRoot/MenuRoot/MenuCard/PokemonLabel",
 		"UiScaleRoot/MenuRoot@MenuCard@PokemonLabel",
 		"MenuRoot@MenuCard@PokemonLabel",
+	])
+	growth_rate_label = _resolve_first_existing([
+		"UiScaleRoot/MenuRoot/MenuCard/GrowthRateLabel",
+		"UiScaleRoot/MenuRoot@MenuCard@GrowthRateLabel",
+		"MenuRoot@MenuCard@GrowthRateLabel",
 	])
 	details_type1_sprite = _resolve_first_existing([
 		"UiScaleRoot/MenuRoot/MenuCard/DetailsType1Sprite",
@@ -275,6 +281,7 @@ func _ready():
 		_set_status_text("Species catalog not found yet. Generate the catalog to populate this menu.")
 		pokemon_number_label.text = "000"
 		pokemon_label.text = "Pokemon"
+		_refresh_growth_rate_label("")
 		current_pokemon_sprite.texture = null
 		preview_sprite_frames.clear()
 		preview_anim_index = 0
@@ -302,6 +309,7 @@ func _apply_editor_preview_state() -> void:
 	pokemon_label.text = editor_preview_species_name.strip_edges()
 	if pokemon_label.text.empty():
 		pokemon_label.text = "Pokemon"
+	_refresh_growth_rate_label("")
 
 	configure_type_sprite(details_type1_sprite)
 	configure_type_sprite(details_type2_sprite)
@@ -1035,12 +1043,31 @@ func _select_species_entry(species_entry, reveal_action_window: bool = true):
 
 	pokemon_number_label.text = "%03d" % pokedex_number
 	pokemon_label.text = species_name
+	_refresh_growth_rate_label(String(species_entry.get("growth_rate", "")))
 	load_preview_sprite(pokedex_number)
 	refresh_type_badges(types)
 	start_button.disabled = selected_team_species_ids.empty()
 	_refresh_action_window_mode()
 	_set_action_window_visible(reveal_action_window)
 	_set_status_text("Selected %s. Choose an action." % species_name if reveal_action_window else "Selected %s." % species_name)
+
+func _refresh_growth_rate_label(raw_growth_rate: String) -> void:
+	if growth_rate_label == null:
+		return
+	var growth_rate_value = raw_growth_rate.strip_edges().to_upper()
+	if growth_rate_value.empty():
+		growth_rate_label.text = "Growth Rate: --"
+		return
+	growth_rate_label.text = "Growth Rate: %s" % _format_growth_rate(growth_rate_value)
+
+func _format_growth_rate(raw_growth_rate: String) -> String:
+	var words = raw_growth_rate.split("_", false)
+	for i in range(words.size()):
+		var word = String(words[i]).strip_edges().to_lower()
+		if word.empty():
+			continue
+		words[i] = word.substr(0, 1).to_upper() + word.substr(1)
+	return " ".join(words)
 
 func _on_AddPartyButton_pressed() -> void:
 	if selected_species_entry == null:

@@ -16,6 +16,18 @@ export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var run_return_delay_sec := 0.6
 export(float) var run_escape_fade_duration_sec := 0.28
+export(int) var max_exp_level := 100
+export(float) var exp_gain_multiplier := 1.0
+export(int) var exp_override_value := -1
+export(float) var exp_message_hold_sec := 1.05
+export(bool) var exp_growth_debug_line_enabled := true
+export(float) var exp_bar_anim_duration_sec := 0.45
+export(float) var exp_bar_level_up_pause_sec := 0.08
+export(float) var party_exp_slide_duration_sec := 0.28
+export(float) var party_exp_card_hold_sec := 0.45
+export(bool) var debug_ohko_enabled := false
+export(int, 1, 4) var debug_ohko_move_slot := 1
+export(int) var debug_ohko_damage := 9999
 export(float) var enemy_switch_slide_distance_px := 220.0
 export(float) var enemy_switch_slide_duration_sec := 0.55
 export(float) var enemy_panel_slide_distance_px := 180.0
@@ -122,6 +134,10 @@ const ENCOUNTER_TYPE_WILD := "wild"
 const ENCOUNTER_TYPE_TRAINER := "trainer"
 const ATTACK_TYPE_TEXTURE_REL := "assets/images/types.png"
 const ATTACK_TYPE_ATLAS_REL := "assets/images/types.json"
+const ICON_TEXTURE_TEMPLATE := "res://godot-minimal-assets/assets/images/pokemon_icons_%d.png"
+const ICON_ATLAS_TEMPLATE := "res://godot-minimal-assets/assets/images/pokemon_icons_%d.json"
+const ICON_FALLBACK_ATLAS_INDEX := 0
+const ICON_DEFAULT_FRAME := "unknown"
 const OWNED_ICON_TEXTURE_REL := "assets/images/ui/icon_owned.png"
 const ATTACK_CATEGORY_TEXTURE_REL := "assets/images/categories.png"
 const ATTACK_CATEGORY_ATLAS_REL := "assets/images/categories.json"
@@ -213,6 +229,8 @@ var turn_player_move_phase_script = load("res://logic/phases/TurnPlayerMovePhase
 var turn_enemy_move_phase_script = load("res://logic/phases/TurnEnemyMovePhase.gd")
 var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolvePhase.gd")
 var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
+var exp_resolve_phase_script = load("res://logic/phases/ExpResolvePhase.gd")
+var exp_apply_phase_script = load("res://logic/phases/ExpApplyPhase.gd")
 var run_resolve_phase_script = load("res://logic/phases/RunResolvePhase.gd")
 var run_finalize_phase_script = load("res://logic/phases/RunFinalizePhase.gd")
 var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
@@ -278,6 +296,17 @@ onready var enemy_trainer_sprite = enemy_layer.get_node_or_null("EnemyTrainerSpr
 onready var effects_layer = battlefield_layer.get_node_or_null("EffectsLayer") if battlefield_layer != null else null
 onready var player_name_label = player_panel.get_node_or_null("PlayerNameLabel") if player_panel != null else null
 onready var player_level_label = player_panel.get_node_or_null("PlayerLevelLabel") if player_panel != null else null
+onready var player_exp_value_label = player_panel.get_node_or_null("PlayerExpValueLabel") if player_panel != null else null
+onready var player_exp_bar = player_panel.get_node_or_null("PlayerExpBar") if player_panel != null else null
+onready var party_exp_container = ui_layer.get_node_or_null("PartyExpContainer") if ui_layer != null else null
+onready var party_exp_bar_sprite = party_exp_container.get_node_or_null("PartyExpBarSprite") if party_exp_container != null else null
+onready var party_exp_icon_sprite = party_exp_container.get_node_or_null("PokemonIconSprite") if party_exp_container != null else null
+onready var party_exp_label = _resolve_first_existing([
+	"UiScaleRoot/UILayer/PartyExpContainer/PartyExpLabel",
+	"UiScaleRoot/UILayer/PartyExpContainer/PartyExpLabelLabel",
+	"UILayer/PartyExpContainer/PartyExpLabel",
+	"UILayer/PartyExpContainer/PartyExpLabelLabel",
+])
 onready var player_hp_bar = player_panel.get_node_or_null("PlayerHpBar") if player_panel != null else null
 onready var player_hp_value_label = player_panel.get_node_or_null("PlayerHpValueLabel") if player_panel != null else null
 onready var player_type1_sprite = player_panel.get_node_or_null("PlayerType1Sprite") if player_panel != null else null
@@ -450,6 +479,13 @@ var debug_player_sprite_cycle_completed := false
 var debug_enemy_baseline_overlay: ColorRect = null
 var debug_enemy_sprite_bounds_log_elapsed := 0.0
 var debug_enemy_sprite_bounds_last_capture_msec := -1
+var party_exp_container_shown_position := Vector2.ZERO
+var party_exp_container_hidden_position := Vector2.ZERO
+var party_exp_container_right_anchor_x := 0.0
+var party_exp_container_base_width := 0.0
+var party_exp_container_base_height := 0.0
+var party_exp_label_base_height := 0.0
+var party_exp_icon_base_y := 0.0
 
 # Lifecycle and diagnostics.
 func _ready():
@@ -484,6 +520,7 @@ func _ready():
 	load_audio_assets()
 	setup_type_sprite_placeholders()
 	setup_attack_detail_sprites()
+	_setup_party_exp_container()
 	setup_party_menu_overlay()
 	setup_pokedex_overlay()
 	reset_battle_state("Battle ready.")
@@ -508,6 +545,26 @@ func _open_party_menu_on_ready():
 	if turn_in_progress or battle_ended:
 		return
 	open_party_menu()
+
+func _setup_party_exp_container() -> void:
+	if party_exp_container == null:
+		return
+	party_exp_container_shown_position = party_exp_container.rect_position
+	party_exp_container_base_width = max(1.0, max(party_exp_container.rect_size.x, party_exp_container.rect_min_size.x))
+	if party_exp_container_base_width <= 1.0:
+		party_exp_container_base_width = max(1.0, party_exp_container.get_combined_minimum_size().x)
+	party_exp_container_base_height = max(1.0, max(party_exp_container.rect_size.y, party_exp_container.rect_min_size.y))
+	if party_exp_container_base_height <= 1.0:
+		party_exp_container_base_height = max(1.0, party_exp_container.get_combined_minimum_size().y)
+	party_exp_container_right_anchor_x = party_exp_container_shown_position.x + party_exp_container_base_width
+	if party_exp_label != null:
+		party_exp_label.align = Label.ALIGN_RIGHT
+		party_exp_label_base_height = max(1.0, party_exp_label.rect_size.y)
+	if party_exp_icon_sprite != null:
+		party_exp_icon_base_y = party_exp_icon_sprite.position.y
+	party_exp_container_hidden_position = Vector2(party_exp_container_right_anchor_x + 8.0, party_exp_container_shown_position.y)
+	party_exp_container.rect_position = party_exp_container_hidden_position
+	party_exp_container.visible = false
 
 func log_debug(message: String):
 	print("[Battle] %s" % message)
@@ -1184,6 +1241,7 @@ func bind_battle_data():
 	_refresh_enemy_caught_badge(String(enemy_data.species_id))
 	player_name_label.text = player_data.species_id
 	player_level_label.text = "Lv. %d" % player_data.level
+	_refresh_player_exp_label()
 
 	refresh_hp_ui(enemy_data, enemy_hp_bar, enemy_hp_value_label)
 	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
@@ -1211,6 +1269,398 @@ func _refresh_current_arena_label() -> void:
 		arena_name = "grass"
 	var current_level = max(1, int(biome_state.get("encounter_index", 0)) + 1)
 	current_arena_label.text = "%s - %02d" % [arena_name, current_level]
+
+func _refresh_player_exp_label() -> void:
+	if player_exp_value_label == null:
+		if player_exp_bar != null:
+			player_exp_bar.visible = false
+		return
+	if runtime_state_script == null:
+		player_exp_value_label.text = "-- / --"
+		if player_exp_bar != null:
+			player_exp_bar.visible = false
+		return
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		player_exp_value_label.text = "-- / --"
+		if player_exp_bar != null:
+			player_exp_bar.visible = false
+		return
+
+	var active_index = party.get_active_slot_index()
+	if active_index < 0:
+		player_exp_value_label.text = "-- / --"
+		if player_exp_bar != null:
+			player_exp_bar.visible = false
+		return
+
+	var member = party.get_member_at(active_index)
+	if member.empty():
+		player_exp_value_label.text = "-- / --"
+		if player_exp_bar != null:
+			player_exp_bar.visible = false
+		return
+
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	var growth_rate = _get_species_growth_rate(species_id)
+	var level = max(1, int(member.get("level", 1)))
+	if level >= max_exp_level:
+		player_exp_value_label.text = "MAX"
+		if exp_growth_debug_line_enabled:
+			player_exp_value_label.text = "%s\nGR: %s" % [player_exp_value_label.text, growth_rate]
+		_update_player_exp_bar_fill(1.0)
+		return
+
+	var member_exp = int(member.get("exp", -1))
+	if member_exp < 0:
+		member_exp = _get_level_total_exp(level, growth_rate)
+
+	var level_floor_exp = _get_level_total_exp(level, growth_rate)
+	var next_level_exp = _get_level_total_exp(level + 1, growth_rate)
+	var rel_exp = max(0, member_exp - level_floor_exp)
+	var need_exp = max(1, next_level_exp - level_floor_exp)
+	rel_exp = int(clamp(rel_exp, 0, need_exp))
+	var exp_fill_ratio = float(rel_exp) / float(need_exp)
+	player_exp_value_label.text = "%d / %d" % [rel_exp, need_exp]
+	if exp_growth_debug_line_enabled:
+		player_exp_value_label.text = "%s\nGR: %s" % [player_exp_value_label.text, growth_rate]
+	_update_player_exp_bar_fill(exp_fill_ratio)
+
+func _update_player_exp_bar_fill(fill_ratio: float) -> void:
+	if player_exp_bar == null:
+		return
+
+	var safe_fill = clamp(fill_ratio, 0.0, 1.0)
+	var crop_ratio = 1.0 - safe_fill
+	if not player_exp_bar.has_meta("exp_bar_full_region"):
+		var initial_rect = player_exp_bar.region_rect
+		if initial_rect.size.x <= 0.0 or initial_rect.size.y <= 0.0:
+			initial_rect = Rect2(0, 0, 48, 2)
+		player_exp_bar.set_meta("exp_bar_full_region", initial_rect)
+	var full_rect = player_exp_bar.get_meta("exp_bar_full_region")
+
+	var full_width = max(1.0, full_rect.size.x)
+	var visible_width = full_width * (1.0 - crop_ratio)
+	var next_rect = full_rect
+	next_rect.size.x = max(0.0, visible_width)
+	player_exp_bar.region_rect = next_rect
+	player_exp_bar.visible = next_rect.size.x > 0.0
+
+func _animate_player_exp_bar_fill(from_ratio: float, to_ratio: float, duration_sec: float, active_turn_token: int):
+	if player_exp_bar == null:
+		return true
+	if duration_sec <= 0.0:
+		_update_player_exp_bar_fill(to_ratio)
+		return true
+
+	var start_ratio = clamp(from_ratio, 0.0, 1.0)
+	var target_ratio = clamp(to_ratio, 0.0, 1.0)
+	var elapsed := 0.0
+	var step_sec := 0.016
+	while elapsed < duration_sec:
+		if _is_turn_token_cancelled(active_turn_token):
+			return false
+		var t = clamp(elapsed / duration_sec, 0.0, 1.0)
+		var eased = t * t * (3.0 - 2.0 * t)
+		_update_player_exp_bar_fill(lerp(start_ratio, target_ratio, eased))
+		yield(get_tree().create_timer(step_sec), "timeout")
+		elapsed += step_sec
+
+	_update_player_exp_bar_fill(target_ratio)
+	return true
+
+func _animate_player_exp_gain_bar(member_exp_before: int, member_exp_after: int, level_before: int, level_after: int, growth_rate: String, active_turn_token: int):
+	if player_exp_bar == null:
+		return true
+	if level_before >= max_exp_level:
+		_update_player_exp_bar_fill(1.0)
+		return true
+
+	var safe_before = max(0, member_exp_before)
+	var safe_after = max(0, member_exp_after)
+	var safe_level_before = max(1, level_before)
+	var safe_level_after = max(safe_level_before, level_after)
+
+	for level in range(safe_level_before, safe_level_after + 1):
+		if _is_turn_token_cancelled(active_turn_token):
+			return false
+		if level >= max_exp_level:
+			_update_player_exp_bar_fill(1.0)
+			return true
+
+		var level_floor_exp = _get_level_total_exp(level, growth_rate)
+		var next_level_exp = _get_level_total_exp(level + 1, growth_rate)
+		var need_exp = max(1, next_level_exp - level_floor_exp)
+
+		var segment_start_exp = safe_before
+		var segment_end_exp = safe_after
+		if level > safe_level_before:
+			segment_start_exp = level_floor_exp
+		if level < safe_level_after:
+			segment_end_exp = next_level_exp
+
+		var start_fill = float(clamp(segment_start_exp - level_floor_exp, 0, need_exp)) / float(need_exp)
+		var end_fill = float(clamp(segment_end_exp - level_floor_exp, 0, need_exp)) / float(need_exp)
+
+		var segment_duration = max(0.0, exp_bar_anim_duration_sec * max(0.1, abs(end_fill - start_fill)))
+		var anim_state = _animate_player_exp_bar_fill(start_fill, end_fill, segment_duration, active_turn_token)
+		var completed = true
+		if anim_state is GDScriptFunctionState:
+			completed = yield(anim_state, "completed")
+		else:
+			completed = bool(anim_state)
+		if not completed:
+			return false
+
+		if level < safe_level_after and player_level_label != null:
+			player_level_label.text = "Lv. %d" % (level + 1)
+
+		if level < safe_level_after:
+			if exp_bar_level_up_pause_sec > 0.0:
+				yield(get_tree().create_timer(exp_bar_level_up_pause_sec), "timeout")
+				if _is_turn_token_cancelled(active_turn_token):
+					return false
+			_update_player_exp_bar_fill(0.0)
+
+	return true
+
+func _apply_exp_to_party_member(party, slot_index: int, awarded_exp: int) -> Dictionary:
+	if party == null or slot_index < 0:
+		return {}
+	var member = party.get_member_at(slot_index)
+	if member.empty():
+		return {}
+
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if species_id.empty():
+		return {}
+
+	var growth_rate = _get_species_growth_rate(species_id)
+	var level_before = max(1, int(member.get("level", 1)))
+	var member_exp_before = int(member.get("exp", -1))
+	if member_exp_before < 0:
+		member_exp_before = _get_level_total_exp(level_before, growth_rate)
+
+	var member_exp_after = member_exp_before + max(0, awarded_exp)
+	var level_after = level_before
+	while level_after < max_exp_level and member_exp_after >= _get_level_total_exp(level_after + 1, growth_rate):
+		level_after += 1
+
+	var update_result = party.update_member_at(slot_index, {
+		"exp": member_exp_after,
+		"level": level_after,
+	})
+	if typeof(update_result) == TYPE_DICTIONARY and not bool(update_result.get("ok", false)):
+		return {}
+
+	return {
+		"slot_index": slot_index,
+		"species_id": species_id,
+		"growth_rate": growth_rate,
+		"level_before": level_before,
+		"level_after": level_after,
+		"member_exp_before": member_exp_before,
+		"member_exp_after": member_exp_after,
+	}
+
+func _set_party_exp_icon_for_species(species_id: String) -> void:
+	if party_exp_icon_sprite == null:
+		return
+	party_exp_icon_sprite.texture = null
+	party_exp_icon_sprite.visible = false
+
+	var species_entry = _get_species_entry(species_id)
+	var dex_num = int(species_entry.get("pokedex_number", -1))
+	var source = species_entry.get("source", {})
+	var generation = 1
+	if typeof(source) == TYPE_DICTIONARY:
+		generation = int(source.get("generation", 1))
+	if generation <= 0:
+		generation = 1
+
+	var icon_payload = _build_icon_atlas_payload(generation, str(dex_num)) if dex_num > 0 else {}
+	if icon_payload.empty() and dex_num > 0:
+		for atlas_index in range(1, 10):
+			if atlas_index == generation:
+				continue
+			icon_payload = _build_icon_atlas_payload(atlas_index, str(dex_num))
+			if not icon_payload.empty():
+				break
+	if icon_payload.empty():
+		icon_payload = _build_icon_atlas_payload(ICON_FALLBACK_ATLAS_INDEX, ICON_DEFAULT_FRAME)
+	if icon_payload.empty():
+		return
+
+	party_exp_icon_sprite.texture = icon_payload.get("texture", null)
+	party_exp_icon_sprite.region_enabled = false
+	party_exp_icon_sprite.centered = false
+	party_exp_icon_sprite.modulate = Color(1, 1, 1, 1)
+	party_exp_icon_sprite.visible = party_exp_icon_sprite.texture != null
+
+func _build_icon_atlas_payload(atlas_index: int, frame_name: String) -> Dictionary:
+	var texture_path = ICON_TEXTURE_TEMPLATE % atlas_index
+	if not resource_exists(texture_path):
+		return {}
+	var atlas_path = ICON_ATLAS_TEMPLATE % atlas_index
+	var frame_data = parse_sprite_frame(atlas_path, frame_name)
+	if frame_data == null:
+		return {}
+	var atlas_texture = AtlasTexture.new()
+	atlas_texture.atlas = load(texture_path)
+	var frame = frame_data["frame"]
+	atlas_texture.region = Rect2(frame["x"], frame["y"], frame["w"], frame["h"])
+	return {
+		"texture": atlas_texture,
+	}
+
+func _layout_party_exp_card(exp_text: String) -> void:
+	if party_exp_container == null:
+		return
+
+	if party_exp_label != null:
+		party_exp_label.text = exp_text
+		party_exp_label.align = Label.ALIGN_RIGHT
+
+	var icon_width = 16.0
+	if party_exp_icon_sprite != null and party_exp_icon_sprite.texture != null:
+		if party_exp_icon_sprite.texture is AtlasTexture:
+			icon_width = max(8.0, float((party_exp_icon_sprite.texture as AtlasTexture).region.size.x) * abs(party_exp_icon_sprite.scale.x))
+		else:
+			icon_width = max(8.0, float(party_exp_icon_sprite.texture.get_size().x) * abs(party_exp_icon_sprite.scale.x))
+
+	var text_width = 24.0
+	if party_exp_label != null:
+		text_width = max(24.0, party_exp_label.get_minimum_size().x)
+
+	var left_pad = 6.0
+	var right_pad = 6.0
+	var icon_text_gap = 8.0
+	var desired_width = max(
+		party_exp_container_base_width,
+		left_pad + icon_width + icon_text_gap + text_width + right_pad
+	)
+
+	party_exp_container.rect_size = Vector2(desired_width, party_exp_container_base_height)
+	party_exp_container.rect_min_size = Vector2(desired_width, party_exp_container_base_height)
+	party_exp_container_shown_position = Vector2(party_exp_container_right_anchor_x - desired_width, party_exp_container_shown_position.y)
+	party_exp_container_hidden_position = Vector2(party_exp_container_right_anchor_x + 8.0, party_exp_container_shown_position.y)
+
+	if party_exp_bar_sprite != null:
+		var texture_w = float(party_exp_bar_sprite.texture.get_size().x) if party_exp_bar_sprite.texture != null else 1.0
+		texture_w = max(1.0, texture_w)
+		party_exp_bar_sprite.position.x = desired_width * 0.5
+		party_exp_bar_sprite.scale.x = desired_width / texture_w
+
+	if party_exp_icon_sprite != null:
+		var label_w_for_icon = max(24.0, text_width)
+		var label_left_for_icon = desired_width - right_pad - label_w_for_icon
+		var icon_x = max(left_pad, label_left_for_icon - icon_text_gap - icon_width)
+		party_exp_icon_sprite.position.x = icon_x
+		party_exp_icon_sprite.position.y = party_exp_icon_base_y
+
+	if party_exp_label != null:
+		var label_w = max(24.0, text_width)
+		var label_left = desired_width - right_pad - label_w
+		party_exp_label.margin_left = label_left
+		party_exp_label.margin_right = label_left + label_w
+		if party_exp_label_base_height > 1.0:
+			party_exp_label.margin_bottom = party_exp_label.margin_top + party_exp_label_base_height
+
+func _slide_party_exp_container(show: bool):
+	if party_exp_container == null:
+		return true
+
+	var target_pos = party_exp_container_shown_position if show else party_exp_container_hidden_position
+	if show:
+		party_exp_container.rect_position = party_exp_container_hidden_position
+		party_exp_container.visible = true
+
+	if party_exp_slide_duration_sec <= 0.0:
+		party_exp_container.rect_position = target_pos
+		party_exp_container.visible = show
+		return true
+
+	var tween = Tween.new()
+	add_child(tween)
+	tween.interpolate_property(
+		party_exp_container,
+		"rect_position",
+		party_exp_container.rect_position,
+		target_pos,
+		party_exp_slide_duration_sec,
+		Tween.TRANS_SINE,
+		Tween.EASE_OUT if show else Tween.EASE_IN
+	)
+	tween.start()
+	yield(tween, "tween_all_completed")
+	tween.queue_free()
+	party_exp_container.rect_position = target_pos
+	party_exp_container.visible = show
+	return true
+
+func _run_party_exp_sequence(party, active_index: int, awarded_exp: int, active_turn_token: int):
+	if party == null or awarded_exp <= 0:
+		return true
+
+	for slot_index in range(party.size()):
+		if _is_turn_token_cancelled(active_turn_token):
+			return false
+		if slot_index == active_index:
+			continue
+
+		var member = party.get_member_at(slot_index)
+		if member.empty():
+			continue
+		if int(member.get("current_hp", 1)) == 0:
+			continue
+
+		var exp_result = _apply_exp_to_party_member(party, slot_index, awarded_exp)
+		if exp_result.empty():
+			continue
+
+		var exp_text = "+%d" % awarded_exp
+		_set_party_exp_icon_for_species(String(exp_result.get("species_id", "")))
+		_layout_party_exp_card(exp_text)
+
+		var show_state = _slide_party_exp_container(true)
+		if show_state is GDScriptFunctionState:
+			yield(show_state, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			return false
+
+		if party_exp_card_hold_sec > 0.0:
+			yield(get_tree().create_timer(party_exp_card_hold_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				return false
+
+		var species_id = String(exp_result.get("species_id", ""))
+		var level_before = int(exp_result.get("level_before", 1))
+		var level_after = int(exp_result.get("level_after", level_before))
+
+		set_battle_text("%s gained %d EXP." % [species_id, awarded_exp])
+		if exp_message_hold_sec > 0.0:
+			yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				return false
+
+		if level_after > level_before:
+			set_battle_text("%s grew to Lv.%d!" % [species_id, level_after])
+			if exp_message_hold_sec > 0.0:
+				yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+				if _is_turn_token_cancelled(active_turn_token):
+					return false
+
+		var hide_state = _slide_party_exp_container(false)
+		if hide_state is GDScriptFunctionState:
+			yield(hide_state, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			return false
+
+	if party_exp_container != null:
+		party_exp_container.visible = false
+		party_exp_container.rect_position = party_exp_container_hidden_position
+	return true
 
 func _get_battle_biome_state() -> Dictionary:
 	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("biome_state") and typeof(battle_data["biome_state"]) == TYPE_DICTIONARY:
@@ -2353,7 +2803,7 @@ func _on_AttackMoveButton_pressed(move_slot: int):
 		set_battle_text("No move in that slot.")
 		return
 
-	execute_player_move(attacker.moves[move_slot])
+	execute_player_move(attacker.moves[move_slot], move_slot)
 
 func _on_AttackMoveButton_focus_entered(move_slot: int):
 	refresh_attack_move_details(move_slot)
@@ -2364,7 +2814,7 @@ func close_attack_menu():
 	hide_attack_menu()
 	ensure_button_focus()
 
-func execute_player_move(move):
+func execute_player_move(move, move_slot: int = -1):
 	if move == null:
 		set_battle_text("No move available.")
 		return
@@ -2382,6 +2832,7 @@ func execute_player_move(move):
 		"aborted": false,
 		"turn_state": {
 			"move": move,
+			"move_slot": move_slot,
 			"active_turn_token": active_turn_token,
 			"cancelled": false,
 			"terminal": false,
@@ -2436,6 +2887,12 @@ func _run_turn_command_resolve_phase_state(turn_state: Dictionary, active_turn_t
 		turn_state["terminal"] = true
 		return turn_state
 
+	var move_slot = int(turn_state.get("move_slot", -1))
+	turn_state["move_display_id"] = String(move.move_id)
+	if _is_debug_ohko_slot(move_slot):
+		turn_state["move_display_id"] = "OHKO"
+		turn_state["forced_player_damage"] = max(1, debug_ohko_damage)
+
 	turn_state["attacker"] = attacker
 	turn_state["defender"] = defender
 	return turn_state
@@ -2463,6 +2920,8 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 			return turn_state
 
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
+	if turn_state.has("forced_player_damage"):
+		damage = max(1, int(turn_state.get("forced_player_damage", damage)))
 	defender.current_hp = max(0, defender.current_hp - damage)
 	var player_type_multiplier = battle_calc_script.get_type_multiplier(move.move_type, defender)
 
@@ -2475,7 +2934,8 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 			turn_state["terminal"] = true
 			return turn_state
 
-	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move.move_id, damage]
+	var move_display_id = String(turn_state.get("move_display_id", String(move.move_id)))
+	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move_display_id, damage]
 	battle_message += build_type_effectiveness_text(player_type_multiplier)
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
@@ -2489,6 +2949,8 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 		turn_state["enemy_fainted"] = true
 		turn_state["terminal"] = true
 		turn_state["fainted_species_id"] = String(defender.species_id)
+		turn_state["defeated_enemy_species_id"] = String(defender.species_id)
+		turn_state["defeated_enemy_level"] = int(defender.level)
 		return turn_state
 
 	if defender.moves.empty():
@@ -2561,13 +3023,27 @@ func _run_turn_faint_resolve_phase_state(turn_state: Dictionary, active_turn_tok
 
 	if bool(turn_state.get("enemy_fainted", false)):
 		var enemy_species_id = String(turn_state.get("fainted_species_id", ""))
+		var defeated_species_id = String(turn_state.get("defeated_enemy_species_id", enemy_species_id)).strip_edges().to_upper()
+		var defeated_level = int(turn_state.get("defeated_enemy_level", 1))
 		var enemy_faint_anim = play_faint_animation(enemy_pokemon_sprite, false, active_turn_token)
 		if enemy_faint_anim is GDScriptFunctionState:
 			yield(enemy_faint_anim, "completed")
 			if _is_turn_token_cancelled(active_turn_token):
 				turn_state["cancelled"] = true
 				return turn_state
-		var enemy_advance = advance_to_next_enemy(enemy_species_id, active_turn_token)
+		set_battle_text("%s fainted!" % enemy_species_id)
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				return turn_state
+		var exp_flow = _award_exp_for_enemy_result(defeated_species_id, defeated_level, active_turn_token, "defeat")
+		if exp_flow is GDScriptFunctionState:
+			yield(exp_flow, "completed")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				return turn_state
+		var enemy_advance = advance_to_next_enemy(enemy_species_id, active_turn_token, false)
 		if enemy_advance is GDScriptFunctionState:
 			yield(enemy_advance, "completed")
 			if _is_turn_token_cancelled(active_turn_token):
@@ -2793,6 +3269,217 @@ func _reset_run_escape_fade_visuals() -> void:
 			continue
 		var color = node.modulate
 		node.modulate = Color(color.r, color.g, color.b, 1.0)
+
+func _award_exp_for_enemy_result(defeated_species_id: String, defeated_level: int, active_turn_token: int, source: String = "defeat"):
+	if runtime_state_script == null:
+		return null
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return null
+	var active_index = party.get_active_slot_index()
+	if active_index < 0:
+		return null
+
+	var exp_context := {
+		"aborted": false,
+		"exp_state": {
+			"source": source,
+			"active_turn_token": active_turn_token,
+			"party_member_index": active_index,
+			"defeated_species_id": defeated_species_id.strip_edges().to_upper(),
+			"defeated_level": max(1, int(defeated_level)),
+			"cancelled": false,
+			"awarded_exp": 0,
+			"level_before": 0,
+			"level_after": 0,
+		},
+	}
+
+	var phase_runner = battle_phase_runner_script.new()
+	phase_runner.push_phase(exp_resolve_phase_script.new(self, exp_context, active_turn_token))
+	phase_runner.push_phase(exp_apply_phase_script.new(self, exp_context, active_turn_token))
+
+	if phase_runner.is_running():
+		yield(phase_runner, "queue_idle")
+
+	return exp_context.get("exp_state", {})
+
+func _run_exp_resolve_phase_state(exp_state: Dictionary, active_turn_token: int) -> Dictionary:
+	if typeof(exp_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var species_id = String(exp_state.get("defeated_species_id", "")).strip_edges().to_upper()
+	var defeated_level = max(1, int(exp_state.get("defeated_level", 1)))
+	var enemy_base_exp = _get_species_base_exp(species_id)
+	var exp_value = int(floor((float(enemy_base_exp) * float(defeated_level)) / 5.0 + 1.0))
+
+	if _is_active_trainer_encounter():
+		exp_value = int(floor(float(exp_value) * 1.5))
+
+	exp_value = int(floor(float(exp_value) * max(0.0, exp_gain_multiplier)))
+	if exp_override_value >= 0:
+		exp_value = max(0, exp_override_value)
+
+	exp_state["awarded_exp"] = max(0, exp_value)
+	return exp_state
+
+func _run_exp_apply_phase_state(exp_state: Dictionary, active_turn_token: int):
+	if typeof(exp_state) != TYPE_DICTIONARY:
+		return {}
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	var awarded_exp = max(0, int(exp_state.get("awarded_exp", 0)))
+	if awarded_exp <= 0:
+		return exp_state
+
+	if runtime_state_script == null:
+		return exp_state
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return exp_state
+
+	var active_index = int(exp_state.get("party_member_index", -1))
+	if active_index < 0:
+		active_index = party.get_active_slot_index()
+	if active_index < 0:
+		return exp_state
+
+	var member = party.get_member_at(active_index)
+	if member.empty():
+		return exp_state
+
+	var active_exp_result = _apply_exp_to_party_member(party, active_index, awarded_exp)
+	if active_exp_result.empty():
+		return exp_state
+
+	var species_id = String(active_exp_result.get("species_id", "")).strip_edges().to_upper()
+	var growth_rate = String(active_exp_result.get("growth_rate", "MEDIUM_FAST"))
+	var level_before = int(active_exp_result.get("level_before", 1))
+	var level_after = int(active_exp_result.get("level_after", level_before))
+	var member_exp = int(active_exp_result.get("member_exp_before", 0))
+	var member_exp_after = int(active_exp_result.get("member_exp_after", member_exp))
+
+	exp_state["level_before"] = level_before
+	exp_state["level_after"] = level_after
+
+	set_battle_text("%s gained %d EXP." % [species_id, awarded_exp])
+	var exp_anim_state = _animate_player_exp_gain_bar(member_exp, member_exp_after, level_before, level_after, growth_rate, active_turn_token)
+	if exp_anim_state is GDScriptFunctionState:
+		var exp_anim_ok = yield(exp_anim_state, "completed")
+		if not exp_anim_ok:
+			exp_state["cancelled"] = true
+			return exp_state
+	elif not bool(exp_anim_state):
+		exp_state["cancelled"] = true
+		return exp_state
+	if exp_message_hold_sec > 0.0:
+		yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+	if _is_turn_token_cancelled(active_turn_token):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	if level_after > level_before:
+		set_battle_text("%s grew to Lv.%d!" % [species_id, level_after])
+		if exp_message_hold_sec > 0.0:
+			yield(get_tree().create_timer(exp_message_hold_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			exp_state["cancelled"] = true
+			return exp_state
+
+	var party_exp_state = _run_party_exp_sequence(party, active_index, awarded_exp, active_turn_token)
+	if party_exp_state is GDScriptFunctionState:
+		var party_exp_ok = yield(party_exp_state, "completed")
+		if not party_exp_ok:
+			exp_state["cancelled"] = true
+			return exp_state
+	elif not bool(party_exp_state):
+		exp_state["cancelled"] = true
+		return exp_state
+
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") and battle_data["player"] != null:
+		var player_data = battle_data["player"]
+		if String(player_data.species_id).strip_edges().to_upper() == species_id:
+			player_data.level = level_after
+			sync_active_party_member_from_battle()
+	_refresh_player_exp_label()
+
+	return exp_state
+
+func _get_species_entry(species_id: String) -> Dictionary:
+	if species_id.strip_edges().empty():
+		return {}
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return {}
+	return catalog_loader.get_species(species_id)
+
+func _get_species_base_exp(species_id: String) -> int:
+	var species_entry = _get_species_entry(species_id)
+	if species_entry.empty():
+		return 64
+	var value = int(species_entry.get("base_exp", 64))
+	if value <= 0:
+		value = 1
+	return value
+
+func _get_species_growth_rate(species_id: String) -> String:
+	var species_entry = _get_species_entry(species_id)
+	if species_entry.empty():
+		return "MEDIUM_FAST"
+	var growth_rate = String(species_entry.get("growth_rate", "MEDIUM_FAST")).strip_edges().to_upper()
+	return growth_rate if not growth_rate.empty() else "MEDIUM_FAST"
+
+func _get_level_total_exp(level: int, growth_rate: String) -> int:
+	var safe_level = max(1, level)
+	var normalized_growth = growth_rate.strip_edges().to_upper()
+	if normalized_growth.empty():
+		normalized_growth = "MEDIUM_FAST"
+
+	var medium_fast = pow(float(safe_level), 3.0)
+	var base_total = medium_fast
+	var lv = float(safe_level)
+
+	match normalized_growth:
+		"ERRATIC":
+			if safe_level <= 50:
+				base_total = pow(lv, 3.0) * (100.0 - lv) / 50.0
+			elif safe_level <= 68:
+				base_total = pow(lv, 3.0) * (150.0 - lv) / 100.0
+			elif safe_level <= 98:
+				base_total = pow(lv, 3.0) * (1911.0 - 10.0 * lv) / 1500.0
+			else:
+				base_total = pow(lv, 3.0) * (160.0 - lv) / 100.0
+		"FAST":
+			base_total = pow(lv, 3.0) * 4.0 / 5.0
+		"MEDIUM_SLOW":
+			base_total = pow(lv, 3.0) * 6.0 / 5.0 - 15.0 * pow(lv, 2.0) + 100.0 * lv - 140.0
+		"SLOW":
+			base_total = pow(lv, 3.0) * 5.0 / 4.0
+		"FLUCTUATING":
+			if safe_level <= 15:
+				base_total = pow(lv, 3.0) * (((lv + 1.0) / 3.0) + 24.0) / 50.0
+			elif safe_level <= 36:
+				base_total = pow(lv, 3.0) * (lv + 14.0) / 50.0
+			else:
+				base_total = pow(lv, 3.0) * ((lv / 2.0) + 32.0) / 50.0
+		_:
+			base_total = medium_fast
+
+	if normalized_growth != "MEDIUM_FAST":
+		var blended_value = int(floor(base_total * 0.325 + medium_fast * 0.675))
+		if blended_value < 0:
+			blended_value = 0
+		return blended_value
+	var base_value = int(floor(base_total))
+	if base_value < 0:
+		base_value = 0
+	return base_value
 
 # Capture flow and ball handling.
 func attempt_capture_with_ball(ball_key: String) -> void:
@@ -3121,6 +3808,12 @@ func _handle_capture_success(enemy, active_turn_token: int):
 	if add_result.has("ok") and not bool(add_result["ok"]):
 		if String(add_result.get("reason", "")) == "full":
 			set_battle_text("Gotcha! %s was caught, but party is full." % enemy_species_id)
+
+	var capture_exp_flow = _award_exp_for_enemy_result(enemy_species_id, int(enemy.level), active_turn_token, "capture")
+	if capture_exp_flow is GDScriptFunctionState:
+		yield(capture_exp_flow, "completed")
+	if active_turn_token != turn_token:
+		return null
 
 	yield(get_tree().create_timer(0.45), "timeout")
 	if active_turn_token != turn_token:
@@ -5275,7 +5968,7 @@ func refresh_attack_menu():
 		if i < moves.size():
 			var move = moves[i]
 			button.disabled = false
-			button.text = String(move.move_id)
+			button.text = "OHKO" if _is_debug_ohko_slot(i) else String(move.move_id)
 		else:
 			button.disabled = true
 			button.text = "-"
@@ -5298,6 +5991,11 @@ func refresh_attack_move_details(move_slot: int):
 		return
 
 	var move = attacker.moves[move_slot]
+	if _is_debug_ohko_slot(move_slot):
+		attack_power_label.text = "Power: OHKO"
+		attack_pp_label.text = "PP: DEBUG"
+		return
+
 	apply_attack_detail_badge(
 		attack_type_sprite,
 		ATTACK_TYPE_TEXTURE_REL,
@@ -5316,6 +6014,14 @@ func refresh_attack_move_details(move_slot: int):
 		]
 	)
 	attack_pp_label.text = "PP: %s" % build_move_pp_text(move)
+
+func _is_debug_ohko_slot(move_slot: int) -> bool:
+	if not debug_ohko_enabled:
+		return false
+	if move_slot < 0:
+		return false
+	var target_slot = clamp(debug_ohko_move_slot, 1, 4) - 1
+	return move_slot == target_slot
 
 func apply_attack_detail_badge(sprite_node: Sprite, texture_rel: String, atlas_rel: String, frame_candidates: Array):
 	if sprite_node == null:

@@ -92,7 +92,7 @@ region_rect = Rect2( 0, 196, 32, 14 )
 [node name="GrowthRateLabel" type="Label" parent="Panel/UiScaleRoot"]
 margin_left = 9.0
 margin_top = 137.0
-margin_right = 82.0
+margin_right = 130.0
 margin_bottom = 149.0
 theme = ExtResource( 8 )
 custom_colors/font_color = Color( 0, 0, 0, 1 )
