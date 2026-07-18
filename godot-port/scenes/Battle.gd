@@ -4107,8 +4107,13 @@ func set_action_lock(locked: bool):
 
 func _finish_turn():
 	turn_in_progress = false
-	if not battle_ended:
-		_show_main_controls_unlocked()
+	if battle_ended:
+		return
+	if sendout_controls_locked:
+		hide_all_command_menus()
+		set_action_lock(true)
+		return
+	_show_main_controls_unlocked()
 
 func end_battle(player_won: bool, fainted_species_id: String):
 	battle_ended = true
@@ -5870,8 +5875,8 @@ func _on_PartyMenu_switch_slot_requested(slot_index: int) -> void:
 		set_battle_text("That Pokemon is already active.")
 		return
 
-	var current_hp = int(member.get("current_hp", 0))
-	if current_hp <= 0:
+	var current_hp = int(member.get("current_hp", -1))
+	if current_hp == 0:
 		set_battle_text("That Pokemon cannot battle.")
 		return
 
