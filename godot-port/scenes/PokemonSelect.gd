@@ -1,7 +1,7 @@
 tool
 extends Control
 
-const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v2.json"
+const SPECIES_CATALOG_PATH := "res://godot-minimal-assets/data/species-catalog.v3.json"
 const BATTLE_SCENE_PATH := "res://scenes/BattleScreen.tscn"
 const MAIN_SCENE_PATH := "res://scenes/MainScreen.tscn"
 const POKEDEX_ENTRY_OVERLAY_PATH := "res://scenes/PokedexEntryOverlay.tscn"

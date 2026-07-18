@@ -164,6 +164,254 @@ def _extract_array_literal(source: str, field_name: str) -> str | None:
     return None
 
 
+def _get_field_value_kind(source: str, field_name: str) -> str | None:
+    marker = f"{field_name}:"
+    marker_index = source.find(marker)
+    if marker_index < 0:
+        return None
+
+    index = marker_index + len(marker)
+    while index < len(source) and source[index].isspace():
+        index += 1
+    if index >= len(source):
+        return None
+
+    if source[index] == "[":
+        return "array"
+    if source[index] == "{":
+        return "object"
+    return None
+
+
+def _extract_object_literal(source: str, field_name: str) -> str | None:
+    marker = f"{field_name}:"
+    marker_index = source.find(marker)
+    if marker_index < 0:
+        return None
+
+    object_start = source.find("{", marker_index)
+    if object_start < 0:
+        return None
+
+    depth = 0
+    for index in range(object_start, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[object_start + 1:index]
+
+    return None
+
+
+def _extract_constructor_object_literals(source: str, constructor_name: str) -> list[str]:
+    literals: list[str] = []
+    cursor = 0
+
+    while True:
+        constructor_index = source.find(constructor_name, cursor)
+        if constructor_index < 0:
+            break
+
+        object_start = source.find("{", constructor_index)
+        if object_start < 0:
+            break
+
+        depth = 0
+        object_end = -1
+        for index in range(object_start, len(source)):
+            char = source[index]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    object_end = index
+                    break
+
+        if object_end < 0:
+            break
+
+        literals.append(source[object_start + 1:object_end])
+        cursor = object_end + 1
+
+    return literals
+
+
+def _extract_braced_object_literals(source: str) -> list[str]:
+    literals: list[str] = []
+    object_start = -1
+    depth = 0
+
+    for index, char in enumerate(source):
+        if char == "{":
+            if depth == 0:
+                object_start = index
+            depth += 1
+        elif char == "}":
+            if depth <= 0:
+                continue
+            depth -= 1
+            if depth == 0 and object_start >= 0:
+                literals.append(source[object_start + 1:index])
+                object_start = -1
+
+    return literals
+
+
+def _parse_enum_value(body: str, field_name: str, enum_prefix: str) -> str | None:
+    match = re.search(rf"\b{field_name}:\s*{enum_prefix}\.([A-Z0-9_]+)", body)
+    return match.group(1) if match else None
+
+
+def _parse_enum_array(body: str, field_name: str, enum_prefix: str) -> list[str]:
+    array_body = _extract_array_literal(body, field_name)
+    if array_body is None:
+        return []
+    values = re.findall(rf"{enum_prefix}\.([A-Z0-9_]+)", array_body)
+    return list(dict.fromkeys(values))
+
+
+def _parse_string_or_null_value(body: str, field_name: str) -> str | None:
+    match = re.search(rf"\b{field_name}:\s*(null|\"([^\"]*)\")", body)
+    if not match:
+        return None
+    if match.group(1) == "null":
+        return None
+    return match.group(2)
+
+
+def _parse_int_array_value(body: str, field_name: str) -> list[int]:
+    array_body = _extract_array_literal(body, field_name)
+    if array_body is None:
+        return []
+    values: list[int] = []
+    for raw in re.findall(r"-?\d+", array_body):
+        try:
+            values.append(int(raw))
+        except ValueError:
+            continue
+    return values
+
+
+def _parse_evolution_condition_object(condition_body: str) -> dict[str, Any] | None:
+    key = _parse_enum_value(condition_body, "key", "EvoCondKey")
+    if key is None:
+        return None
+
+    condition: dict[str, Any] = {
+        "key": key,
+    }
+
+    value_match = re.search(r"\bvalue:\s*(-?\d+)", condition_body)
+    if value_match:
+        condition["value"] = int(value_match.group(1))
+
+    move_id = _parse_enum_value(condition_body, "move", "MoveId")
+    if move_id is not None:
+        condition["move_id"] = move_id
+
+    species_id = _parse_enum_value(condition_body, "speciesCaught", "SpeciesId")
+    if species_id is not None:
+        condition["species_id"] = species_id
+
+    gender = _parse_enum_value(condition_body, "gender", "Gender")
+    if gender is not None:
+        condition["gender"] = gender
+
+    pokemon_type = _parse_enum_value(condition_body, "pkmnType", "PokemonType")
+    if pokemon_type is not None:
+        condition["pokemon_type"] = pokemon_type
+
+    item_key = None
+    item_key_match = re.search(r"\bitemKey:\s*([A-Za-z_][A-Za-z0-9_\.]+)", condition_body)
+    if item_key_match:
+        item_key = item_key_match.group(1).split(".")[-1].strip().upper()
+    if item_key is not None:
+        condition["item_key"] = item_key
+
+    time_of_day = _parse_enum_array(condition_body, "time", "TimeOfDay")
+    if time_of_day:
+        condition["time_of_day"] = time_of_day
+
+    biomes = _parse_enum_array(condition_body, "biome", "BiomeId")
+    if biomes:
+        condition["biomes"] = biomes
+
+    weather = _parse_enum_array(condition_body, "weather", "WeatherType")
+    if weather:
+        condition["weather"] = weather
+
+    natures = _parse_enum_array(condition_body, "nature", "Nature")
+    if natures:
+        condition["natures"] = natures
+
+    condition["raw"] = " ".join(condition_body.split())
+    return condition
+
+
+def _parse_evolution_conditions(evolution_body: str) -> list[dict[str, Any]]:
+    conditions: list[dict[str, Any]] = []
+    var_kind = _get_field_value_kind(evolution_body, "condition")
+    if var_kind == "array":
+        conditions_array = _extract_array_literal(evolution_body, "condition")
+        if conditions_array is None:
+            return conditions
+        for condition_body in _extract_braced_object_literals(conditions_array):
+            parsed = _parse_evolution_condition_object(condition_body)
+            if parsed is not None:
+                conditions.append(parsed)
+        return conditions
+
+    if var_kind == "object":
+        condition_object = _extract_object_literal(evolution_body, "condition")
+        if condition_object is None:
+            return conditions
+        parsed = _parse_evolution_condition_object(condition_object)
+        if parsed is not None:
+            conditions.append(parsed)
+
+    return conditions
+
+
+def _parse_evolution_rules(evolutions_body: str) -> list[dict[str, Any]]:
+    evolution_rules: list[dict[str, Any]] = []
+    for rule_body in _extract_constructor_object_literals(evolutions_body, "new SpeciesEvolution"):
+        target_species_id = _parse_enum_value(rule_body, "speciesId", "SpeciesId")
+        if target_species_id is None:
+            continue
+
+        level_match = re.search(r"\blevel:\s*(\d+)", rule_body)
+        min_level = int(level_match.group(1)) if level_match else 1
+
+        item = _parse_enum_value(rule_body, "item", "EvolutionItem")
+        evo_delay_levels = _parse_int_array_value(rule_body, "evoDelay")
+        pre_form_key = _parse_string_or_null_value(rule_body, "preFormKey")
+        evo_form_key = _parse_string_or_null_value(rule_body, "evoFormKey")
+        conditions = _parse_evolution_conditions(rule_body)
+
+        evolution_rule: dict[str, Any] = {
+            "target_species_id": target_species_id,
+            "min_level": max(1, min_level),
+            "conditions": conditions,
+        }
+
+        if item is not None:
+            evolution_rule["item"] = item
+        if evo_delay_levels:
+            evolution_rule["evo_delay_levels"] = evo_delay_levels
+        if pre_form_key is not None:
+            evolution_rule["pre_form_key"] = pre_form_key
+        if evo_form_key is not None:
+            evolution_rule["evo_form_key"] = evo_form_key
+
+        evolution_rules.append(evolution_rule)
+
+    return evolution_rules
+
+
 def _first_n_unique(values: list[str], count: int) -> list[str]:
     if count <= 0:
         return []
@@ -203,13 +451,16 @@ def _extract_species_entry(species_name: str, source_files: list[Path]) -> dict[
         starter_cost_match = re.search(r"\bstarterCost:\s*(\d+)", body)
 
         evolutions_body = _extract_array_literal(body, "evolutions")
-        evolution_species_ids: list[str] = []
+        evolution_rules: list[dict[str, Any]] = []
         if evolutions_body is not None:
-            evolution_species_ids = re.findall(r"speciesId:\s*SpeciesId\.([A-Z0-9_]+)", evolutions_body)
+            evolution_rules = _parse_evolution_rules(evolutions_body)
+
+        evolution_species_ids = [rule["target_species_id"] for rule in evolution_rules if "target_species_id" in rule]
 
         parsed["starter_species_id"] = starter_match.group(1) if starter_match else species_name
         parsed["prevolution_species_id"] = prevolution_match.group(1) if prevolution_match else None
         parsed["evolution_species_ids"] = list(dict.fromkeys(evolution_species_ids))
+        parsed["evolution_rules"] = evolution_rules
         parsed["starter_cost"] = int(starter_cost_match.group(1)) if starter_cost_match else None
 
         level_moves_body = _extract_array_literal(body, "levelMoves")
@@ -280,11 +531,12 @@ def _build_species_catalog(
             continue
 
         item = {
-            "schema_version": 2,
+            "schema_version": 3,
             "species_id": species_name,
             "starter_species_id": parsed["starter_species_id"],
             "prevolution_species_id": parsed["prevolution_species_id"],
             "evolution_species_ids": parsed["evolution_species_ids"],
+            "evolution_rules": parsed.get("evolution_rules", []),
             "pokedex_number": dex_num,
             "name": _enum_name_to_title(species_name),
             "types": parsed["types"],
@@ -394,7 +646,7 @@ def main() -> None:
     generated_at = datetime.now(timezone.utc).isoformat()
 
     species_catalog = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_from": "dependency/pokerogue",
         "generated_at": generated_at,
         "items": species_items,
@@ -408,7 +660,7 @@ def main() -> None:
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    species_out = OUT_DIR / "species-catalog.v2.json"
+    species_out = OUT_DIR / "species-catalog.v3.json"
     moves_out = OUT_DIR / "moves-catalog.v1.json"
 
     species_out.write_text(json.dumps(species_catalog, indent=2), encoding="utf-8")

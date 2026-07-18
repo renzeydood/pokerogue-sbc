@@ -26,7 +26,7 @@ python .\tools\export_minimal_data.py
 
 This will read `minimal-asset-list.json` selectors (`pokemon`, `attacks`) and generate:
 
-- `godot-port/godot-minimal-assets/data/species-catalog.v2.json`
+- `godot-port/godot-minimal-assets/data/species-catalog.v3.json`
 - `godot-port/godot-minimal-assets/data/moves-catalog.v1.json`
 
 The species catalog now includes lineage metadata needed for starter/base-form normalization, including fields such as `starter_species_id`, `prevolution_species_id`, and `evolution_species_ids`.
@@ -136,7 +136,7 @@ Count-mode example for starter moves:
 When `attacks` is a single number (or single numeric string), data export interprets it as:
 
 - pull first `N` unique `levelMoves` from each selected species
-- store those per-species move ids in `species-catalog.v2.json` as `starter_moves`
+- store those per-species move ids in `species-catalog.v3.json` as `starter_moves`
 - include the union of those move ids in `moves-catalog.v1.json`
 
 If `attacks` is a list of names/slugs, explicit mode is preserved.
@@ -207,7 +207,7 @@ py tools\asset_pipeline.py --validate-sprites --validate-sprites-strict
 
 Fixture files:
 
-- `godot-port/data/fixtures/species-catalog.v1.fixture.json`
+- `godot-port/data/fixtures/species-catalog.v3.fixture.json`
 - `godot-port/data/fixtures/moves-catalog.v1.fixture.json`
 
 Typical workflow:

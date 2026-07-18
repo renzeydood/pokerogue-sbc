@@ -11,9 +11,9 @@ ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 DATA_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
 FIXTURE_DIR = REPO_ROOT / "godot-port" / "data" / "fixtures"
 
-SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v2.json"
+SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v3.json"
 MOVES_CATALOG_FILE = DATA_DIR / "moves-catalog.v1.json"
-SPECIES_FIXTURE_FILE = FIXTURE_DIR / "species-catalog.v2.fixture.json"
+SPECIES_FIXTURE_FILE = FIXTURE_DIR / "species-catalog.v3.fixture.json"
 MOVES_FIXTURE_FILE = FIXTURE_DIR / "moves-catalog.v1.fixture.json"
 
 TYPE_VALUES = {
@@ -124,13 +124,13 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
     required = {"schema_version", "species_id", "starter_species_id", "name", "types", "base_stats"}
     allowed = required | {
         "prevolution_species_id", "evolution_species_ids", "pokedex_number", "catch_rate", "base_friendship",
-        "base_exp", "growth_rate", "starter_cost", "source", "starter_moves",
+        "base_exp", "growth_rate", "starter_cost", "source", "starter_moves", "evolution_rules",
     }
     _require_keys(item, required, context, errors)
     _reject_unknown_keys(item, allowed, context, errors)
 
-    if item.get("schema_version") != 2:
-        errors.append(f"{context}.schema_version: expected 2")
+    if item.get("schema_version") != 3:
+        errors.append(f"{context}.schema_version: expected 3")
 
     species_id = item.get("species_id")
     if not isinstance(species_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", species_id):
@@ -233,6 +233,110 @@ def _validate_species_item(item: Any, index: int, errors: list[str]) -> None:
             for move_index, move_id in enumerate(starter_moves):
                 if not isinstance(move_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", move_id):
                     errors.append(f"{starter_moves_context}[{move_index}]: expected uppercase move id string")
+
+    if "evolution_rules" in item:
+        evolution_rules = item["evolution_rules"]
+        evolution_rules_context = f"{context}.evolution_rules"
+        if not isinstance(evolution_rules, list):
+            errors.append(f"{evolution_rules_context}: expected array")
+        else:
+            for rule_index, rule in enumerate(evolution_rules):
+                rule_context = f"{evolution_rules_context}[{rule_index}]"
+                if not isinstance(rule, dict):
+                    errors.append(f"{rule_context}: expected object")
+                    continue
+                rule_required = {"target_species_id", "min_level", "conditions"}
+                rule_allowed = rule_required | {"item", "evo_delay_levels", "pre_form_key", "evo_form_key"}
+                _require_keys(rule, rule_required, rule_context, errors)
+                _reject_unknown_keys(rule, rule_allowed, rule_context, errors)
+
+                target_species_id = rule.get("target_species_id")
+                if not isinstance(target_species_id, str) or not re.fullmatch(r"^[A-Z0-9_]+$", target_species_id):
+                    errors.append(f"{rule_context}.target_species_id: expected uppercase enum string")
+
+                _validate_int_range(rule.get("min_level"), 1, 100, f"{rule_context}.min_level", errors)
+
+                if "item" in rule and (not isinstance(rule["item"], str) or not re.fullmatch(r"^[A-Z0-9_]+$", rule["item"])):
+                    errors.append(f"{rule_context}.item: expected uppercase enum string")
+
+                if "evo_delay_levels" in rule:
+                    evo_delay_levels = rule["evo_delay_levels"]
+                    evo_delay_context = f"{rule_context}.evo_delay_levels"
+                    if not isinstance(evo_delay_levels, list):
+                        errors.append(f"{evo_delay_context}: expected array")
+                    else:
+                        if len(evo_delay_levels) > 3:
+                            errors.append(f"{evo_delay_context}: expected at most 3 entries")
+                        for delay_index, delay_level in enumerate(evo_delay_levels):
+                            _validate_int_range(delay_level, 1, 99999, f"{evo_delay_context}[{delay_index}]", errors)
+
+                for key_name in ("pre_form_key", "evo_form_key"):
+                    if key_name in rule and not isinstance(rule[key_name], str):
+                        errors.append(f"{rule_context}.{key_name}: expected string")
+
+                conditions = rule.get("conditions")
+                conditions_context = f"{rule_context}.conditions"
+                if not isinstance(conditions, list):
+                    errors.append(f"{conditions_context}: expected array")
+                else:
+                    for cond_index, condition in enumerate(conditions):
+                        condition_context = f"{conditions_context}[{cond_index}]"
+                        if not isinstance(condition, dict):
+                            errors.append(f"{condition_context}: expected object")
+                            continue
+                        cond_required = {"key"}
+                        cond_allowed = {
+                            "key", "value", "move_id", "species_id", "gender", "pokemon_type", "item_key",
+                            "time_of_day", "biomes", "weather", "natures", "raw",
+                        }
+                        _require_keys(condition, cond_required, condition_context, errors)
+                        _reject_unknown_keys(condition, cond_allowed, condition_context, errors)
+
+                        key = condition.get("key")
+                        if not isinstance(key, str) or not re.fullmatch(r"^[A-Z_]+$", key):
+                            errors.append(f"{condition_context}.key: expected uppercase key string")
+
+                        for str_key in ("move_id", "species_id", "item_key"):
+                            if str_key in condition and (
+                                not isinstance(condition[str_key], str) or not re.fullmatch(r"^[A-Z0-9_]+$", condition[str_key])
+                            ):
+                                errors.append(f"{condition_context}.{str_key}: expected uppercase enum string")
+
+                        if "gender" in condition and (
+                            not isinstance(condition["gender"], str) or not re.fullmatch(r"^[A-Z_]+$", condition["gender"])
+                        ):
+                            errors.append(f"{condition_context}.gender: expected uppercase enum string")
+
+                        if "pokemon_type" in condition and condition["pokemon_type"] not in TYPE_VALUES:
+                            errors.append(f"{condition_context}.pokemon_type: invalid value '{condition['pokemon_type']}'")
+
+                        if "value" in condition and not _is_int(condition["value"]):
+                            errors.append(f"{condition_context}.value: expected integer")
+
+                        for array_key, value_pattern in (
+                            ("time_of_day", r"^[A-Z_]+$"),
+                            ("biomes", r"^[A-Z0-9_]+$"),
+                            ("weather", r"^[A-Z_]+$"),
+                            ("natures", r"^[A-Z_]+$"),
+                        ):
+                            if array_key not in condition:
+                                continue
+                            array_value = condition[array_key]
+                            array_context = f"{condition_context}.{array_key}"
+                            if not isinstance(array_value, list):
+                                errors.append(f"{array_context}: expected array")
+                                continue
+                            seen_values: set[str] = set()
+                            for entry_index, entry in enumerate(array_value):
+                                if not isinstance(entry, str) or not re.fullmatch(value_pattern, entry):
+                                    errors.append(f"{array_context}[{entry_index}]: invalid value")
+                                    continue
+                                if entry in seen_values:
+                                    errors.append(f"{array_context}[{entry_index}]: duplicate value '{entry}'")
+                                seen_values.add(entry)
+
+                        if "raw" in condition and not isinstance(condition["raw"], str):
+                            errors.append(f"{condition_context}.raw: expected string")
 
 
 def _validate_move_item(item: Any, index: int, errors: list[str]) -> None:
@@ -438,7 +542,7 @@ def main() -> None:
     species_payload = _load_json(SPECIES_CATALOG_FILE)
     moves_payload = _load_json(MOVES_CATALOG_FILE)
 
-    species_items = _validate_catalog_wrapper(species_payload, "species_catalog", 2, errors)
+    species_items = _validate_catalog_wrapper(species_payload, "species_catalog", 3, errors)
     moves_items = _validate_catalog_wrapper(moves_payload, "moves_catalog", 1, errors)
 
     for index, item in enumerate(species_items):
