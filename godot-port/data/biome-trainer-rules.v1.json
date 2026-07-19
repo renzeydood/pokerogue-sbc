@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "generated_from": "manual_template",
+  "notes": "Biome-aware trainer chance and trainer pool baseline for BIOME-MVP-04. Normal trainer chance only applies on normal-trainer cadence encounters; boss cadence remains authoritative.",
+  "default_biome_id": "grass",
+  "default_normal_trainer_chance_percent": 100,
+  "default_normal_trainer_ids": [
+    "PLAYER_F"
+  ],
+  "default_boss_trainer_ids": [
+    "GYM_LEADER_TEMPLATE"
+  ],
+  "biomes": {
+    "grass": {
+      "normal_trainer_chance_percent": 100,
+      "normal_trainer_ids": [
+        "PLAYER_F"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE"
+      ]
+    },
+    "metropolis": {
+      "normal_trainer_chance_percent": 70,
+      "normal_trainer_ids": [
+        "PLAYER_F"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE"
+      ]
+    },
+    "abyss": {
+      "normal_trainer_chance_percent": 35,
+      "normal_trainer_ids": [
+        "PLAYER_F"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE"
+      ]
+    }
+  }
+}
