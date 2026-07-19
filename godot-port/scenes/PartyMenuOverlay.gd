@@ -25,10 +25,14 @@ const PARTY_SLOT_TEXTURE_PATH := "res://godot-minimal-assets/assets/images/ui/pa
 const PARTY_SLOT_ATLAS_PATH := "res://godot-minimal-assets/assets/images/ui/party_slot.json"
 const PARTY_SLOT_NORMAL_FRAME := "party_slot"
 const PARTY_SLOT_SELECTED_FRAME := "party_slot_sel"
+const PARTY_SLOT_FAINT_FRAME := "party_slot_fnt"
+const PARTY_SLOT_FAINT_SELECTED_FRAME := "party_slot_fnt_sel"
 const PARTY_SLOT_MAIN_TEXTURE_PATH := "res://godot-minimal-assets/assets/images/ui/party_slot_main.png"
 const PARTY_SLOT_MAIN_ATLAS_PATH := "res://godot-minimal-assets/assets/images/ui/party_slot_main.json"
 const PARTY_SLOT_MAIN_NORMAL_FRAME := "party_slot_main"
 const PARTY_SLOT_MAIN_SELECTED_FRAME := "party_slot_main_sel"
+const PARTY_SLOT_MAIN_FAINT_FRAME := "party_slot_main_fnt"
+const PARTY_SLOT_MAIN_FAINT_SELECTED_FRAME := "party_slot_main_fnt_sel"
 const PARTY_CANCEL_TEXTURE_PATH := "res://godot-minimal-assets/assets/images/ui/party_cancel.png"
 const PARTY_CANCEL_ATLAS_PATH := "res://godot-minimal-assets/assets/images/ui/party_cancel.json"
 const PARTY_CANCEL_NORMAL_FRAME := "party_cancel"
@@ -602,6 +606,8 @@ func _get_slot_icon_bob_mode(slot_index: int) -> int:
 		return ICON_BOB_MODE_NONE
 	if slot_index >= party_members.size():
 		return ICON_BOB_MODE_NONE
+	if _is_slot_member_fainted(slot_index):
+		return ICON_BOB_MODE_NONE
 	if slot_roots[slot_index] == null or not slot_roots[slot_index].visible:
 		return ICON_BOB_MODE_NONE
 	if slot_buttons[slot_index] == null or slot_buttons[slot_index].disabled:
@@ -811,12 +817,31 @@ func _update_slot_background(slot_index: int) -> void:
 		return
 
 	var slot_is_selected = selected_slot_index == slot_index and get_focus_owner() != back_button
+	var is_fainted = _is_slot_member_fainted(slot_index)
 
 	if slot_index == 0:
-		_set_slot_sprite(sprite_node, PARTY_SLOT_MAIN_TEXTURE_PATH, PARTY_SLOT_MAIN_ATLAS_PATH, PARTY_SLOT_MAIN_SELECTED_FRAME if slot_is_selected else PARTY_SLOT_MAIN_NORMAL_FRAME)
+		_set_slot_sprite(
+			sprite_node,
+			PARTY_SLOT_MAIN_TEXTURE_PATH,
+			PARTY_SLOT_MAIN_ATLAS_PATH,
+			PARTY_SLOT_MAIN_FAINT_SELECTED_FRAME if is_fainted and slot_is_selected else PARTY_SLOT_MAIN_FAINT_FRAME if is_fainted else PARTY_SLOT_MAIN_SELECTED_FRAME if slot_is_selected else PARTY_SLOT_MAIN_NORMAL_FRAME
+		)
 		return
 
-	_set_slot_sprite(sprite_node, PARTY_SLOT_TEXTURE_PATH, PARTY_SLOT_ATLAS_PATH, PARTY_SLOT_SELECTED_FRAME if slot_is_selected else PARTY_SLOT_NORMAL_FRAME)
+	_set_slot_sprite(
+		sprite_node,
+		PARTY_SLOT_TEXTURE_PATH,
+		PARTY_SLOT_ATLAS_PATH,
+		PARTY_SLOT_FAINT_SELECTED_FRAME if is_fainted and slot_is_selected else PARTY_SLOT_FAINT_FRAME if is_fainted else PARTY_SLOT_SELECTED_FRAME if slot_is_selected else PARTY_SLOT_NORMAL_FRAME
+	)
+
+func _is_slot_member_fainted(slot_index: int) -> bool:
+	if slot_index < 0 or slot_index >= party_members.size():
+		return false
+	var member = party_members[slot_index]
+	if typeof(member) != TYPE_DICTIONARY or member.empty():
+		return false
+	return int(member.get("current_hp", -1)) == 0
 
 func _open_action_menu_for_slot(slot_index: int) -> void:
 	if slot_index < 0 or slot_index >= party_members.size():
@@ -832,7 +857,7 @@ func _open_action_menu_for_slot(slot_index: int) -> void:
 		action_menu_container.visible = true
 
 	if action_switch_in_button != null:
-		var can_switch_in = slot_index != active_slot_index
+		var can_switch_in = slot_index != active_slot_index and not _is_slot_member_fainted(slot_index)
 		action_switch_in_button.visible = can_switch_in
 		action_switch_in_button.disabled = not can_switch_in
 

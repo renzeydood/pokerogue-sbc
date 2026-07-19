@@ -12,6 +12,7 @@ export(float) var impact_shake_px := 2.0
 export(float) var move_anim_step_sec := 0.05
 export(float) var faint_step_sec := 0.05
 export(float) var faint_drop_px := 20.0
+export(float) var faint_to_party_prompt_delay_sec := 1.5
 export(float) var enemy_switch_delay_sec := 0.9
 export(float) var defeat_return_delay_sec := 1.3
 export(float) var run_return_delay_sec := 0.6
@@ -230,6 +231,9 @@ var turn_command_resolve_phase_script = load("res://logic/phases/TurnCommandReso
 var turn_player_move_phase_script = load("res://logic/phases/TurnPlayerMovePhase.gd")
 var turn_enemy_move_phase_script = load("res://logic/phases/TurnEnemyMovePhase.gd")
 var turn_faint_resolve_phase_script = load("res://logic/phases/TurnFaintResolvePhase.gd")
+var turn_player_defeat_gate_phase_script = load("res://logic/phases/TurnPlayerDefeatGatePhase.gd")
+var turn_forced_switch_prompt_phase_script = load("res://logic/phases/TurnForcedSwitchPromptPhase.gd")
+var turn_game_over_phase_script = load("res://logic/phases/TurnGameOverPhase.gd")
 var turn_end_unlock_phase_script = load("res://logic/phases/TurnEndUnlockPhase.gd")
 var exp_resolve_phase_script = load("res://logic/phases/ExpResolvePhase.gd")
 var exp_apply_phase_script = load("res://logic/phases/ExpApplyPhase.gd")
@@ -466,6 +470,9 @@ var trainers_catalog_ordered := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
 var capture_in_progress := false
 var sendout_controls_locked := false
+var forced_switch_pending := false
+var forced_switch_active_turn_token := -1
+var forced_switch_success := false
 var transition_run_counter := 0
 var active_transition_run_id := ""
 var opening_run_counter := 0
@@ -2922,6 +2929,9 @@ func execute_player_move(move, move_slot: int = -1):
 	phase_runner.push_phase(turn_player_move_phase_script.new(self, turn_context, active_turn_token))
 	phase_runner.push_phase(turn_enemy_move_phase_script.new(self, turn_context, active_turn_token))
 	phase_runner.push_phase(turn_faint_resolve_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_player_defeat_gate_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_forced_switch_prompt_phase_script.new(self, turn_context, active_turn_token))
+	phase_runner.push_phase(turn_game_over_phase_script.new(self, turn_context, active_turn_token))
 	phase_runner.push_phase(turn_end_unlock_phase_script.new(self, turn_context, active_turn_token))
 
 	if phase_runner.is_running():
@@ -3132,11 +3142,235 @@ func _run_turn_faint_resolve_phase_state(turn_state: Dictionary, active_turn_tok
 			if _is_turn_token_cancelled(active_turn_token):
 				turn_state["cancelled"] = true
 				return turn_state
+		set_battle_text("%s fainted!" % player_species_id)
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				return turn_state
 		_animate_player_panel_to(_player_panel_hidden_position(), max(0.0, player_panel_switch_slide_duration_sec), active_turn_token)
-		end_battle(false, player_species_id)
+		turn_state["player_faint_species_id"] = player_species_id
 		return turn_state
 
 	return turn_state
+
+func _run_turn_player_defeat_gate_phase_state(turn_state: Dictionary, active_turn_token: int) -> Dictionary:
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+	if not bool(turn_state.get("player_fainted", false)):
+		return turn_state
+	if _is_turn_token_cancelled(active_turn_token):
+		turn_state["cancelled"] = true
+		return turn_state
+
+	var legal_slots = _get_legal_player_party_slot_indexes(true)
+	if legal_slots.empty():
+		turn_state["player_defeat"] = true
+		turn_state["forced_switch_required"] = false
+		turn_state["terminal"] = true
+		return turn_state
+
+	turn_state["player_defeat"] = false
+	turn_state["forced_switch_required"] = true
+	turn_state["terminal"] = false
+	return turn_state
+
+func _run_turn_forced_switch_prompt_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+	if not bool(turn_state.get("forced_switch_required", false)):
+		return turn_state
+	if _is_turn_token_cancelled(active_turn_token):
+		turn_state["cancelled"] = true
+		return turn_state
+
+	var legal_slots = _get_legal_player_party_slot_indexes(true)
+	if legal_slots.empty():
+		turn_state["player_defeat"] = true
+		turn_state["forced_switch_required"] = false
+		turn_state["terminal"] = true
+		return turn_state
+
+	if faint_to_party_prompt_delay_sec > 0.0:
+		yield(get_tree().create_timer(faint_to_party_prompt_delay_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			turn_state["cancelled"] = true
+			return turn_state
+
+	forced_switch_pending = true
+	forced_switch_active_turn_token = active_turn_token
+	forced_switch_success = false
+	open_party_menu(true)
+	set_battle_text("Choose a Pokemon to continue the battle.")
+
+	while forced_switch_pending:
+		yield(get_tree(), "idle_frame")
+		if _is_turn_token_cancelled(active_turn_token):
+			forced_switch_pending = false
+			forced_switch_active_turn_token = -1
+			forced_switch_success = false
+			_close_party_menu_internal()
+			turn_state["cancelled"] = true
+			return turn_state
+
+	turn_state["forced_switch_required"] = false
+	turn_state["forced_switch_completed"] = forced_switch_success
+	if not forced_switch_success:
+		turn_state["player_defeat"] = true
+		turn_state["terminal"] = true
+	return turn_state
+
+func _run_turn_game_over_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+	if not bool(turn_state.get("player_defeat", false)):
+		return turn_state
+	if _is_turn_token_cancelled(active_turn_token):
+		turn_state["cancelled"] = true
+		return turn_state
+
+	var player_species_id = String(turn_state.get("player_faint_species_id", turn_state.get("fainted_species_id", "")))
+	end_battle(false, player_species_id)
+	return turn_state
+
+func _get_legal_player_party_slot_indexes(exclude_active_slot: bool) -> Array:
+	if runtime_state_script == null:
+		return []
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return []
+
+	var legal_slots := []
+	var members = party.get_members_copy()
+	var active_index = party.get_active_slot_index()
+	for slot_index in range(members.size()):
+		if exclude_active_slot and slot_index == active_index:
+			continue
+		var member = members[slot_index]
+		if typeof(member) != TYPE_DICTIONARY or member.empty():
+			continue
+		if int(member.get("current_hp", -1)) == 0:
+			continue
+		legal_slots.append(slot_index)
+	return legal_slots
+
+func _perform_player_switch_to_slot(slot_index: int, active_turn_token: int, allow_enemy_action: bool, finish_turn_on_complete: bool) -> Dictionary:
+	if runtime_state_script == null:
+		set_battle_text("Switch unavailable: runtime missing.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		set_battle_text("Switch unavailable: party state missing.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var members = party.get_members_copy()
+	if slot_index < 0 or slot_index >= members.size():
+		set_battle_text("Invalid switch target.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var member = members[slot_index]
+	if typeof(member) != TYPE_DICTIONARY or member.empty():
+		set_battle_text("Invalid switch target.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var active_index = party.get_active_slot_index()
+	if slot_index == active_index:
+		set_battle_text("That Pokemon is already active.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var current_hp = int(member.get("current_hp", -1))
+	if current_hp == 0:
+		set_battle_text("That Pokemon cannot battle.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var species_label = String(member.get("species_id", "POKEMON")).strip_edges().to_upper()
+	if species_label.empty():
+		species_label = "POKEMON"
+	var outgoing_species_label = "POKEMON"
+	if battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		outgoing_species_label = String(battle_data["player"].species_id).strip_edges().to_upper()
+		if outgoing_species_label.empty():
+			outgoing_species_label = "POKEMON"
+
+	sync_active_party_member_from_battle()
+	set_battle_text("Come back! %s!" % outgoing_species_label)
+	var recall_anim = _play_player_switch_withdraw_animation(active_turn_token)
+	if recall_anim is GDScriptFunctionState:
+		yield(recall_anim, "completed")
+		if active_turn_token != turn_token:
+			return {"ok": false, "cancelled": true}
+
+	var incoming_player_data = _build_player_data_from_party_member(member)
+	if incoming_player_data == null:
+		set_battle_text("Switch failed: could not load %s." % species_label)
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	var set_active_result = party.swap_active_with_slot(slot_index)
+	if not bool(set_active_result.get("ok", false)):
+		set_battle_text("Switch failed: invalid party slot.")
+		if finish_turn_on_complete:
+			_finish_turn()
+		return {"ok": false, "cancelled": false}
+
+	battle_data["player"] = incoming_player_data
+	_close_party_menu_internal()
+	load_battle_sprites()
+	bind_battle_data()
+	player_sprite_anim_enabled = true
+	enemy_sprite_anim_enabled = true
+	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+	reset_pokemon_animation_state()
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.visible = false
+		player_pokemon_sprite.position = player_sprite_home_position
+		player_pokemon_sprite.scale = player_sprite_home_scale
+		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
+	player_sendout_cry_played = false
+	set_battle_text("Go! %s!" % species_label)
+	var sendout_anim = _play_player_switch_sendout_animation(active_turn_token)
+	if sendout_anim is GDScriptFunctionState:
+		yield(sendout_anim, "completed")
+		if active_turn_token != turn_token:
+			return {"ok": false, "cancelled": true}
+
+	if turn_step_delay_sec > 0.0:
+		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+		if active_turn_token != turn_token:
+			return {"ok": false, "cancelled": true}
+
+	if allow_enemy_action:
+		var enemy_action = _run_enemy_action_after_player_switch(incoming_player_data, active_turn_token)
+		if enemy_action is GDScriptFunctionState:
+			yield(enemy_action, "completed")
+			if active_turn_token != turn_token:
+				return {"ok": false, "cancelled": true}
+
+	if not battle_ended:
+		set_main_command_prompt()
+	if finish_turn_on_complete:
+		_finish_turn()
+	return {"ok": true, "cancelled": false}
 
 func _run_turn_end_unlock_phase_state(turn_state: Dictionary, _active_turn_token: int) -> Dictionary:
 	if typeof(turn_state) != TYPE_DICTIONARY:
@@ -6229,6 +6463,9 @@ func close_pokedex_overlay() -> void:
 	ensure_button_focus()
 
 func _on_PartyMenu_close_requested():
+	if forced_switch_pending:
+		set_battle_text("Choose a Pokemon to continue the battle.")
+		return
 	close_party_menu()
 
 func _on_PartyMenu_pokedex_entry_requested(species_id: String) -> void:
@@ -6245,106 +6482,37 @@ func _on_Pokedex_close_requested() -> void:
 func _on_PartyMenu_switch_slot_requested(slot_index: int) -> void:
 	if battle_ended:
 		set_battle_text("Battle has ended. Press Ball to restart.")
+		forced_switch_pending = false
+		forced_switch_success = false
+		forced_switch_active_turn_token = -1
 		return
+
+	if forced_switch_pending:
+		var forced_result = _perform_player_switch_to_slot(slot_index, forced_switch_active_turn_token, false, false)
+		if forced_result is GDScriptFunctionState:
+			forced_result = yield(forced_result, "completed")
+		if typeof(forced_result) == TYPE_DICTIONARY and bool(forced_result.get("ok", false)):
+			forced_switch_success = true
+			forced_switch_pending = false
+			forced_switch_active_turn_token = -1
+			return
+		if typeof(forced_result) == TYPE_DICTIONARY and bool(forced_result.get("cancelled", false)):
+			forced_switch_success = false
+			forced_switch_pending = false
+			forced_switch_active_turn_token = -1
+			return
+		# Keep forced switch pending when validation fails so the user can choose another slot.
+		return
+
 	if turn_in_progress or capture_in_progress:
 		return
-	if runtime_state_script == null:
-		set_battle_text("Switch unavailable: runtime missing.")
-		return
-
-	var party = runtime_state_script.get_party(get_tree())
-	if party == null:
-		set_battle_text("Switch unavailable: party state missing.")
-		return
-
-	var members = party.get_members_copy()
-	if slot_index < 0 or slot_index >= members.size():
-		set_battle_text("Invalid switch target.")
-		return
-
-	var member = members[slot_index]
-	if typeof(member) != TYPE_DICTIONARY or member.empty():
-		set_battle_text("Invalid switch target.")
-		return
-
-	var active_index = party.get_active_slot_index()
-	if slot_index == active_index:
-		set_battle_text("That Pokemon is already active.")
-		return
-
-	var current_hp = int(member.get("current_hp", -1))
-	if current_hp == 0:
-		set_battle_text("That Pokemon cannot battle.")
-		return
-
-	var species_label = String(member.get("species_id", "POKEMON")).strip_edges().to_upper()
-	if species_label.empty():
-		species_label = "POKEMON"
-	var outgoing_species_label = "POKEMON"
-	if battle_data != null and battle_data.has("player") and battle_data["player"] != null:
-		outgoing_species_label = String(battle_data["player"].species_id).strip_edges().to_upper()
-		if outgoing_species_label.empty():
-			outgoing_species_label = "POKEMON"
 
 	turn_in_progress = true
 	_enter_action_locked_state()
 	var active_turn_token = turn_token
-
-	sync_active_party_member_from_battle()
-	set_battle_text("Come back! %s!" % outgoing_species_label)
-	var recall_anim = _play_player_switch_withdraw_animation(active_turn_token)
-	if recall_anim is GDScriptFunctionState:
-		yield(recall_anim, "completed")
-		if active_turn_token != turn_token:
-			return
-
-	var incoming_player_data = _build_player_data_from_party_member(member)
-	if incoming_player_data == null:
-		set_battle_text("Switch failed: could not load %s." % species_label)
-		_finish_turn()
-		return
-
-	var set_active_result = party.swap_active_with_slot(slot_index)
-	if not bool(set_active_result.get("ok", false)):
-		set_battle_text("Switch failed: invalid party slot.")
-		_finish_turn()
-		return
-
-	battle_data["player"] = incoming_player_data
-	_close_party_menu_internal()
-	load_battle_sprites()
-	bind_battle_data()
-	player_sprite_anim_enabled = true
-	enemy_sprite_anim_enabled = true
-	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
-	reset_pokemon_animation_state()
-	if player_pokemon_sprite != null:
-		player_pokemon_sprite.visible = false
-		player_pokemon_sprite.position = player_sprite_home_position
-		player_pokemon_sprite.scale = player_sprite_home_scale
-		player_pokemon_sprite.modulate = Color(1, 1, 1, 1)
-	player_sendout_cry_played = false
-	set_battle_text("Go! %s!" % species_label)
-	var sendout_anim = _play_player_switch_sendout_animation(active_turn_token)
-	if sendout_anim is GDScriptFunctionState:
-		yield(sendout_anim, "completed")
-		if active_turn_token != turn_token:
-			return
-
-	if turn_step_delay_sec > 0.0:
-		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-		if active_turn_token != turn_token:
-			return
-
-	var enemy_action = _run_enemy_action_after_player_switch(incoming_player_data, active_turn_token)
-	if enemy_action is GDScriptFunctionState:
-		yield(enemy_action, "completed")
-		if active_turn_token != turn_token:
-			return
-
-	if not battle_ended:
-		set_main_command_prompt()
-	_finish_turn()
+	var switch_result = _perform_player_switch_to_slot(slot_index, active_turn_token, true, true)
+	if switch_result is GDScriptFunctionState:
+		switch_result = yield(switch_result, "completed")
 
 func set_main_command_prompt():
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
