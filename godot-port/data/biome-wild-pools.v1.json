@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "generated_from": "manual_template",
+  "notes": "Biome-tagged wild pool baseline for BIOME-MVP-03. Species ids not present in current catalog are ignored at runtime.",
+  "default_biome_id": "grass",
+  "default_tier_weights": {
+    "common": 70,
+    "uncommon": 20,
+    "rare": 10
+  },
+  "biomes": {
+    "grass": {
+      "tiers": {
+        "common": [
+          { "species_id": "BULBASAUR", "weight": 2 },
+          { "species_id": "CATERPIE", "weight": 3 },
+          { "species_id": "WEEDLE", "weight": 3 },
+          { "species_id": "PIDGEY", "weight": 4 },
+          { "species_id": "ODDISH", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "BELLSPROUT", "weight": 2 },
+          { "species_id": "PARAS", "weight": 2 },
+          { "species_id": "NIDORAN_F", "weight": 1 },
+          { "species_id": "NIDORAN_M", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "PIKACHU", "weight": 2 },
+          { "species_id": "EEVEE", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 2 },
+          { "species_id": "RAICHU", "weight": 1 }
+        ]
+      }
+    },
+    "metropolis": {
+      "tiers": {
+        "common": [
+          { "species_id": "PATRAT", "weight": 4 },
+          { "species_id": "LILLIPUP", "weight": 3 },
+          { "species_id": "PURRLOIN", "weight": 3 }
+        ],
+        "uncommon": [
+          { "species_id": "PANSAGE", "weight": 2 },
+          { "species_id": "PANSEAR", "weight": 2 },
+          { "species_id": "SIMISEAR", "weight": 2 }
+        ],
+        "rare": [
+          { "species_id": "STOUTLAND", "weight": 2 },
+          { "species_id": "LIEPARD", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "STOUTLAND", "weight": 2 },
+          { "species_id": "LIEPARD", "weight": 2 }
+        ]
+      }
+    },
+    "abyss": {
+      "tiers": {
+        "common": [
+          { "species_id": "RATTATA", "weight": 3 },
+          { "species_id": "PIDGEY", "weight": 3 },
+          { "species_id": "CHARMANDER", "weight": 2 },
+          { "species_id": "SQUIRTLE", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "BULBASAUR", "weight": 2 },
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "CHARMANDER", "weight": 1 },
+          { "species_id": "SQUIRTLE", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 2 },
+          { "species_id": "CHARMANDER", "weight": 1 }
+        ]
+      }
+    }
+  }
+}
