@@ -59,6 +59,13 @@ export(bool) var debug_enemy_sprite_bounds_capture_suspicious := false
 export(float) var debug_enemy_sprite_bounds_capture_cooldown_sec := 2.0
 export(String) var debug_enemy_sprite_bounds_capture_dir := "user://enemy_sprite_snapshots"
 export(float) var arena_switch_blend_duration_sec := 0.22
+export(float) var biome_transition_restore_message_hold_sec := 0.8
+export(float) var biome_transition_post_recall_delay_sec := 0.12
+export(float) var biome_transition_post_reentry_delay_sec := 0.18
+export(float) var biome_transition_fade_out_duration_sec := 0.3
+export(float) var biome_transition_blackout_hold_sec := 0.45
+export(float) var biome_transition_fade_in_duration_sec := 0.24
+export(float) var biome_transition_post_fade_in_delay_sec := 0.12
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
 export(float) var scene_change_bgm_fade_out_sec := 0.35
@@ -222,6 +229,7 @@ var runtime_state_script = load("res://logic/RuntimeState.gd")
 var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
 var encounter_transition_intro_phase_script = load("res://logic/phases/EncounterTransitionIntroPhase.gd")
 var encounter_transition_seed_load_phase_script = load("res://logic/phases/EncounterTransitionSeedLoadPhase.gd")
+var biome_transition_party_restore_phase_script = load("res://logic/phases/BiomeTransitionPartyRestorePhase.gd")
 var encounter_transition_presentation_phase_script = load("res://logic/phases/EncounterTransitionPresentationPhase.gd")
 var encounter_transition_finalize_phase_script = load("res://logic/phases/EncounterTransitionFinalizePhase.gd")
 var opening_prepare_phase_script = load("res://logic/phases/OpeningPreparePhase.gd")
@@ -380,6 +388,9 @@ var biome_bgm_primary_player: AudioStreamPlayer = null
 var biome_bgm_secondary_player: AudioStreamPlayer = null
 var biome_bgm_active_player: AudioStreamPlayer = null
 var biome_bgm_crossfade_tween: Tween = null
+var suppress_arena_bgm_apply := false
+var transition_fade_overlay: ColorRect = null
+var transition_fade_tween: Tween = null
 var party_menu_fade_tween: Tween = null
 var current_bgm_arena_asset_id := ""
 var hp_overlay_frames := {}
@@ -535,6 +546,7 @@ func _ready():
 	load_audio_assets()
 	setup_type_sprite_placeholders()
 	setup_attack_detail_sprites()
+	_setup_transition_fade_overlay()
 	_setup_party_exp_container()
 	setup_party_menu_overlay()
 	setup_pokedex_overlay()
@@ -2010,6 +2022,17 @@ func _stop_biome_bgm_crossfade_tween() -> void:
 		biome_bgm_crossfade_tween.queue_free()
 	biome_bgm_crossfade_tween = null
 
+func _stop_all_biome_bgm() -> void:
+	_stop_biome_bgm_crossfade_tween()
+	for player in [biome_bgm_primary_player, biome_bgm_secondary_player]:
+		if player == null or not is_instance_valid(player):
+			continue
+		player.stop()
+	if biome_bgm_primary_player != null and is_instance_valid(biome_bgm_primary_player):
+		biome_bgm_primary_player.volume_db = biome_bgm_volume_db
+	if biome_bgm_secondary_player != null and is_instance_valid(biome_bgm_secondary_player):
+		biome_bgm_secondary_player.volume_db = -80.0
+
 func _on_biome_bgm_crossfade_completed(outgoing_player: AudioStreamPlayer) -> void:
 	if outgoing_player != null and is_instance_valid(outgoing_player):
 		outgoing_player.stop()
@@ -2198,12 +2221,13 @@ func _apply_arena_visuals_from_biome_state() -> void:
 	_set_arena_texture(enemy_arena_sprite_3, _load_arena_texture(resolved_arena_id, "_b_3"))
 
 	var trainer_bgm_id := ""
-	if _is_active_trainer_encounter():
-		trainer_bgm_id = String(battle_data.get("enemy_trainer_battle_bgm", "")).strip_edges()
-		if trainer_bgm_id.empty():
-			trainer_bgm_id = String(battle_data.get("enemy_trainer_encounter_bgm", "")).strip_edges()
-	if trainer_bgm_id.empty() or not _play_named_bgm_track(trainer_bgm_id):
-		_play_biome_bgm_for_arena(resolved_arena_id)
+	if not suppress_arena_bgm_apply:
+		if _is_active_trainer_encounter():
+			trainer_bgm_id = String(battle_data.get("enemy_trainer_battle_bgm", "")).strip_edges()
+			if trainer_bgm_id.empty():
+				trainer_bgm_id = String(battle_data.get("enemy_trainer_encounter_bgm", "")).strip_edges()
+		if trainer_bgm_id.empty() or not _play_named_bgm_track(trainer_bgm_id):
+			_play_biome_bgm_for_arena(resolved_arena_id)
 
 	if should_blend:
 		_start_arena_visual_fade_in()
@@ -5421,6 +5445,13 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 		)
 	)
 	phase_runner.push_phase(
+		biome_transition_party_restore_phase_script.new(
+			self,
+			transition_context,
+			active_turn_token
+		)
+	)
+	phase_runner.push_phase(
 		encounter_transition_presentation_phase_script.new(
 			self,
 			transition_context,
@@ -5514,14 +5545,182 @@ func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String
 		_log_transition_checkpoint("seed_load.no_next_enemy_end_battle")
 		return transition_state
 
-	battle_data["enemy"] = next_enemy
-	if not trainer_party_switch:
-		if next_is_seeded_trainer:
-			_apply_trainer_seed_to_battle_data(next_trainer_seed)
+	var biome_changed = _did_biome_change(next_biome_state)
+
+	if trainer_party_switch or not biome_changed:
+		battle_data["enemy"] = next_enemy
+		if not trainer_party_switch:
+			if next_is_seeded_trainer:
+				_apply_trainer_seed_to_battle_data(next_trainer_seed)
+			else:
+				_set_enemy_trainer_state_cleared()
+		_apply_biome_state_to_battle_data(next_biome_state)
+		if not trainer_party_switch and next_trainer_seed_failed:
+			var fallback_meta = battle_data.get("encounter_meta", {}).duplicate(true)
+			fallback_meta["encounter_type"] = ENCOUNTER_TYPE_WILD
+			fallback_meta["is_trainer_encounter"] = false
+			fallback_meta["trainer_id"] = ""
+			fallback_meta["trainer_display_name"] = ""
+			if bool(fallback_meta.get("is_boss_encounter", false)):
+				fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_BOSS_POKEMON
+			else:
+				fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_NORMAL_POKEMON
+			_apply_encounter_metadata_to_battle_data(fallback_meta)
+		if trainer_party_switch:
+			enemy_layer.rect_position = enemy_layer_home_position
 		else:
-			_set_enemy_trainer_state_cleared()
+			enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+		if enemy_panel != null:
+			enemy_panel.rect_position = _enemy_panel_hidden_position()
+		load_battle_sprites()
+		player_sprite_anim_enabled = true
+		enemy_sprite_anim_enabled = true
+		restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
+		restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
+		reset_pokemon_animation_state()
+		if trainer_party_switch and enemy_pokemon_sprite != null:
+			enemy_pokemon_sprite.visible = false
+
+	transition_state["ok"] = true
+	transition_state["next_enemy"] = next_enemy
+	transition_state["next_biome_state"] = next_biome_state
+	transition_state["next_trainer_seed"] = next_trainer_seed
+	transition_state["next_is_seeded_trainer"] = next_is_seeded_trainer
+	transition_state["next_trainer_seed_failed"] = next_trainer_seed_failed
+	transition_state["biome_changed"] = biome_changed
+	_log_transition_checkpoint("seed_load.ready", {
+		"trainer_party_switch": trainer_party_switch,
+		"next_is_seeded_trainer": next_is_seeded_trainer,
+		"next_trainer_seed_failed": next_trainer_seed_failed,
+		"biome_changed": bool(transition_state.get("biome_changed", false)),
+		"next_enemy_species": String(next_enemy.species_id),
+	})
+	return transition_state
+
+func _did_biome_change(next_biome_state: Dictionary) -> bool:
+	if typeof(next_biome_state) != TYPE_DICTIONARY:
+		return false
+	var previous_biome_id = String(next_biome_state.get("previous_biome_id", "")).strip_edges().to_lower()
+	var current_biome_id = String(next_biome_state.get("current_biome_id", "")).strip_edges().to_lower()
+	if previous_biome_id.empty() or current_biome_id.empty():
+		return false
+	return previous_biome_id != current_biome_id
+
+func _run_biome_transition_party_restore_phase_state(transition_state: Dictionary, active_turn_token: int):
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return null
+	if bool(transition_state.get("cancelled", false)) or not bool(transition_state.get("ok", false)):
+		return null
+	if bool(transition_state.get("trainer_party_switch", false)):
+		return null
+	if not bool(transition_state.get("biome_changed", false)):
+		return null
+	if _is_turn_token_cancelled(active_turn_token):
+		transition_state["cancelled"] = true
+		return null
+
+	_log_transition_checkpoint("biome_restore.entry", {
+		"next_is_seeded_trainer": bool(transition_state.get("next_is_seeded_trainer", false)),
+	})
+
+	hide_all_command_menus()
+	set_sendout_controls_locked(true)
+
+	var recall_turn_token = active_turn_token if active_turn_token != -1 else turn_token
+	var outgoing_species_label = "POKEMON"
+	if battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		outgoing_species_label = String(battle_data["player"].species_id).strip_edges().to_upper()
+		if outgoing_species_label.empty():
+			outgoing_species_label = "POKEMON"
+	sync_active_party_member_from_battle()
+	set_battle_text("Come back! %s!" % outgoing_species_label)
+	var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
+	if recall_anim is GDScriptFunctionState:
+		yield(recall_anim, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_recall")
+			return null
+	if biome_transition_post_recall_delay_sec > 0.0:
+		yield(get_tree().create_timer(biome_transition_post_recall_delay_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_recall_delay")
+			return null
+	transition_state["biome_transition_recalled"] = true
+
+	var trainer_reentry = _run_player_trainer_reentry_sequence(active_turn_token)
+	if trainer_reentry is GDScriptFunctionState:
+		yield(trainer_reentry, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_trainer_reentry")
+			return null
+	if biome_transition_post_reentry_delay_sec > 0.0:
+		yield(get_tree().create_timer(biome_transition_post_reentry_delay_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_reentry_delay")
+			return null
+
+	var fade_out = _play_transition_fade_to_alpha(1.0, biome_transition_fade_out_duration_sec, active_turn_token)
+	if fade_out is GDScriptFunctionState:
+		yield(fade_out, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_fade_out")
+			return null
+
+	suppress_arena_bgm_apply = true
+	_apply_pending_transition_battle_state(transition_state)
+	_apply_full_party_restore_for_biome_transition()
+	var heal_wait = _play_biome_transition_heal_sfx_and_wait(active_turn_token)
+	if heal_wait is GDScriptFunctionState:
+		yield(heal_wait, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_during_blackout")
+			return null
+
+	var fade_in = _play_transition_fade_to_alpha(0.0, biome_transition_fade_in_duration_sec, active_turn_token)
+	if fade_in is GDScriptFunctionState:
+		yield(fade_in, "completed")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_fade_in")
+			return null
+	if biome_transition_post_fade_in_delay_sec > 0.0:
+		yield(get_tree().create_timer(biome_transition_post_fade_in_delay_sec), "timeout")
+		if _is_turn_token_cancelled(active_turn_token):
+			transition_state["cancelled"] = true
+			_log_transition_checkpoint("biome_restore.cancelled_after_fade_in_delay")
+			return null
+
+	transition_state["biome_transition_restart_opening"] = true
+
+	_log_transition_checkpoint("biome_restore.complete", {
+		"next_is_seeded_trainer": bool(transition_state.get("next_is_seeded_trainer", false)),
+	})
+	return null
+
+func _apply_pending_transition_battle_state(transition_state: Dictionary) -> void:
+	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
+		return
+	var next_enemy = transition_state.get("next_enemy", null)
+	var next_biome_state = transition_state.get("next_biome_state", {})
+	var next_trainer_seed = transition_state.get("next_trainer_seed", {})
+	var next_is_seeded_trainer = bool(transition_state.get("next_is_seeded_trainer", false))
+	var next_trainer_seed_failed = bool(transition_state.get("next_trainer_seed_failed", false))
+	if next_enemy == null or battle_data == null:
+		return
+
+	battle_data["enemy"] = next_enemy
+	if next_is_seeded_trainer:
+		_apply_trainer_seed_to_battle_data(next_trainer_seed)
+	else:
+		_set_enemy_trainer_state_cleared()
 	_apply_biome_state_to_battle_data(next_biome_state)
-	if not trainer_party_switch and next_trainer_seed_failed:
+	if next_trainer_seed_failed:
 		var fallback_meta = battle_data.get("encounter_meta", {}).duplicate(true)
 		fallback_meta["encounter_type"] = ENCOUNTER_TYPE_WILD
 		fallback_meta["is_trainer_encounter"] = false
@@ -5532,41 +5731,86 @@ func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String
 		else:
 			fallback_meta["encounter_archetype"] = ENCOUNTER_ARCHETYPE_NORMAL_POKEMON
 		_apply_encounter_metadata_to_battle_data(fallback_meta)
-	if trainer_party_switch:
-		enemy_layer.rect_position = enemy_layer_home_position
-	else:
-		enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
+
+	battle_data["force_player_trainer_intro"] = true
 	if enemy_panel != null:
 		enemy_panel.rect_position = _enemy_panel_hidden_position()
+	enemy_layer.rect_position = enemy_layer_home_position + Vector2(-enemy_switch_slide_distance_px, 0)
 	load_battle_sprites()
 	player_sprite_anim_enabled = true
 	enemy_sprite_anim_enabled = true
 	restore_battler_sprite_state(player_pokemon_sprite, player_sprite_home_position)
 	restore_battler_sprite_state(enemy_pokemon_sprite, enemy_sprite_home_position)
 	reset_pokemon_animation_state()
-	if trainer_party_switch and enemy_pokemon_sprite != null:
+	if player_pokemon_sprite != null:
+		player_pokemon_sprite.visible = false
+	if enemy_pokemon_sprite != null:
 		enemy_pokemon_sprite.visible = false
+	if player_trainer_sprite != null:
+		player_trainer_sprite.visible = true
+		player_trainer_sprite.position = player_trainer_sprite_home_position
+		player_trainer_sprite.modulate = Color(1, 1, 1, 1)
+	bind_battle_data()
 
-	transition_state["ok"] = true
-	transition_state["next_enemy"] = next_enemy
-	transition_state["next_biome_state"] = next_biome_state
-	transition_state["next_trainer_seed"] = next_trainer_seed
-	transition_state["next_is_seeded_trainer"] = next_is_seeded_trainer
-	transition_state["next_trainer_seed_failed"] = next_trainer_seed_failed
-	_log_transition_checkpoint("seed_load.ready", {
-		"trainer_party_switch": trainer_party_switch,
-		"next_is_seeded_trainer": next_is_seeded_trainer,
-		"next_trainer_seed_failed": next_trainer_seed_failed,
-		"next_enemy_species": String(next_enemy.species_id),
-	})
-	return transition_state
+func _apply_full_party_restore_for_biome_transition() -> void:
+	if runtime_state_script == null:
+		return
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return
+
+	for slot_index in range(party.size()):
+		var member = party.get_member_at(slot_index)
+		if member.empty():
+			continue
+		var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+		if species_id.empty():
+			continue
+		var level = max(1, int(member.get("level", 5)))
+		var move_ids = member.get("move_ids", [])
+		if typeof(move_ids) != TYPE_ARRAY:
+			move_ids = []
+		var rebuilt_data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
+		if rebuilt_data == null:
+			continue
+		var max_hp = max(1, int(rebuilt_data.get_base_stat("hp")))
+		party.update_member_at(slot_index, {
+			"current_hp": max_hp,
+		})
+
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return
+	var active_index = party.get_active_slot_index()
+	var active_member = party.get_member_at(active_index)
+	if active_member.empty():
+		return
+	var active_species_id = String(active_member.get("species_id", "")).strip_edges().to_upper()
+	if active_species_id.empty():
+		return
+	var active_level = max(1, int(active_member.get("level", 5)))
+	var active_move_ids = active_member.get("move_ids", [])
+	if typeof(active_move_ids) != TYPE_ARRAY:
+		active_move_ids = []
+	var active_rebuilt = catalog_loader.build_pokemon_data(active_species_id, active_level, active_move_ids)
+	if active_rebuilt == null:
+		return
+	var active_max_hp = max(1, int(active_rebuilt.get_base_stat("hp")))
+	battle_data["player"].current_hp = active_max_hp
+	refresh_hp_ui(battle_data["player"], player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
 
 func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dictionary, active_turn_token: int = -1):
 	if typeof(transition_state) != TYPE_DICTIONARY or transition_state.empty():
 		return null
 
 	var trainer_party_switch = bool(transition_state.get("trainer_party_switch", false))
+	var biome_transition_restart_opening = bool(transition_state.get("biome_transition_restart_opening", false))
 	var next_is_seeded_trainer = bool(transition_state.get("next_is_seeded_trainer", false))
+	var biome_transition_recalled = bool(transition_state.get("biome_transition_recalled", false))
 	var next_enemy = transition_state.get("next_enemy", null)
 	var next_enemy_species_id = String(next_enemy.species_id) if next_enemy != null else ""
 
@@ -5579,6 +5823,22 @@ func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dicti
 				transition_state["cancelled"] = true
 				_log_transition_checkpoint("presentation.cancelled.trainer_party_switch")
 				return null
+	elif biome_transition_restart_opening:
+		_log_transition_checkpoint("presentation.branch", {"type": "biome_restart_opening"})
+		hide_all_command_menus()
+		set_sendout_controls_locked(true)
+		_set_enemy_next_trainer_presentation_visible(true)
+		bind_battle_data()
+		var opening_run = _start_battle_opening_sequence()
+		if opening_run is GDScriptFunctionState:
+			yield(opening_run, "completed")
+			if _is_turn_token_cancelled(active_turn_token):
+				transition_state["cancelled"] = true
+				_log_transition_checkpoint("presentation.cancelled.biome_restart_opening")
+				return null
+		transition_state["early_return"] = true
+		_log_transition_checkpoint("presentation.early_return_to_opening")
+		return null
 	elif next_is_seeded_trainer:
 		_log_transition_checkpoint("presentation.branch", {"type": "next_seeded_trainer"})
 		hide_all_command_menus()
@@ -5588,13 +5848,16 @@ func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dicti
 			enemy_panel.rect_position = _enemy_panel_hidden_position()
 		_set_enemy_next_trainer_presentation_visible(false)
 		var recall_turn_token = active_turn_token if active_turn_token != -1 else turn_token
-		var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
-		if recall_anim is GDScriptFunctionState:
-			yield(recall_anim, "completed")
-			if _is_turn_token_cancelled(active_turn_token):
-				transition_state["cancelled"] = true
-				_log_transition_checkpoint("presentation.cancelled.seeded_trainer_recall")
-				return null
+		if not biome_transition_recalled:
+			var recall_anim = _play_player_switch_withdraw_animation(recall_turn_token)
+			if recall_anim is GDScriptFunctionState:
+				yield(recall_anim, "completed")
+				if _is_turn_token_cancelled(active_turn_token):
+					transition_state["cancelled"] = true
+					_log_transition_checkpoint("presentation.cancelled.seeded_trainer_recall")
+					return null
+		else:
+			_log_transition_checkpoint("presentation.seeded_trainer_recall_skipped_biome_restore")
 		var trainer_reentry = _run_player_trainer_reentry_sequence(active_turn_token)
 		if trainer_reentry is GDScriptFunctionState:
 			yield(trainer_reentry, "completed")
@@ -5611,6 +5874,8 @@ func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dicti
 	else:
 		_log_transition_checkpoint("presentation.branch", {"type": "wild_slide_in"})
 		bind_battle_data()
+		if enemy_pokemon_sprite != null:
+			enemy_pokemon_sprite.visible = true
 		var enemy_slide_in = animate_enemy_layer_to(enemy_layer_home_position, enemy_switch_slide_duration_sec, active_turn_token)
 		_animate_enemy_panel_to(enemy_panel_home_position, max(0.0, enemy_panel_slide_duration_sec), active_turn_token)
 		if enemy_slide_in is GDScriptFunctionState:
@@ -7525,7 +7790,10 @@ func _start_battle_opening_sequence() -> void:
 	return
 
 func _prepare_opening_phase_state() -> Dictionary:
-	var use_player_trainer_intro = _is_active_trainer_encounter() and player_trainer_enabled and player_trainer_sprite != null and not player_trainer_idle_frame.empty()
+	var force_player_trainer_intro = bool(battle_data.get("force_player_trainer_intro", false)) if typeof(battle_data) == TYPE_DICTIONARY else false
+	if force_player_trainer_intro and typeof(battle_data) == TYPE_DICTIONARY:
+		battle_data.erase("force_player_trainer_intro")
+	var use_player_trainer_intro = (_is_active_trainer_encounter() or force_player_trainer_intro) and player_trainer_enabled and player_trainer_sprite != null and not player_trainer_idle_frame.empty()
 	if player_trainer_sprite != null:
 		player_trainer_choreo_playing = false
 		if use_player_trainer_intro:
@@ -7609,7 +7877,7 @@ func _run_opening_non_trainer_resolve_branch(opening_state: Dictionary):
 		"active_trainer_encounter": _is_active_trainer_encounter(),
 	})
 	_play_enemy_sendout_cry_once()
-	if _is_active_trainer_encounter():
+	if use_player_trainer_intro:
 		start_player_trainer_summon_choreography()
 	else:
 		if player_pokemon_sprite != null:
@@ -7623,6 +7891,98 @@ func _run_opening_non_trainer_resolve_branch(opening_state: Dictionary):
 				yield(player_panel_reveal, "completed")
 		set_sendout_controls_locked(false)
 		_show_main_controls_unlocked()
+	return null
+
+func _setup_transition_fade_overlay() -> void:
+	if transition_fade_overlay != null and is_instance_valid(transition_fade_overlay):
+		return
+	transition_fade_overlay = ColorRect.new()
+	transition_fade_overlay.name = "TransitionFadeOverlay"
+	transition_fade_overlay.color = Color(0, 0, 0, 1)
+	transition_fade_overlay.anchor_right = 1.0
+	transition_fade_overlay.anchor_bottom = 1.0
+	transition_fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	transition_fade_overlay.visible = false
+	transition_fade_overlay.modulate = Color(1, 1, 1, 0)
+	add_child(transition_fade_overlay)
+	transition_fade_overlay.raise()
+
+func _stop_transition_fade_tween() -> void:
+	if transition_fade_tween != null and is_instance_valid(transition_fade_tween):
+		var _stopped = transition_fade_tween.stop_all()
+		transition_fade_tween.queue_free()
+	transition_fade_tween = null
+
+func _play_transition_fade_to_alpha(target_alpha: float, duration_sec: float, active_turn_token: int = -1):
+	_setup_transition_fade_overlay()
+	if transition_fade_overlay == null:
+		return null
+	_stop_transition_fade_tween()
+	transition_fade_overlay.visible = true
+	transition_fade_overlay.raise()
+	var clamped_alpha = clamp(target_alpha, 0.0, 1.0)
+	if duration_sec <= 0.0:
+		transition_fade_overlay.modulate.a = clamped_alpha
+		transition_fade_overlay.visible = clamped_alpha > 0.0
+		return null
+
+	transition_fade_tween = Tween.new()
+	add_child(transition_fade_tween)
+	var _fade_track = transition_fade_tween.interpolate_property(
+		transition_fade_overlay,
+		"modulate:a",
+		transition_fade_overlay.modulate.a,
+		clamped_alpha,
+		max(0.01, duration_sec),
+		Tween.TRANS_SINE,
+		Tween.EASE_IN_OUT
+	)
+	var _fade_started = transition_fade_tween.start()
+	yield(transition_fade_tween, "tween_all_completed")
+	transition_fade_tween.queue_free()
+	transition_fade_tween = null
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
+	transition_fade_overlay.modulate.a = clamped_alpha
+	transition_fade_overlay.visible = clamped_alpha > 0.0
+	return null
+
+func _play_biome_transition_heal_sfx_and_wait(active_turn_token: int):
+	if not battle_fx_enabled:
+		if biome_transition_blackout_hold_sec > 0.0:
+			yield(get_tree().create_timer(biome_transition_blackout_hold_sec), "timeout")
+		return null
+	suppress_arena_bgm_apply = true
+	_stop_all_biome_bgm()
+	var resolved_path = resolve_audio_asset_path("assets/audio/bgm/bw/heal.mp3")
+	if resolved_path.empty():
+		if biome_transition_blackout_hold_sec > 0.0:
+			yield(get_tree().create_timer(biome_transition_blackout_hold_sec), "timeout")
+		suppress_arena_bgm_apply = false
+		return null
+	var heal_stream = load(resolved_path)
+	if heal_stream == null:
+		if biome_transition_blackout_hold_sec > 0.0:
+			yield(get_tree().create_timer(biome_transition_blackout_hold_sec), "timeout")
+		suppress_arena_bgm_apply = false
+		return null
+	if heal_stream is AudioStreamMP3:
+		heal_stream.loop = false
+	elif heal_stream is AudioStreamOGGVorbis:
+		heal_stream.loop = false
+	$UIAudioStreamPlayer.stop()
+	$UIAudioStreamPlayer.stream = heal_stream
+	$UIAudioStreamPlayer.play()
+
+	var wait_duration = max(biome_transition_blackout_hold_sec, 0.0)
+	if heal_stream.has_method("get_length"):
+		wait_duration = max(wait_duration, float(heal_stream.get_length()))
+	if wait_duration > 0.0:
+		yield(get_tree().create_timer(wait_duration), "timeout")
+	$UIAudioStreamPlayer.stop()
+	suppress_arena_bgm_apply = false
+	if active_turn_token != -1 and active_turn_token != turn_token:
+		return null
 	return null
 
 func _run_enemy_opening_slide_in(include_enemy_panel: bool = true):

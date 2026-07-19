@@ -25,6 +25,11 @@ _global_script_classes=[ {
 "path": "res://logic/BattlePhaseRunner.gd"
 }, {
 "base": "BattlePhase",
+"class": "BiomeTransitionPartyRestorePhase",
+"language": "GDScript",
+"path": "res://logic/phases/BiomeTransitionPartyRestorePhase.gd"
+}, {
+"base": "BattlePhase",
 "class": "CaptureBeginPhase",
 "language": "GDScript",
 "path": "res://logic/phases/CaptureBeginPhase.gd"
@@ -173,6 +178,7 @@ _global_script_class_icons={
 "BattleCalc": "",
 "BattlePhase": "",
 "BattlePhaseRunner": "",
+"BiomeTransitionPartyRestorePhase": "",
 "CaptureBeginPhase": "",
 "CapturePostEncounterPhase": "",
 "CaptureSequencePhase": "",
