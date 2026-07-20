@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "generated_from": "dependency/pokerogue",
-  "generated_at": "2026-07-18T15:36:51.745240+00:00",
+  "generated_at": "2026-07-20T18:27:52.903742+00:00",
   "items": [
     {
       "schema_version": 3,
@@ -856,6 +856,869 @@
         "SWORDS_DANCE",
         "TACKLE",
         "TAIL_WHIP"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "SPEAROW",
+      "starter_species_id": "SPEAROW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FEAROW"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "FEAROW",
+          "min_level": 20,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 21,
+      "name": "Spearow",
+      "types": [
+        "NORMAL",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 40,
+        "atk": 60,
+        "def": 30,
+        "sp_atk": 31,
+        "sp_def": 31,
+        "spd": 70
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SPEAROW",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 255,
+      "base_friendship": 70,
+      "base_exp": 52,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
+      "starter_moves": [
+        "GROWL",
+        "PECK",
+        "LEER",
+        "PURSUIT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "FEAROW",
+      "starter_species_id": "SPEAROW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 22,
+      "name": "Fearow",
+      "types": [
+        "NORMAL",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 65,
+        "atk": 90,
+        "def": 65,
+        "sp_atk": 61,
+        "sp_def": 61,
+        "spd": 100
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "FEAROW",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 90,
+      "base_friendship": 70,
+      "base_exp": 155,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "PLUCK",
+        "GROWL",
+        "PECK",
+        "LEER"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "EKANS",
+      "starter_species_id": "EKANS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "ARBOK"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "ARBOK",
+          "min_level": 22,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 23,
+      "name": "Ekans",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 35,
+        "atk": 60,
+        "def": 44,
+        "sp_atk": 40,
+        "sp_def": 54,
+        "spd": 55
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "EKANS",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 255,
+      "base_friendship": 70,
+      "base_exp": 58,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
+      "starter_moves": [
+        "WRAP",
+        "LEER",
+        "POISON_STING",
+        "BITE"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "ARBOK",
+      "starter_species_id": "EKANS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 24,
+      "name": "Arbok",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 95,
+        "def": 69,
+        "sp_atk": 65,
+        "sp_def": 79,
+        "spd": 80
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "ARBOK",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 90,
+      "base_friendship": 70,
+      "base_exp": 157,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "TOXIC",
+        "THUNDER_FANG",
+        "ICE_FANG",
+        "FIRE_FANG"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "PIKACHU",
+      "starter_species_id": "PICHU",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 25,
+      "name": "Pikachu",
+      "types": [
+        "ELECTRIC"
+      ],
+      "base_stats": {
+        "hp": 35,
+        "atk": 55,
+        "def": 40,
+        "sp_atk": 50,
+        "sp_def": 50,
+        "spd": 90
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "PIKACHU",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 190,
+      "base_friendship": 50,
+      "base_exp": 112,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 4,
+      "starter_moves": [
+        "TAIL_WHIP",
+        "THUNDER_SHOCK",
+        "QUICK_ATTACK",
+        "GROWL"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "RAICHU",
+      "starter_species_id": "PIKACHU",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 26,
+      "name": "Raichu",
+      "types": [
+        "ELECTRIC"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 90,
+        "def": 55,
+        "sp_atk": 90,
+        "sp_def": 80,
+        "spd": 110
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "RAICHU",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 50,
+      "base_exp": 243,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "THUNDER_PUNCH",
+        "TAIL_WHIP",
+        "THUNDER_SHOCK",
+        "QUICK_ATTACK"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "SANDSHREW",
+      "starter_species_id": "SANDSHREW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "SANDSLASH"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "SANDSLASH",
+          "min_level": 22,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 27,
+      "name": "Sandshrew",
+      "types": [
+        "GROUND"
+      ],
+      "base_stats": {
+        "hp": 50,
+        "atk": 75,
+        "def": 85,
+        "sp_atk": 20,
+        "sp_def": 30,
+        "spd": 40
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SANDSHREW",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 255,
+      "base_friendship": 50,
+      "base_exp": 60,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
+      "starter_moves": [
+        "SCRATCH",
+        "DEFENSE_CURL",
+        "SAND_ATTACK",
+        "POISON_STING"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "SANDSLASH",
+      "starter_species_id": "SANDSHREW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 28,
+      "name": "Sandslash",
+      "types": [
+        "GROUND"
+      ],
+      "base_stats": {
+        "hp": 75,
+        "atk": 100,
+        "def": 110,
+        "sp_atk": 45,
+        "sp_def": 55,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SANDSLASH",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 90,
+      "base_friendship": 50,
+      "base_exp": 158,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "CRUSH_CLAW",
+        "SCRATCH",
+        "DEFENSE_CURL",
+        "PROTECT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDORAN_F",
+      "starter_species_id": "NIDORAN_F",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NIDORINA"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "NIDORINA",
+          "min_level": 16,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 29,
+      "name": "Nidoran F",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 55,
+        "atk": 47,
+        "def": 52,
+        "sp_atk": 40,
+        "sp_def": 40,
+        "spd": 41
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDORAN_F",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 235,
+      "base_friendship": 50,
+      "base_exp": 55,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
+      "starter_moves": [
+        "SCRATCH",
+        "POISON_STING",
+        "GROWL",
+        "TAIL_WHIP"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDORINA",
+      "starter_species_id": "NIDORAN_F",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NIDOQUEEN"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "NIDOQUEEN",
+          "min_level": 1,
+          "conditions": [],
+          "item": "MOON_STONE",
+          "evo_delay_levels": [
+            32,
+            36,
+            42
+          ]
+        }
+      ],
+      "pokedex_number": 30,
+      "name": "Nidorina",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 70,
+        "atk": 62,
+        "def": 67,
+        "sp_atk": 55,
+        "sp_def": 55,
+        "spd": 56
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDORINA",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 120,
+      "base_friendship": 50,
+      "base_exp": 128,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "SCRATCH",
+        "POISON_STING",
+        "GROWL",
+        "TAIL_WHIP"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDOQUEEN",
+      "starter_species_id": "NIDORAN_F",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 31,
+      "name": "Nidoqueen",
+      "types": [
+        "POISON",
+        "GROUND"
+      ],
+      "base_stats": {
+        "hp": 90,
+        "atk": 92,
+        "def": 87,
+        "sp_atk": 75,
+        "sp_def": 85,
+        "spd": 76
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDOQUEEN",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 253,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "SUPERPOWER",
+        "SCRATCH",
+        "POISON_STING",
+        "GROWL"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDORAN_M",
+      "starter_species_id": "NIDORAN_M",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NIDORINO"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "NIDORINO",
+          "min_level": 16,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 32,
+      "name": "Nidoran M",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 46,
+        "atk": 57,
+        "def": 40,
+        "sp_atk": 40,
+        "sp_def": 40,
+        "spd": 50
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDORAN_M",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 235,
+      "base_friendship": 50,
+      "base_exp": 55,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 3,
+      "starter_moves": [
+        "POISON_STING",
+        "LEER",
+        "PECK",
+        "FOCUS_ENERGY"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDORINO",
+      "starter_species_id": "NIDORAN_M",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NIDOKING"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "NIDOKING",
+          "min_level": 1,
+          "conditions": [],
+          "item": "MOON_STONE",
+          "evo_delay_levels": [
+            32,
+            36,
+            42
+          ]
+        }
+      ],
+      "pokedex_number": 33,
+      "name": "Nidorino",
+      "types": [
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 61,
+        "atk": 72,
+        "def": 57,
+        "sp_atk": 55,
+        "sp_def": 55,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDORINO",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 120,
+      "base_friendship": 50,
+      "base_exp": 128,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "POISON_STING",
+        "LEER",
+        "PECK",
+        "FOCUS_ENERGY"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NIDOKING",
+      "starter_species_id": "NIDORAN_M",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 34,
+      "name": "Nidoking",
+      "types": [
+        "POISON",
+        "GROUND"
+      ],
+      "base_stats": {
+        "hp": 81,
+        "atk": 102,
+        "def": 77,
+        "sp_atk": 85,
+        "sp_def": 75,
+        "spd": 85
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NIDOKING",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 253,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "MEGAHORN",
+        "POISON_STING",
+        "LEER",
+        "PECK"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "CLEFAIRY",
+      "starter_species_id": "CLEFFA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CLEFABLE"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "CLEFABLE",
+          "min_level": 1,
+          "conditions": [],
+          "item": "MOON_STONE",
+          "evo_delay_levels": [
+            32,
+            32,
+            36
+          ]
+        }
+      ],
+      "pokedex_number": 35,
+      "name": "Clefairy",
+      "types": [
+        "FAIRY"
+      ],
+      "base_stats": {
+        "hp": 70,
+        "atk": 45,
+        "def": 48,
+        "sp_atk": 60,
+        "sp_def": 65,
+        "spd": 35
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CLEFAIRY",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 150,
+      "base_friendship": 140,
+      "base_exp": 113,
+      "growth_rate": "FAST",
+      "starter_moves": [
+        "DISARMING_VOICE",
+        "POUND",
+        "GROWL",
+        "SPOTLIGHT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "CLEFABLE",
+      "starter_species_id": "CLEFFA",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 36,
+      "name": "Clefable",
+      "types": [
+        "FAIRY"
+      ],
+      "base_stats": {
+        "hp": 95,
+        "atk": 70,
+        "def": 73,
+        "sp_atk": 95,
+        "sp_def": 90,
+        "spd": 60
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CLEFABLE",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 25,
+      "base_friendship": 140,
+      "base_exp": 242,
+      "growth_rate": "FAST",
+      "starter_moves": [
+        "DISARMING_VOICE",
+        "POUND",
+        "GROWL",
+        "SPOTLIGHT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "VULPIX",
+      "starter_species_id": "VULPIX",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "NINETALES"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "NINETALES",
+          "min_level": 1,
+          "conditions": [],
+          "item": "FIRE_STONE",
+          "evo_delay_levels": [
+            30,
+            35,
+            40
+          ]
+        }
+      ],
+      "pokedex_number": 37,
+      "name": "Vulpix",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 38,
+        "atk": 41,
+        "def": 40,
+        "sp_atk": 50,
+        "sp_def": 65,
+        "spd": 65
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "VULPIX",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 190,
+      "base_friendship": 50,
+      "base_exp": 60,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
+      "starter_moves": [
+        "TAIL_WHIP",
+        "EMBER",
+        "DISABLE",
+        "ROAR"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "NINETALES",
+      "starter_species_id": "VULPIX",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 38,
+      "name": "Ninetales",
+      "types": [
+        "FIRE"
+      ],
+      "base_stats": {
+        "hp": 73,
+        "atk": 76,
+        "def": 75,
+        "sp_atk": 81,
+        "sp_def": 100,
+        "spd": 100
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "NINETALES",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 50,
+      "base_exp": 177,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "NASTY_PLOT",
+        "TAIL_WHIP",
+        "EMBER",
+        "DISABLE"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "JIGGLYPUFF",
+      "starter_species_id": "IGGLYBUFF",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "WIGGLYTUFF"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "WIGGLYTUFF",
+          "min_level": 1,
+          "conditions": [],
+          "item": "MOON_STONE",
+          "evo_delay_levels": [
+            30,
+            35,
+            40
+          ]
+        }
+      ],
+      "pokedex_number": 39,
+      "name": "Jigglypuff",
+      "types": [
+        "NORMAL",
+        "FAIRY"
+      ],
+      "base_stats": {
+        "hp": 115,
+        "atk": 45,
+        "def": 20,
+        "sp_atk": 45,
+        "sp_def": 25,
+        "spd": 20
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "JIGGLYPUFF",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 170,
+      "base_friendship": 50,
+      "base_exp": 95,
+      "growth_rate": "FAST",
+      "starter_moves": [
+        "BIDE",
+        "ECHOED_VOICE",
+        "SING",
+        "DISARMING_VOICE"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "WIGGLYTUFF",
+      "starter_species_id": "IGGLYBUFF",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 40,
+      "name": "Wigglytuff",
+      "types": [
+        "NORMAL",
+        "FAIRY"
+      ],
+      "base_stats": {
+        "hp": 140,
+        "atk": 70,
+        "def": 45,
+        "sp_atk": 85,
+        "sp_def": 50,
+        "spd": 45
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "WIGGLYTUFF",
+        "generation": 1,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 50,
+      "base_friendship": 50,
+      "base_exp": 218,
+      "growth_rate": "FAST",
+      "starter_moves": [
+        "MINIMIZE",
+        "BIDE",
+        "SING",
+        "ECHOED_VOICE"
       ]
     },
     {
@@ -3488,6 +4351,853 @@
         "CHARM",
         "GROWTH",
         "WATER_SPORT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "ROSERADE",
+      "starter_species_id": "BUDEW",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 407,
+      "name": "Roserade",
+      "types": [
+        "GRASS",
+        "POISON"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 70,
+        "def": 65,
+        "sp_atk": 125,
+        "sp_def": 105,
+        "spd": 90
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "ROSERADE",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 50,
+      "base_exp": 258,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "GRASSY_TERRAIN",
+        "ABSORB",
+        "CHARM",
+        "WEATHER_BALL"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "CRANIDOS",
+      "starter_species_id": "CRANIDOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "RAMPARDOS"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "RAMPARDOS",
+          "min_level": 30,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 408,
+      "name": "Cranidos",
+      "types": [
+        "ROCK"
+      ],
+      "base_stats": {
+        "hp": 67,
+        "atk": 125,
+        "def": 40,
+        "sp_atk": 30,
+        "sp_def": 30,
+        "spd": 58
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CRANIDOS",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 70,
+      "growth_rate": "ERRATIC",
+      "starter_cost": 2,
+      "starter_moves": [
+        "HEADBUTT",
+        "LEER",
+        "FOCUS_ENERGY",
+        "PURSUIT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "RAMPARDOS",
+      "starter_species_id": "CRANIDOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 409,
+      "name": "Rampardos",
+      "types": [
+        "ROCK"
+      ],
+      "base_stats": {
+        "hp": 97,
+        "atk": 165,
+        "def": 60,
+        "sp_atk": 65,
+        "sp_def": 50,
+        "spd": 58
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "RAMPARDOS",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 173,
+      "growth_rate": "ERRATIC",
+      "starter_moves": [
+        "ENDEAVOR",
+        "HEADBUTT",
+        "LEER",
+        "FOCUS_ENERGY"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "SHIELDON",
+      "starter_species_id": "SHIELDON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "BASTIODON"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "BASTIODON",
+          "min_level": 30,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 410,
+      "name": "Shieldon",
+      "types": [
+        "ROCK",
+        "STEEL"
+      ],
+      "base_stats": {
+        "hp": 30,
+        "atk": 42,
+        "def": 118,
+        "sp_atk": 42,
+        "sp_def": 88,
+        "spd": 30
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SHIELDON",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 70,
+      "growth_rate": "ERRATIC",
+      "starter_cost": 2,
+      "starter_moves": [
+        "TACKLE",
+        "PROTECT",
+        "TAUNT",
+        "METAL_SOUND"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "BASTIODON",
+      "starter_species_id": "SHIELDON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 411,
+      "name": "Bastiodon",
+      "types": [
+        "ROCK",
+        "STEEL"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 52,
+        "def": 168,
+        "sp_atk": 47,
+        "sp_def": 138,
+        "spd": 30
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "BASTIODON",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 173,
+      "growth_rate": "ERRATIC",
+      "starter_moves": [
+        "WIDE_GUARD",
+        "BLOCK",
+        "TACKLE",
+        "PROTECT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "BURMY",
+      "starter_species_id": "BURMY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "MOTHIM",
+        "WORMADAM"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "MOTHIM",
+          "min_level": 20,
+          "conditions": [
+            {
+              "key": "GENDER",
+              "gender": "MALE",
+              "raw": "key: EvoCondKey.GENDER, gender: Gender.MALE"
+            }
+          ]
+        },
+        {
+          "target_species_id": "WORMADAM",
+          "min_level": 20,
+          "conditions": [
+            {
+              "key": "GENDER",
+              "gender": "FEMALE",
+              "raw": "key: EvoCondKey.GENDER, gender: Gender.FEMALE"
+            }
+          ]
+        }
+      ],
+      "pokedex_number": 412,
+      "name": "Burmy",
+      "types": [
+        "BUG"
+      ],
+      "base_stats": {
+        "hp": 40,
+        "atk": 29,
+        "def": 45,
+        "sp_atk": 29,
+        "sp_def": 45,
+        "spd": 36
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "BURMY",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 120,
+      "base_friendship": 70,
+      "base_exp": 45,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
+      "starter_moves": [
+        "TACKLE",
+        "PROTECT",
+        "STRUGGLE_BUG",
+        "STRING_SHOT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "WORMADAM",
+      "starter_species_id": "BURMY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 413,
+      "name": "Wormadam",
+      "types": [
+        "BUG",
+        "GRASS"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 59,
+        "def": 85,
+        "sp_atk": 79,
+        "sp_def": 105,
+        "spd": 36
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "WORMADAM",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 148,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "QUIVER_DANCE",
+        "TACKLE",
+        "PROTECT",
+        "SUCKER_PUNCH"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "MOTHIM",
+      "starter_species_id": "BURMY",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 414,
+      "name": "Mothim",
+      "types": [
+        "BUG",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 70,
+        "atk": 94,
+        "def": 50,
+        "sp_atk": 94,
+        "sp_def": 50,
+        "spd": 66
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "MOTHIM",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 70,
+      "base_exp": 148,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "QUIVER_DANCE",
+        "TACKLE",
+        "PROTECT",
+        "STRUGGLE_BUG"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "COMBEE",
+      "starter_species_id": "COMBEE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "VESPIQUEN"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "VESPIQUEN",
+          "min_level": 21,
+          "conditions": [
+            {
+              "key": "GENDER",
+              "gender": "FEMALE",
+              "raw": "key: EvoCondKey.GENDER, gender: Gender.FEMALE"
+            }
+          ]
+        }
+      ],
+      "pokedex_number": 415,
+      "name": "Combee",
+      "types": [
+        "BUG",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 30,
+        "atk": 30,
+        "def": 42,
+        "sp_atk": 30,
+        "sp_def": 42,
+        "spd": 70
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "COMBEE",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 120,
+      "base_friendship": 50,
+      "base_exp": 49,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_cost": 2,
+      "starter_moves": [
+        "GUST",
+        "SWEET_SCENT",
+        "BUG_BITE",
+        "STRUGGLE_BUG"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "VESPIQUEN",
+      "starter_species_id": "COMBEE",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 416,
+      "name": "Vespiquen",
+      "types": [
+        "BUG",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 70,
+        "atk": 80,
+        "def": 102,
+        "sp_atk": 80,
+        "sp_def": 102,
+        "spd": 40
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "VESPIQUEN",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 50,
+      "base_exp": 166,
+      "growth_rate": "MEDIUM_SLOW",
+      "starter_moves": [
+        "POWER_GEM",
+        "GUST",
+        "DESTINY_BOND",
+        "SWEET_SCENT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "PACHIRISU",
+      "starter_species_id": "PACHIRISU",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 417,
+      "name": "Pachirisu",
+      "types": [
+        "ELECTRIC"
+      ],
+      "base_stats": {
+        "hp": 60,
+        "atk": 45,
+        "def": 70,
+        "sp_atk": 45,
+        "sp_def": 90,
+        "spd": 95
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "PACHIRISU",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 200,
+      "base_friendship": 100,
+      "base_exp": 142,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
+      "starter_moves": [
+        "GROWL",
+        "THUNDER_SHOCK",
+        "BIDE",
+        "QUICK_ATTACK"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "BUIZEL",
+      "starter_species_id": "BUIZEL",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "FLOATZEL"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "FLOATZEL",
+          "min_level": 26,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 418,
+      "name": "Buizel",
+      "types": [
+        "WATER"
+      ],
+      "base_stats": {
+        "hp": 55,
+        "atk": 65,
+        "def": 35,
+        "sp_atk": 60,
+        "sp_def": 30,
+        "spd": 85
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "BUIZEL",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 190,
+      "base_friendship": 70,
+      "base_exp": 66,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 2,
+      "starter_moves": [
+        "TACKLE",
+        "TAIL_WHIP",
+        "GROWL",
+        "WATER_SPORT"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "FLOATZEL",
+      "starter_species_id": "BUIZEL",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 419,
+      "name": "Floatzel",
+      "types": [
+        "WATER"
+      ],
+      "base_stats": {
+        "hp": 85,
+        "atk": 105,
+        "def": 55,
+        "sp_atk": 85,
+        "sp_def": 50,
+        "spd": 115
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "FLOATZEL",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 70,
+      "base_exp": 173,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "CRUNCH",
+        "TACKLE",
+        "TAIL_WHIP",
+        "GROWL"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "CHERUBI",
+      "starter_species_id": "CHERUBI",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "CHERRIM"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "CHERRIM",
+          "min_level": 25,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 420,
+      "name": "Cherubi",
+      "types": [
+        "GRASS"
+      ],
+      "base_stats": {
+        "hp": 45,
+        "atk": 35,
+        "def": 45,
+        "sp_atk": 62,
+        "sp_def": 53,
+        "spd": 35
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHERUBI",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 190,
+      "base_friendship": 50,
+      "base_exp": 55,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 1,
+      "starter_moves": [
+        "TACKLE",
+        "MORNING_SUN",
+        "LEAFAGE",
+        "GROWTH"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "CHERRIM",
+      "starter_species_id": "CHERUBI",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 421,
+      "name": "Cherrim",
+      "types": [
+        "GRASS"
+      ],
+      "base_stats": {
+        "hp": 70,
+        "atk": 60,
+        "def": 70,
+        "sp_atk": 87,
+        "sp_def": 78,
+        "spd": 85
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "CHERRIM",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 50,
+      "base_exp": 158,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "SUNNY_DAY",
+        "TACKLE",
+        "MORNING_SUN",
+        "FLOWER_SHIELD"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "SHELLOS",
+      "starter_species_id": "SHELLOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "GASTRODON"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "GASTRODON",
+          "min_level": 30,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 422,
+      "name": "Shellos",
+      "types": [
+        "WATER"
+      ],
+      "base_stats": {
+        "hp": 76,
+        "atk": 48,
+        "def": 48,
+        "sp_atk": 57,
+        "sp_def": 62,
+        "spd": 34
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "SHELLOS",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 190,
+      "base_friendship": 50,
+      "base_exp": 65,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_cost": 3,
+      "starter_moves": [
+        "WATER_GUN",
+        "MUD_SLAP",
+        "MUD_SPORT",
+        "HARDEN"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "GASTRODON",
+      "starter_species_id": "SHELLOS",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 423,
+      "name": "Gastrodon",
+      "types": [
+        "WATER",
+        "GROUND"
+      ],
+      "base_stats": {
+        "hp": 111,
+        "atk": 83,
+        "def": 68,
+        "sp_atk": 92,
+        "sp_def": 82,
+        "spd": 39
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "GASTRODON",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 75,
+      "base_friendship": 50,
+      "base_exp": 166,
+      "growth_rate": "MEDIUM_FAST",
+      "starter_moves": [
+        "WATER_GUN",
+        "MUD_SLAP",
+        "MUD_SPORT",
+        "HARDEN"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "AMBIPOM",
+      "starter_species_id": "AIPOM",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 424,
+      "name": "Ambipom",
+      "types": [
+        "NORMAL"
+      ],
+      "base_stats": {
+        "hp": 75,
+        "atk": 100,
+        "def": 66,
+        "sp_atk": 60,
+        "sp_def": 66,
+        "spd": 115
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "AMBIPOM",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 45,
+      "base_friendship": 100,
+      "base_exp": 169,
+      "growth_rate": "FAST",
+      "starter_moves": [
+        "SCRATCH",
+        "TAIL_WHIP",
+        "DUAL_CHOP",
+        "SAND_ATTACK"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "DRIFLOON",
+      "starter_species_id": "DRIFLOON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [
+        "DRIFBLIM"
+      ],
+      "evolution_rules": [
+        {
+          "target_species_id": "DRIFBLIM",
+          "min_level": 28,
+          "conditions": []
+        }
+      ],
+      "pokedex_number": 425,
+      "name": "Drifloon",
+      "types": [
+        "GHOST",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 90,
+        "atk": 50,
+        "def": 34,
+        "sp_atk": 60,
+        "sp_def": 44,
+        "spd": 70
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "DRIFLOON",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 125,
+      "base_friendship": 50,
+      "base_exp": 70,
+      "growth_rate": "FLUCTUATING",
+      "starter_cost": 2,
+      "starter_moves": [
+        "MINIMIZE",
+        "CONSTRICT",
+        "ASTONISH",
+        "GUST"
+      ]
+    },
+    {
+      "schema_version": 3,
+      "species_id": "DRIFBLIM",
+      "starter_species_id": "DRIFLOON",
+      "prevolution_species_id": null,
+      "evolution_species_ids": [],
+      "evolution_rules": [],
+      "pokedex_number": 426,
+      "name": "Drifblim",
+      "types": [
+        "GHOST",
+        "FLYING"
+      ],
+      "base_stats": {
+        "hp": 150,
+        "atk": 80,
+        "def": 44,
+        "sp_atk": 90,
+        "sp_def": 54,
+        "spd": 80
+      },
+      "source": {
+        "repo": "dependency/pokerogue",
+        "species_enum_name": "DRIFBLIM",
+        "generation": 4,
+        "form_key": "DEFAULT"
+      },
+      "catch_rate": 60,
+      "base_friendship": 50,
+      "base_exp": 174,
+      "growth_rate": "FLUCTUATING",
+      "starter_moves": [
+        "PHANTOM_FORCE",
+        "MINIMIZE",
+        "CONSTRICT",
+        "ASTONISH"
       ]
     },
     {
