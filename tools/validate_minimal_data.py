@@ -10,11 +10,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 DATA_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
 FIXTURE_DIR = REPO_ROOT / "godot-port" / "data" / "fixtures"
+ROUTE_GRAPH_FILE = REPO_ROOT / "godot-port" / "data" / "biome-route-graph.v1.json"
 
 SPECIES_CATALOG_FILE = DATA_DIR / "species-catalog.v3.json"
 MOVES_CATALOG_FILE = DATA_DIR / "moves-catalog.v1.json"
 SPECIES_FIXTURE_FILE = FIXTURE_DIR / "species-catalog.v3.fixture.json"
 MOVES_FIXTURE_FILE = FIXTURE_DIR / "moves-catalog.v1.fixture.json"
+ROUTE_GRAPH_FIXTURE_FILE = FIXTURE_DIR / "biome-route-graph.v1.fixture.json"
+
+LOCAL_BIOME_ID_ALIASES = {
+    "mountain": "mountains",
+    "mountains": "mountains",
+}
 
 TYPE_VALUES = {
     "NORMAL", "FIRE", "WATER", "ELECTRIC", "GRASS", "ICE", "FIGHTING", "POISON", "GROUND", "FLYING",
@@ -74,6 +81,11 @@ def _parse_attack_selector(values: Any, errors: list[str]) -> tuple[list[str], i
         return [], None
 
     return _coerce_str_list(values, "attacks", errors), None
+
+
+def _normalize_biome_id(value: str) -> str:
+    normalized = value.strip().lower().replace("_", "-").replace(" ", "-")
+    return LOCAL_BIOME_ID_ALIASES.get(normalized, normalized)
 
 
 def _load_json(path: Path) -> Any:
@@ -492,12 +504,129 @@ def _validate_selector_alignment(species_items: list[Any], move_items: list[Any]
         errors.append(f"selector.attacks: exported unexpected move ids {extra_moves}")
 
 
-def _refresh_fixtures(species_payload: Any, moves_payload: Any) -> None:
+def _validate_biome_route_graph(payload: Any, errors: list[str]) -> set[str]:
+    context = "biome_route_graph"
+    if not isinstance(payload, dict):
+        errors.append(f"{context}: expected object")
+        return set()
+
+    required = {"schema_version", "generated_from", "generated_at", "default_biome_id", "fallback_mode", "biomes"}
+    _require_keys(payload, required, context, errors)
+    _reject_unknown_keys(payload, required, context, errors)
+
+    if payload.get("schema_version") != 1:
+        errors.append(f"{context}.schema_version: expected 1")
+    if payload.get("generated_from") != "dependency/pokerogue":
+        errors.append(f"{context}.generated_from: expected 'dependency/pokerogue'")
+    _validate_iso_datetime(payload.get("generated_at"), f"{context}.generated_at", errors)
+
+    fallback_mode = payload.get("fallback_mode")
+    if not isinstance(fallback_mode, str) or not fallback_mode.strip():
+        errors.append(f"{context}.fallback_mode: expected non-empty string")
+
+    biomes = payload.get("biomes")
+    if not isinstance(biomes, dict):
+        errors.append(f"{context}.biomes: expected object")
+        return set()
+
+    exported_biome_ids: set[str] = set()
+    for raw_biome_id, biome_entry in biomes.items():
+        biome_id = _normalize_biome_id(str(raw_biome_id))
+        entry_context = f"{context}.biomes[{raw_biome_id}]"
+        if not biome_id:
+            errors.append(f"{entry_context}: invalid biome id")
+            continue
+        exported_biome_ids.add(biome_id)
+
+        if not isinstance(biome_entry, dict):
+            errors.append(f"{entry_context}: expected object")
+            continue
+
+        entry_required = {"linked_biomes"}
+        _require_keys(biome_entry, entry_required, entry_context, errors)
+        _reject_unknown_keys(biome_entry, entry_required, entry_context, errors)
+
+        linked_biomes = biome_entry.get("linked_biomes")
+        if not isinstance(linked_biomes, list):
+            errors.append(f"{entry_context}.linked_biomes: expected array")
+            continue
+
+        seen_targets: set[str] = set()
+        for link_index, link_entry in enumerate(linked_biomes):
+            link_context = f"{entry_context}.linked_biomes[{link_index}]"
+            if not isinstance(link_entry, dict):
+                errors.append(f"{link_context}: expected object")
+                continue
+            link_required = {"target_biome_id", "weight"}
+            _require_keys(link_entry, link_required, link_context, errors)
+            _reject_unknown_keys(link_entry, link_required, link_context, errors)
+
+            target_biome_id = _normalize_biome_id(str(link_entry.get("target_biome_id", "")))
+            if not target_biome_id:
+                errors.append(f"{link_context}.target_biome_id: expected non-empty string")
+            elif target_biome_id in seen_targets:
+                errors.append(f"{link_context}.target_biome_id: duplicate target '{target_biome_id}'")
+            else:
+                seen_targets.add(target_biome_id)
+
+            _validate_int_range(link_entry.get("weight"), 1, 999, f"{link_context}.weight", errors)
+
+    default_biome_id = _normalize_biome_id(str(payload.get("default_biome_id", "")))
+    if not default_biome_id:
+        errors.append(f"{context}.default_biome_id: expected non-empty string")
+    elif exported_biome_ids and default_biome_id not in exported_biome_ids:
+        errors.append(f"{context}.default_biome_id: '{default_biome_id}' not present in biomes")
+
+    # Ensure link targets reference known exported keys.
+    for raw_biome_id, biome_entry in biomes.items():
+        if not isinstance(biome_entry, dict):
+            continue
+        linked_biomes = biome_entry.get("linked_biomes", [])
+        if not isinstance(linked_biomes, list):
+            continue
+        for link_index, link_entry in enumerate(linked_biomes):
+            if not isinstance(link_entry, dict):
+                continue
+            target_biome_id = _normalize_biome_id(str(link_entry.get("target_biome_id", "")))
+            if target_biome_id and target_biome_id not in exported_biome_ids:
+                errors.append(
+                    f"{context}.biomes[{raw_biome_id}].linked_biomes[{link_index}].target_biome_id: "
+                    f"unknown biome '{target_biome_id}'"
+                )
+
+    return exported_biome_ids
+
+
+def _validate_biome_selector_alignment(route_payload: Any, exported_biome_ids: set[str], errors: list[str]) -> None:
+    config = _load_json(ASSET_LIST_FILE)
+    if not isinstance(config, dict):
+        errors.append("minimal-asset-list.json: expected object format for biome selector alignment checks")
+        return
+
+    selector_errors: list[str] = []
+    arenas_selectors = _coerce_str_list(config.get("arenas", []), "arenas", selector_errors)
+    errors.extend([f"selector.{msg}" for msg in selector_errors])
+
+    selected_biome_ids = {_normalize_biome_id(value) for value in arenas_selectors if value.strip()}
+    selected_biome_ids = {value for value in selected_biome_ids if value}
+
+    if selected_biome_ids:
+        for biome_id in sorted(exported_biome_ids):
+            if biome_id not in selected_biome_ids:
+                errors.append(f"selector.arenas: exported unexpected biome id '{biome_id}'")
+
+        if not exported_biome_ids:
+            errors.append("selector.arenas: no biome route entries exported for selected arenas")
+
+
+def _refresh_fixtures(species_payload: Any, moves_payload: Any, route_payload: Any) -> None:
     FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
     SPECIES_FIXTURE_FILE.write_text(json.dumps(species_payload, indent=2), encoding="utf-8")
     MOVES_FIXTURE_FILE.write_text(json.dumps(moves_payload, indent=2), encoding="utf-8")
+    ROUTE_GRAPH_FIXTURE_FILE.write_text(json.dumps(route_payload, indent=2), encoding="utf-8")
     print(f"Updated fixture: {SPECIES_FIXTURE_FILE}")
     print(f"Updated fixture: {MOVES_FIXTURE_FILE}")
+    print(f"Updated fixture: {ROUTE_GRAPH_FIXTURE_FILE}")
 
 
 def _normalized_catalog_for_compare(payload: Any) -> Any:
@@ -509,13 +638,14 @@ def _normalized_catalog_for_compare(payload: Any) -> Any:
     return normalized
 
 
-def _validate_fixture_match(species_payload: Any, moves_payload: Any, errors: list[str]) -> None:
-    if not SPECIES_FIXTURE_FILE.exists() or not MOVES_FIXTURE_FILE.exists():
+def _validate_fixture_match(species_payload: Any, moves_payload: Any, route_payload: Any, errors: list[str]) -> None:
+    if not SPECIES_FIXTURE_FILE.exists() or not MOVES_FIXTURE_FILE.exists() or not ROUTE_GRAPH_FIXTURE_FILE.exists():
         errors.append("fixtures: missing fixture files; run validator with --refresh-fixtures")
         return
 
     species_fixture = _load_json(SPECIES_FIXTURE_FILE)
     moves_fixture = _load_json(MOVES_FIXTURE_FILE)
+    route_fixture = _load_json(ROUTE_GRAPH_FIXTURE_FILE)
 
     if _normalized_catalog_for_compare(species_payload) != _normalized_catalog_for_compare(species_fixture):
         errors.append("fixtures: species catalog differs from fixture; run with --refresh-fixtures after intentional changes")
@@ -523,24 +653,30 @@ def _validate_fixture_match(species_payload: Any, moves_payload: Any, errors: li
     if _normalized_catalog_for_compare(moves_payload) != _normalized_catalog_for_compare(moves_fixture):
         errors.append("fixtures: moves catalog differs from fixture; run with --refresh-fixtures after intentional changes")
 
+    if _normalized_catalog_for_compare(route_payload) != _normalized_catalog_for_compare(route_fixture):
+        errors.append("fixtures: biome route graph differs from fixture; run with --refresh-fixtures after intentional changes")
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate minimal species/move data catalogs and fixture snapshots")
+    parser = argparse.ArgumentParser(description="Validate minimal species/move/biome-route data catalogs and fixture snapshots")
     parser.add_argument("--refresh-fixtures", action="store_true", help="Overwrite fixture files with current catalog outputs")
     args = parser.parse_args()
 
     errors: list[str] = []
 
-    if not SPECIES_CATALOG_FILE.exists() or not MOVES_CATALOG_FILE.exists():
+    if not SPECIES_CATALOG_FILE.exists() or not MOVES_CATALOG_FILE.exists() or not ROUTE_GRAPH_FILE.exists():
         missing = []
         if not SPECIES_CATALOG_FILE.exists():
             missing.append(str(SPECIES_CATALOG_FILE))
         if not MOVES_CATALOG_FILE.exists():
             missing.append(str(MOVES_CATALOG_FILE))
+        if not ROUTE_GRAPH_FILE.exists():
+            missing.append(str(ROUTE_GRAPH_FILE))
         raise SystemExit("Missing catalog files. Run export-data first:\n" + "\n".join(missing))
 
     species_payload = _load_json(SPECIES_CATALOG_FILE)
     moves_payload = _load_json(MOVES_CATALOG_FILE)
+    route_payload = _load_json(ROUTE_GRAPH_FILE)
 
     species_items = _validate_catalog_wrapper(species_payload, "species_catalog", 3, errors)
     moves_items = _validate_catalog_wrapper(moves_payload, "moves_catalog", 1, errors)
@@ -552,11 +688,13 @@ def main() -> None:
         _validate_move_item(item, index, errors)
 
     _validate_selector_alignment(species_items, moves_items, errors)
+    exported_biome_ids = _validate_biome_route_graph(route_payload, errors)
+    _validate_biome_selector_alignment(route_payload, exported_biome_ids, errors)
 
     if args.refresh_fixtures:
-        _refresh_fixtures(species_payload, moves_payload)
+        _refresh_fixtures(species_payload, moves_payload, route_payload)
     else:
-        _validate_fixture_match(species_payload, moves_payload, errors)
+        _validate_fixture_match(species_payload, moves_payload, route_payload, errors)
 
     if errors:
         print("Validation failed:")
@@ -564,7 +702,7 @@ def main() -> None:
             print(f"- {entry}")
         raise SystemExit(1)
 
-    print("Validation passed: catalog schemas, selector alignment, and fixture checks are all valid.")
+    print("Validation passed: catalog schemas, selector alignment, route graph checks, and fixture checks are all valid.")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "generated_from": "manual_curated_expansion",
+  "generated_at": "2026-07-21T00:00:00Z",
+  "notes": "Biome-aware trainer chance and trainer pool curation. Normal trainer chance only applies on normal-trainer cadence encounters; boss cadence remains authoritative.",
+  "default_biome_id": "grass",
+  "default_normal_trainer_chance_percent": 60,
+  "default_normal_trainer_ids": [
+    "PLAYER_F",
+    "ACE_TRAINER_F_001",
+    "SCHOOL_KID_M_001"
+  ],
+  "default_boss_trainer_ids": [
+    "GYM_LEADER_TEMPLATE",
+    "NEMONA_BOSS"
+  ],
+  "biomes": {
+    "grass": {
+      "normal_trainer_chance_percent": 68,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "AROMA_LADY_001",
+        "SCHOOL_KID_M_001",
+        "ACE_TRAINER_F_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "NEMONA_BOSS"
+      ]
+    },
+    "metropolis": {
+      "normal_trainer_chance_percent": 74,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "ACE_TRAINER_M_001",
+        "COLLECTOR_001",
+        "CYCLIST_F_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "BLAINE_BOSS"
+      ]
+    },
+    "abyss": {
+      "normal_trainer_chance_percent": 28,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "BACKPACKER_M_001",
+        "SAILOR_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "ARIANA_BOSS"
+      ]
+    },
+    "beach": {
+      "normal_trainer_chance_percent": 52,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "SAILOR_001",
+        "CYCLIST_F_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "NEMONA_BOSS"
+      ]
+    },
+    "cave": {
+      "normal_trainer_chance_percent": 46,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "BACKPACKER_M_001",
+        "ACE_TRAINER_M_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "ARIANA_BOSS"
+      ]
+    },
+    "mountains": {
+      "normal_trainer_chance_percent": 44,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "BACKPACKER_M_001",
+        "ACE_TRAINER_M_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "BLAINE_BOSS"
+      ]
+    },
+    "temple": {
+      "normal_trainer_chance_percent": 58,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "ACE_TRAINER_F_001",
+        "COLLECTOR_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "NEMONA_BOSS"
+      ]
+    },
+    "volcano": {
+      "normal_trainer_chance_percent": 50,
+      "normal_trainer_ids": [
+        "PLAYER_F",
+        "ACE_TRAINER_M_001",
+        "BACKPACKER_M_001"
+      ],
+      "boss_trainer_ids": [
+        "GYM_LEADER_TEMPLATE",
+        "BLAINE_BOSS"
+      ]
+    }
+  }
+}

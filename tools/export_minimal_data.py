@@ -9,7 +9,14 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSET_LIST_FILE = Path(__file__).resolve().with_name("minimal-asset-list.json")
 OUT_DIR = REPO_ROOT / "godot-port" / "godot-minimal-assets" / "data"
+ROUTE_GRAPH_OUT_FILE = REPO_ROOT / "godot-port" / "data" / "biome-route-graph.v1.json"
 POKEROGUE_ROOT = REPO_ROOT / "dependency" / "pokerogue"
+POKEROGUE_BIOMES_DIR = POKEROGUE_ROOT / "src" / "data" / "balance" / "biomes"
+
+LOCAL_BIOME_ID_ALIASES = {
+    "mountain": "mountains",
+    "mountains": "mountains",
+}
 
 
 def _coerce_str_list(values: Any, field_name: str) -> list[str]:
@@ -64,6 +71,11 @@ def _parse_attack_selector(values: Any) -> tuple[list[str], int | None]:
             return [], max(0, list_numeric)
 
     return _coerce_str_list(values, "attacks"), None
+
+
+def _normalize_biome_slug(value: str) -> str:
+    normalized = value.strip().lower().replace("_", "-").replace(" ", "-")
+    return LOCAL_BIOME_ID_ALIASES.get(normalized, normalized)
 
 
 def _slug_to_enum_name(value: str) -> str:
@@ -505,6 +517,149 @@ def _extract_move_entry(move_name: str, move_ts: str) -> dict[str, Any] | None:
     return None
 
 
+def _extract_biome_id_from_source(source: str) -> str | None:
+    match = re.search(r"\bbiomeId:\s*BiomeId\.([A-Z0-9_]+)", source)
+    if not match:
+        return None
+    return _normalize_biome_slug(match.group(1))
+
+
+def _extract_biome_links_from_source(source: str) -> list[dict[str, Any]]:
+    links_body = _extract_array_literal(source, "biomeLinks")
+    if links_body is None:
+        return []
+
+    links: list[dict[str, Any]] = []
+    weighted_by_target: dict[str, int] = {}
+    pattern = re.compile(r"\[\s*BiomeId\.([A-Z0-9_]+)\s*,\s*(\d+)\s*\]|BiomeId\.([A-Z0-9_]+)")
+    for match in pattern.finditer(links_body):
+        weighted_target = match.group(1)
+        weighted_value = match.group(2)
+        plain_target = match.group(3)
+
+        target_enum_name = weighted_target if weighted_target is not None else plain_target
+        if target_enum_name is None:
+            continue
+        target_biome_id = _normalize_biome_slug(target_enum_name)
+        if not target_biome_id:
+            continue
+
+        weight = 1
+        if weighted_value is not None:
+            weight = max(1, int(weighted_value))
+
+        weighted_by_target[target_biome_id] = weighted_by_target.get(target_biome_id, 0) + weight
+
+    for target_biome_id, weight in weighted_by_target.items():
+        links.append({
+            "target_biome_id": target_biome_id,
+            "weight": weight,
+        })
+    return links
+
+
+def _load_allowed_biome_ids(config: dict[str, Any]) -> set[str]:
+    arenas = _coerce_str_list(config.get("arenas", []), "arenas")
+    allowed = {_normalize_biome_slug(item) for item in arenas if item.strip()}
+    return {item for item in allowed if item}
+
+
+def _load_biome_ids_from_local_catalog(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return set()
+
+    if not isinstance(payload, dict):
+        return set()
+    biomes = payload.get("biomes", {})
+    if not isinstance(biomes, dict):
+        return set()
+
+    out: set[str] = set()
+    for biome_id in biomes.keys():
+        if not isinstance(biome_id, str):
+            continue
+        normalized = _normalize_biome_slug(biome_id)
+        if normalized:
+            out.add(normalized)
+    return out
+
+
+def _resolve_filtered_biome_scope(config: dict[str, Any]) -> set[str]:
+    allowed = _load_allowed_biome_ids(config)
+
+    local_pool_biomes = _load_biome_ids_from_local_catalog(REPO_ROOT / "godot-port" / "data" / "biome-wild-pools.v1.json")
+    local_trainer_biomes = _load_biome_ids_from_local_catalog(REPO_ROOT / "godot-port" / "data" / "biome-trainer-rules.v1.json")
+
+    if allowed and local_pool_biomes:
+        allowed = allowed.intersection(local_pool_biomes)
+    if allowed and local_trainer_biomes:
+        allowed = allowed.intersection(local_trainer_biomes)
+
+    # Keep route export usable even when local curation temporarily drifts.
+    if not allowed:
+        fallback_allowed = _load_allowed_biome_ids(config)
+        if fallback_allowed:
+            return fallback_allowed
+
+    return allowed
+
+
+def _build_biome_route_graph(config: dict[str, Any], generated_at: str) -> dict[str, Any]:
+    allowed_biome_ids = _resolve_filtered_biome_scope(config)
+
+    route_entries: dict[str, dict[str, Any]] = {}
+    for biome_file in sorted(POKEROGUE_BIOMES_DIR.glob("*.ts")):
+        source = biome_file.read_text(encoding="utf-8")
+        biome_id = _extract_biome_id_from_source(source)
+        if biome_id is None:
+            continue
+        if allowed_biome_ids and biome_id not in allowed_biome_ids:
+            continue
+
+        parsed_links = _extract_biome_links_from_source(source)
+        filtered_links: list[dict[str, Any]] = []
+        for link in parsed_links:
+            target_biome_id = _normalize_biome_slug(str(link.get("target_biome_id", "")))
+            if not target_biome_id:
+                continue
+            if allowed_biome_ids and target_biome_id not in allowed_biome_ids:
+                continue
+            filtered_links.append({
+                "target_biome_id": target_biome_id,
+                "weight": max(1, int(link.get("weight", 1))),
+            })
+
+        route_entries[biome_id] = {
+            "linked_biomes": filtered_links,
+        }
+
+    for biome_id in sorted(allowed_biome_ids):
+        if biome_id not in route_entries:
+            route_entries[biome_id] = {"linked_biomes": []}
+
+    default_biome_id = "grass"
+    if default_biome_id not in route_entries and route_entries:
+        default_biome_id = sorted(route_entries.keys())[0]
+
+    sorted_biomes = {
+        biome_id: route_entries[biome_id]
+        for biome_id in sorted(route_entries.keys())
+    }
+
+    return {
+        "schema_version": 1,
+        "generated_from": "dependency/pokerogue",
+        "generated_at": generated_at,
+        "default_biome_id": default_biome_id,
+        "fallback_mode": "rotation_next",
+        "biomes": sorted_biomes,
+    }
+
+
 def _build_species_catalog(
     pokemon_ids: list[str],
     species_enum_by_value: dict[int, str],
@@ -658,6 +813,7 @@ def main() -> None:
         "generated_at": generated_at,
         "items": move_items,
     }
+    biome_route_graph = _build_biome_route_graph(config, generated_at)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     species_out = OUT_DIR / "species-catalog.v3.json"
@@ -665,9 +821,12 @@ def main() -> None:
 
     species_out.write_text(json.dumps(species_catalog, indent=2), encoding="utf-8")
     moves_out.write_text(json.dumps(moves_catalog, indent=2), encoding="utf-8")
+    ROUTE_GRAPH_OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ROUTE_GRAPH_OUT_FILE.write_text(json.dumps(biome_route_graph, indent=2), encoding="utf-8")
 
     print(f"Exported {len(species_items)} species entries -> {species_out}")
     print(f"Exported {len(move_items)} move entries -> {moves_out}")
+    print(f"Exported {len(biome_route_graph.get('biomes', {}))} biome route entries -> {ROUTE_GRAPH_OUT_FILE}")
 
 
 if __name__ == "__main__":

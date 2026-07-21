@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "generated_from": "manual_template",
+  "notes": "Biome-tagged wild pool baseline for BIOME-MVP-03. Species ids not present in current catalog are ignored at runtime.",
+  "default_biome_id": "grass",
+  "default_tier_weights": {
+    "common": 70,
+    "uncommon": 20,
+    "rare": 10
+  },
+  "biomes": {
+    "grass": {
+      "tiers": {
+        "common": [
+          { "species_id": "BULBASAUR", "weight": 2 },
+          { "species_id": "CATERPIE", "weight": 3 },
+          { "species_id": "WEEDLE", "weight": 3 },
+          { "species_id": "PIDGEY", "weight": 4 },
+          { "species_id": "CHIKORITA", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "SENTRET", "weight": 2 },
+          { "species_id": "HOOTHOOT", "weight": 2 },
+          { "species_id": "NIDORAN_F", "weight": 1 },
+          { "species_id": "NIDORAN_M", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "PIKACHU", "weight": 2 },
+          { "species_id": "CLEFAIRY", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 2 },
+          { "species_id": "RAICHU", "weight": 1 }
+        ]
+      }
+    },
+    "metropolis": {
+      "tiers": {
+        "common": [
+          { "species_id": "PATRAT", "weight": 4 },
+          { "species_id": "LILLIPUP", "weight": 3 },
+          { "species_id": "PURRLOIN", "weight": 3 }
+        ],
+        "uncommon": [
+          { "species_id": "PANSAGE", "weight": 2 },
+          { "species_id": "PANSEAR", "weight": 2 },
+          { "species_id": "SIMISEAR", "weight": 2 }
+        ],
+        "rare": [
+          { "species_id": "STOUTLAND", "weight": 2 },
+          { "species_id": "LIEPARD", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "STOUTLAND", "weight": 2 },
+          { "species_id": "LIEPARD", "weight": 2 }
+        ]
+      }
+    },
+    "abyss": {
+      "tiers": {
+        "common": [
+          { "species_id": "RATTATA", "weight": 3 },
+          { "species_id": "PIDGEY", "weight": 3 },
+          { "species_id": "CHARMANDER", "weight": 2 },
+          { "species_id": "SQUIRTLE", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "BULBASAUR", "weight": 2 },
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "CHARMANDER", "weight": 1 },
+          { "species_id": "SQUIRTLE", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "IVYSAUR", "weight": 2 },
+          { "species_id": "PIDGEOTTO", "weight": 2 },
+          { "species_id": "CHARMANDER", "weight": 1 }
+        ]
+      }
+    },
+    "beach": {
+      "tiers": {
+        "common": [
+          { "species_id": "SQUIRTLE", "weight": 4 },
+          { "species_id": "TOTODILE", "weight": 3 },
+          { "species_id": "CHINCHOU", "weight": 3 }
+        ],
+        "uncommon": [
+          { "species_id": "WARTORTLE", "weight": 2 },
+          { "species_id": "CROCONAW", "weight": 2 },
+          { "species_id": "LANTURN", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "FERALIGATR", "weight": 1 },
+          { "species_id": "BLASTOISE", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "BLASTOISE", "weight": 2 },
+          { "species_id": "FERALIGATR", "weight": 2 }
+        ]
+      }
+    },
+    "cave": {
+      "tiers": {
+        "common": [
+          { "species_id": "RATTATA", "weight": 3 },
+          { "species_id": "EKANS", "weight": 3 },
+          { "species_id": "SANDSHREW", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "ARBOK", "weight": 2 },
+          { "species_id": "SANDSLASH", "weight": 2 },
+          { "species_id": "RATICATE", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "NIDOQUEEN", "weight": 1 },
+          { "species_id": "NIDOKING", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "NIDOKING", "weight": 2 },
+          { "species_id": "NIDOQUEEN", "weight": 2 }
+        ]
+      }
+    },
+    "mountains": {
+      "tiers": {
+        "common": [
+          { "species_id": "SPEAROW", "weight": 3 },
+          { "species_id": "SANDSHREW", "weight": 3 },
+          { "species_id": "SENTRET", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "FEAROW", "weight": 2 },
+          { "species_id": "SANDSLASH", "weight": 2 },
+          { "species_id": "FURRET", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "PIDGEOT", "weight": 1 },
+          { "species_id": "NOCTOWL", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "PIDGEOT", "weight": 2 },
+          { "species_id": "NOCTOWL", "weight": 2 }
+        ]
+      }
+    },
+    "temple": {
+      "tiers": {
+        "common": [
+          { "species_id": "NIDORAN_F", "weight": 3 },
+          { "species_id": "NIDORAN_M", "weight": 3 },
+          { "species_id": "CLEFAIRY", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "NIDORINA", "weight": 2 },
+          { "species_id": "NIDORINO", "weight": 2 },
+          { "species_id": "JIGGLYPUFF", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "CLEFABLE", "weight": 1 },
+          { "species_id": "WIGGLYTUFF", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "NIDOQUEEN", "weight": 2 },
+          { "species_id": "NIDOKING", "weight": 2 }
+        ]
+      }
+    },
+    "volcano": {
+      "tiers": {
+        "common": [
+          { "species_id": "CHARMANDER", "weight": 4 },
+          { "species_id": "VULPIX", "weight": 3 },
+          { "species_id": "PANSEAR", "weight": 2 }
+        ],
+        "uncommon": [
+          { "species_id": "CHARMELEON", "weight": 2 },
+          { "species_id": "NINETALES", "weight": 2 },
+          { "species_id": "SIMISEAR", "weight": 1 }
+        ],
+        "rare": [
+          { "species_id": "CHARIZARD", "weight": 1 },
+          { "species_id": "EMBOAR", "weight": 1 }
+        ],
+        "boss": [
+          { "species_id": "CHARIZARD", "weight": 2 },
+          { "species_id": "EMBOAR", "weight": 2 }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_from": "dependency/pokerogue",
+  "generated_at": "2026-07-21T17:47:29.199539+00:00",
+  "default_biome_id": "grass",
+  "fallback_mode": "rotation_next",
+  "biomes": {
+    "abyss": {
+      "linked_biomes": [
+        {
+          "target_biome_id": "cave",
+          "weight": 1
+        }
+      ]
+    },
+    "beach": {
+      "linked_biomes": []
+    },
+    "cave": {
+      "linked_biomes": []
+    },
+    "grass": {
+      "linked_biomes": []
+    },
+    "metropolis": {
+      "linked_biomes": []
+    },
+    "mountains": {
+      "linked_biomes": [
+        {
+          "target_biome_id": "volcano",
+          "weight": 1
+        }
+      ]
+    },
+    "temple": {
+      "linked_biomes": []
+    },
+    "volcano": {
+      "linked_biomes": [
+        {
+          "target_biome_id": "beach",
+          "weight": 1
+        }
+      ]
+    }
+  }
+}
