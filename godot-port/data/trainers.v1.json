@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_from": "manual_template",
-  "generated_at": "2026-07-12T00:00:00Z",
+  "generated_from": "manual_curated_expansion",
+  "generated_at": "2026-07-21T00:00:00Z",
   "items": [
     {
       "schema_version": 1,
@@ -84,6 +84,380 @@
         }
       ],
       "notes": "Keep boss trainers in the same catalog shape so ENEMY-03/ENEMY-05 can share loaders later."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "ACE_TRAINER_F_001",
+      "display_name": "Ace Trainer Mira",
+      "title": "Ace Trainer",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "ace_trainer_f",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "PIKACHU",
+          "level": 11,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "PIDGEOTTO",
+          "level": 11,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "ACE_TRAINER_M_001",
+      "display_name": "Ace Trainer Cole",
+      "title": "Ace Trainer",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "ace_trainer_m",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "WARTORTLE",
+          "level": 11,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "CHARMELEON",
+          "level": 11,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "AROMA_LADY_001",
+      "display_name": "Aroma Lady Iris",
+      "title": "Aroma Lady",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "aroma_lady",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "CHIKORITA",
+          "level": 9,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "BAYLEEF",
+          "level": 9,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "BACKPACKER_M_001",
+      "display_name": "Backpacker Rowan",
+      "title": "Backpacker",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "backpacker_m",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "SANDSHREW",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "SANDSLASH",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "COLLECTOR_001",
+      "display_name": "Collector Finn",
+      "title": "Collector",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "collector",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "CLEFAIRY",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "JIGGLYPUFF",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "CYCLIST_F_001",
+      "display_name": "Cyclist Nia",
+      "title": "Cyclist",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "cyclist_f",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "RATICATE",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "PIDGEOTTO",
+          "level": 10,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "SAILOR_001",
+      "display_name": "Sailor Grant",
+      "title": "Sailor",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "sailor",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "SQUIRTLE",
+          "level": 9,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "WARTORTLE",
+          "level": 9,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "SCHOOL_KID_M_001",
+      "display_name": "School Kid Milo",
+      "title": "School Kid",
+      "archetype": "normal_trainer",
+      "encounter_type": "trainer",
+      "is_boss": false,
+      "sprite_asset_id": "school_kid_m",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_trainer",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "BULBASAUR",
+          "level": 8,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "PIDGEY",
+          "level": 8,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated baseline party member."
+        }
+      ],
+      "notes": "Biome trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "NEMONA_BOSS",
+      "display_name": "Champion Nemona",
+      "title": "Champion",
+      "archetype": "boss_trainer",
+      "encounter_type": "trainer",
+      "is_boss": true,
+      "sprite_asset_id": "nemona",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_gym",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "SERPERIOR",
+          "level": 18,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "SAMUROTT",
+          "level": 18,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        }
+      ],
+      "notes": "Boss trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "BLAINE_BOSS",
+      "display_name": "Gym Leader Blaine",
+      "title": "Gym Leader",
+      "archetype": "boss_trainer",
+      "encounter_type": "trainer",
+      "is_boss": true,
+      "sprite_asset_id": "blaine",
+      "encounter_bgm": "battle_sinnoh_gym",
+      "battle_bgm": "battle_sinnoh_gym",
+      "victory_bgm": "bw/victory_gym",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "CHARMELEON",
+          "level": 17,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "CHARIZARD",
+          "level": 18,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        }
+      ],
+      "notes": "Boss trainer pool expansion entry."
+    },
+    {
+      "schema_version": 1,
+      "trainer_id": "ARIANA_BOSS",
+      "display_name": "Rocket Admin Ariana",
+      "title": "Admin",
+      "archetype": "boss_trainer",
+      "encounter_type": "trainer",
+      "is_boss": true,
+      "sprite_asset_id": "ariana",
+      "encounter_bgm": "battle_rival_3",
+      "battle_bgm": "battle_rival_3",
+      "victory_bgm": "bw/victory_gym",
+      "party_members": [
+        {
+          "slot_index": 0,
+          "species_id": "RATICATE",
+          "level": 17,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        },
+        {
+          "slot_index": 1,
+          "species_id": "IVYSAUR",
+          "level": 18,
+          "move_ids": [],
+          "current_hp": -1,
+          "form_tag": "",
+          "notes": "Curated boss baseline party member."
+        }
+      ],
+      "notes": "Boss trainer pool expansion entry."
     }
   ]
 }

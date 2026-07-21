@@ -39,6 +39,12 @@ export(float) var player_panel_switch_slide_distance_px := 180.0
 export(float) var player_panel_switch_slide_duration_sec := 0.24
 export(int) var biome_switch_every_levels := 3
 export(int) var biome_switch_milestone_interval := 0
+export(int) var biome_level_scale_floor_step := 2
+export(int) var biome_level_scale_floor_bonus := 1
+export(int) var biome_level_scale_trainer_bonus := 1
+export(int) var biome_level_scale_boss_bonus := 2
+export(float) var biome_level_scale_player_weight := 0.35
+export(int) var biome_level_scale_min_level := 3
 export(int) var normal_trainer_encounter_every := 5
 export(int) var boss_pokemon_encounter_every := 10
 export(int) var boss_trainer_encounter_every := 30
@@ -70,7 +76,7 @@ export(float) var biome_transition_post_fade_in_delay_sec := 0.12
 export(float) var biome_bgm_crossfade_duration_sec := 0.75
 export(float) var biome_bgm_volume_db := 0.0
 export(float) var scene_change_bgm_fade_out_sec := 0.35
-export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss"]
+export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss", "beach", "cave", "mountains", "temple", "volcano"]
 export(bool) var debug_open_party_menu_on_ready := false
 export(bool) var debug_transition_checkpoints := true
 export(float) var party_menu_overlay_fade_duration_sec := 0.12
@@ -1139,7 +1145,7 @@ func _run_trainer_pb_panel_intro_sequence(show_enemy_panel: bool = true, show_pl
 	if show_player_panel:
 		player_trainer_pb_panel.visible = false
 
-func _build_enemy_from_trainer_member(member: Dictionary):
+func _build_enemy_from_trainer_member(member: Dictionary, encounter_meta: Dictionary = {}, biome_state: Dictionary = {}, source: String = "trainer_member"):
 	if member.empty():
 		return null
 	if catalog_loader == null:
@@ -1151,7 +1157,22 @@ func _build_enemy_from_trainer_member(member: Dictionary):
 	if species_id.empty():
 		return null
 
-	var level = max(1, int(member.get("level", 5)))
+	var base_level = max(1, int(member.get("level", 5)))
+	var scaling = _resolve_biome_level_scaling(encounter_meta, base_level, biome_state)
+	var level = int(scaling.get("target_level", base_level))
+	_log_transition_checkpoint("biome_level_scaling.resolved", {
+		"source": source,
+		"biome_id": String(scaling.get("biome_id", "")),
+		"encounter_number": int(scaling.get("encounter_number", 0)),
+		"encounter_archetype": String(scaling.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON)),
+		"base_level": base_level,
+		"floor_index": int(scaling.get("floor_index", 0)),
+		"player_level": int(scaling.get("player_level", 1)),
+		"floor_bonus": int(scaling.get("floor_bonus", 0)),
+		"archetype_bonus": int(scaling.get("archetype_bonus", 0)),
+		"difficulty_delta": int(scaling.get("difficulty_delta", 0)),
+		"target_level": level,
+	})
 	var move_ids = member.get("move_ids", [])
 	if typeof(move_ids) != TYPE_ARRAY:
 		move_ids = []
@@ -1166,7 +1187,7 @@ func _build_enemy_from_trainer_member(member: Dictionary):
 
 	return enemy_data
 
-func _try_seed_trainer_encounter(encounter_meta: Dictionary) -> Dictionary:
+func _try_seed_trainer_encounter(encounter_meta: Dictionary, biome_state: Dictionary = {}) -> Dictionary:
 	var trainer_entry = _find_trainer_for_encounter(encounter_meta)
 	if trainer_entry.empty():
 		return {}
@@ -1179,7 +1200,7 @@ func _try_seed_trainer_encounter(encounter_meta: Dictionary) -> Dictionary:
 	for member in party_members:
 		if typeof(member) != TYPE_DICTIONARY:
 			continue
-		var candidate_enemy = _build_enemy_from_trainer_member(member)
+		var candidate_enemy = _build_enemy_from_trainer_member(member, encounter_meta, biome_state, "trainer_seed")
 		if candidate_enemy == null:
 			log_debug(
 				"Trainer seed skipped member for trainer_id=%s: species=%s could not be built."
@@ -1245,7 +1266,11 @@ func _dequeue_next_trainer_enemy():
 	if typeof(next_member) != TYPE_DICTIONARY:
 		return null
 
-	return _build_enemy_from_trainer_member(next_member)
+	var encounter_meta = battle_data.get("encounter_meta", {})
+	if typeof(encounter_meta) != TYPE_DICTIONARY:
+		encounter_meta = {}
+	var biome_state = _get_battle_biome_state()
+	return _build_enemy_from_trainer_member(next_member, encounter_meta, biome_state, "trainer_party_progress")
 
 func resource_exists(path: String) -> bool:
 	# In exported builds, imported resources may not be visible to File.file_exists.
@@ -5177,13 +5202,13 @@ func reset_battle_state(message: String):
 	var trainer_seed = {}
 	var trainer_seed_failed := false
 	if bool(initial_encounter_meta.get("is_trainer_encounter", false)):
-		trainer_seed = _try_seed_trainer_encounter(initial_encounter_meta)
+		trainer_seed = _try_seed_trainer_encounter(initial_encounter_meta, initial_biome_state)
 
 	var next_enemy_species_id = _pick_biome_weighted_enemy_species_id("", initial_biome_state, initial_encounter_meta)
 	if not trainer_seed.empty() and trainer_seed.has("enemy") and trainer_seed["enemy"] != null:
 		next_enemy_species_id = String(trainer_seed["enemy"].species_id).strip_edges().to_upper()
 
-	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member)
+	battle_data = build_battle_seed(active_player_species_id, next_enemy_species_id, active_party_member, initial_encounter_meta, initial_biome_state)
 	if not trainer_seed.empty() and trainer_seed.has("enemy") and trainer_seed["enemy"] != null:
 		battle_data["enemy"] = trainer_seed["enemy"]
 		battle_data["enemy_trainer_id"] = String(trainer_seed.get("trainer_id", "")).strip_edges().to_upper()
@@ -5270,11 +5295,28 @@ func _on_player_sendout_settled() -> void:
 	if not battle_ended and not turn_in_progress and not capture_in_progress:
 		_show_main_controls_unlocked()
 
-func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}) -> Dictionary:
+func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}, encounter_meta: Dictionary = {}, biome_state: Dictionary = {}) -> Dictionary:
 	if catalog_loader == null:
 		catalog_loader = catalog_loader_script.new()
 
 	if catalog_loader != null and catalog_loader.load_catalogs():
+		var enemy_base_level = 5
+		var enemy_scaling = _resolve_biome_level_scaling(encounter_meta, enemy_base_level, biome_state)
+		var enemy_level = int(enemy_scaling.get("target_level", enemy_base_level))
+		_log_transition_checkpoint("biome_level_scaling.resolved", {
+			"source": "wild_seed_build",
+			"biome_id": String(enemy_scaling.get("biome_id", "")),
+			"encounter_number": int(enemy_scaling.get("encounter_number", 0)),
+			"encounter_archetype": String(enemy_scaling.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON)),
+			"base_level": enemy_base_level,
+			"floor_index": int(enemy_scaling.get("floor_index", 0)),
+			"player_level": int(enemy_scaling.get("player_level", 1)),
+			"floor_bonus": int(enemy_scaling.get("floor_bonus", 0)),
+			"archetype_bonus": int(enemy_scaling.get("archetype_bonus", 0)),
+			"difficulty_delta": int(enemy_scaling.get("difficulty_delta", 0)),
+			"target_level": enemy_level,
+		})
+
 		if typeof(player_party_member) == TYPE_DICTIONARY and not player_party_member.empty():
 			var player_level = _resolve_debug_player_level(int(player_party_member.get("level", 5)))
 			var player_move_ids = player_party_member.get("move_ids", [])
@@ -5282,14 +5324,14 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 				player_move_ids = []
 
 			var player_data = catalog_loader.build_pokemon_data(player_species_id, player_level, player_move_ids)
-			var enemy_data = catalog_loader.build_pokemon_data(enemy_species_id, 5)
+			var enemy_data = catalog_loader.build_pokemon_data(enemy_species_id, enemy_level)
 			return {
 				"player": player_data,
 				"enemy": enemy_data,
 			}
 
 		var player_data_default = catalog_loader.build_pokemon_data(player_species_id, _resolve_debug_player_level(5))
-		var enemy_data_default = catalog_loader.build_pokemon_data(enemy_species_id, 5)
+		var enemy_data_default = catalog_loader.build_pokemon_data(enemy_species_id, enemy_level)
 		return {
 			"player": player_data_default,
 			"enemy": enemy_data_default,
@@ -5438,6 +5480,67 @@ func _build_encounter_metadata(biome_state: Dictionary, enemy_species_id: String
 		encounter_meta["trainer_display_name"] = String(battle_data.get("enemy_trainer_name", "Trainer")).strip_edges()
 
 	return encounter_meta
+
+func _resolve_active_player_level_for_scaling() -> int:
+	if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") and battle_data["player"] != null:
+		return int(max(1, int(battle_data["player"].level)))
+
+	if runtime_state_script != null:
+		var party = runtime_state_script.get_party(get_tree())
+		if party != null:
+			var active_index = party.get_active_slot_index()
+			var active_member = party.get_member_at(active_index)
+			if typeof(active_member) == TYPE_DICTIONARY and not active_member.empty():
+				return int(max(1, int(active_member.get("level", 5))))
+
+	return int(max(1, _resolve_debug_player_level(5)))
+
+func _resolve_biome_level_scaling(encounter_meta: Dictionary, base_level: int, biome_state: Dictionary = {}) -> Dictionary:
+	var safe_base_level = max(1, int(base_level))
+	var resolved_meta = encounter_meta if typeof(encounter_meta) == TYPE_DICTIONARY else {}
+	var resolved_biome_state = biome_state if typeof(biome_state) == TYPE_DICTIONARY else {}
+
+	var encounter_index = int(resolved_meta.get("encounter_index", resolved_biome_state.get("encounter_index", 0)))
+	var encounter_number = int(resolved_meta.get("encounter_number", encounter_index + 1))
+	var floor_index = int(resolved_biome_state.get("floor_index", encounter_index))
+	var biome_id = _normalize_arena_asset_id(String(resolved_meta.get("biome_id", resolved_biome_state.get("current_biome_id", "grass"))))
+	if biome_id.empty():
+		biome_id = "grass"
+
+	var encounter_archetype = String(resolved_meta.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON))
+	var is_trainer = bool(resolved_meta.get("is_trainer_encounter", false))
+	var is_boss = bool(resolved_meta.get("is_boss_encounter", false))
+
+	var floor_step = max(1, int(biome_level_scale_floor_step))
+	var floor_bonus = int(floor(float(max(0, floor_index)) / float(floor_step))) * max(0, int(biome_level_scale_floor_bonus))
+
+	var archetype_bonus = 0
+	if is_trainer:
+		archetype_bonus += max(0, int(biome_level_scale_trainer_bonus))
+	if is_boss:
+		archetype_bonus += max(0, int(biome_level_scale_boss_bonus))
+
+	var player_level = _resolve_active_player_level_for_scaling()
+	var weighted_delta = float(player_level - safe_base_level) * float(biome_level_scale_player_weight)
+	var difficulty_delta = int(round(weighted_delta))
+
+	var unclamped = safe_base_level + floor_bonus + archetype_bonus + difficulty_delta
+	var min_level = max(1, int(biome_level_scale_min_level))
+	var target_level = int(clamp(unclamped, min_level, max_exp_level))
+
+	return {
+		"biome_id": biome_id,
+		"encounter_index": encounter_index,
+		"encounter_number": max(1, encounter_number),
+		"encounter_archetype": encounter_archetype,
+		"base_level": safe_base_level,
+		"floor_index": floor_index,
+		"player_level": player_level,
+		"floor_bonus": floor_bonus,
+		"archetype_bonus": archetype_bonus,
+		"difficulty_delta": difficulty_delta,
+		"target_level": target_level,
+	}
 
 func _classify_encounter_archetype(encounter_number: int, biome_state: Dictionary = {}) -> Dictionary:
 	var normalized_number = max(1, encounter_number)
@@ -6163,7 +6266,7 @@ func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String
 		next_biome_state = _advance_runtime_biome_state("enemy_defeated")
 		next_encounter_meta = _build_encounter_metadata(next_biome_state, "")
 		if bool(next_encounter_meta.get("is_trainer_encounter", false)):
-			next_trainer_seed = _try_seed_trainer_encounter(next_encounter_meta)
+			next_trainer_seed = _try_seed_trainer_encounter(next_encounter_meta, next_biome_state)
 			if not next_trainer_seed.empty() and next_trainer_seed.has("enemy") and next_trainer_seed["enemy"] != null:
 				next_enemy = next_trainer_seed["enemy"]
 				next_is_seeded_trainer = true
@@ -6173,7 +6276,23 @@ func _advance_to_next_enemy_seed_and_load_phase_state(fainted_species_id: String
 			catalog_loader = catalog_loader_script.new()
 		if next_enemy == null and catalog_loader != null and catalog_loader.load_catalogs():
 			var next_enemy_species_id = _pick_biome_weighted_enemy_species_id(fainted_species_id, next_biome_state, next_encounter_meta)
-			next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, 5)
+			var next_enemy_base_level = 5
+			var next_enemy_scaling = _resolve_biome_level_scaling(next_encounter_meta, next_enemy_base_level, next_biome_state)
+			var next_enemy_level = int(next_enemy_scaling.get("target_level", next_enemy_base_level))
+			_log_transition_checkpoint("biome_level_scaling.resolved", {
+				"source": "wild_seed_transition",
+				"biome_id": String(next_enemy_scaling.get("biome_id", "")),
+				"encounter_number": int(next_enemy_scaling.get("encounter_number", 0)),
+				"encounter_archetype": String(next_enemy_scaling.get("encounter_archetype", ENCOUNTER_ARCHETYPE_NORMAL_POKEMON)),
+				"base_level": next_enemy_base_level,
+				"floor_index": int(next_enemy_scaling.get("floor_index", 0)),
+				"player_level": int(next_enemy_scaling.get("player_level", 1)),
+				"floor_bonus": int(next_enemy_scaling.get("floor_bonus", 0)),
+				"archetype_bonus": int(next_enemy_scaling.get("archetype_bonus", 0)),
+				"difficulty_delta": int(next_enemy_scaling.get("difficulty_delta", 0)),
+				"target_level": next_enemy_level,
+			})
+			next_enemy = catalog_loader.build_pokemon_data(next_enemy_species_id, next_enemy_level)
 
 	if next_enemy == null:
 		enemy_layer.rect_position = enemy_layer_home_position
