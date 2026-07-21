@@ -371,10 +371,13 @@ var hp_overlay_json = "assets/images/ui/overlay_hp.json"
 var debug_log_path = "user://battle_debug.log"
 var biome_wild_pool_catalog_path = "res://data/biome-wild-pools.v1.json"
 var biome_trainer_rules_catalog_path = "res://data/biome-trainer-rules.v1.json"
+var biome_route_graph_catalog_path = "res://data/biome-route-graph.v1.json"
 var biome_wild_pool_catalog := {}
 var biome_wild_pool_catalog_loaded := false
 var biome_trainer_rules_catalog := {}
 var biome_trainer_rules_catalog_loaded := false
+var biome_route_graph_catalog := {}
+var biome_route_graph_catalog_loaded := false
 var type_ui_assets := {
 	"enemy": {
 		"single_texture": "assets/images/ui/pbinfo_enemy_type.png",
@@ -5374,6 +5377,99 @@ func _build_biome_cadence_settings() -> Dictionary:
 		"use_interval": true,
 	}
 
+func _build_rotation_route_links(normalized_entries: Array) -> Dictionary:
+	var linked_biomes := {}
+	if normalized_entries.size() < 2:
+		return linked_biomes
+
+	for i in range(normalized_entries.size()):
+		var current_biome_id = String(normalized_entries[i])
+		var next_biome_id = String(normalized_entries[(i + 1) % normalized_entries.size()])
+		var prev_biome_id = String(normalized_entries[(i - 1 + normalized_entries.size()) % normalized_entries.size()])
+		var candidates := []
+		if not next_biome_id.empty() and not candidates.has(next_biome_id):
+			candidates.append(next_biome_id)
+		if normalized_entries.size() > 2 and not prev_biome_id.empty() and not candidates.has(prev_biome_id):
+			candidates.append(prev_biome_id)
+		if candidates.empty() and not current_biome_id.empty():
+			candidates.append(current_biome_id)
+		linked_biomes[current_biome_id] = candidates
+
+	return linked_biomes
+
+func _get_biome_route_graph_catalog() -> Dictionary:
+	if biome_route_graph_catalog_loaded:
+		if typeof(biome_route_graph_catalog) == TYPE_DICTIONARY:
+			return biome_route_graph_catalog
+		return {}
+
+	biome_route_graph_catalog_loaded = true
+	var payload = _read_json_payload(biome_route_graph_catalog_path)
+	if typeof(payload) != TYPE_DICTIONARY:
+		log_debug("Biome route graph: failed to load JSON payload from %s" % biome_route_graph_catalog_path)
+		biome_route_graph_catalog = {}
+		return {}
+
+	var biomes = payload.get("biomes", {})
+	if typeof(biomes) != TYPE_DICTIONARY:
+		log_debug("Biome route graph: invalid payload; expected dictionary at 'biomes'.")
+		biome_route_graph_catalog = {}
+		return {}
+
+	biome_route_graph_catalog = payload
+	return biome_route_graph_catalog
+
+func _extract_catalog_route_links(route_catalog: Dictionary, normalized_entries: Array) -> Dictionary:
+	var links := {}
+	if typeof(route_catalog) != TYPE_DICTIONARY:
+		return links
+
+	var raw_biomes = route_catalog.get("biomes", {})
+	if typeof(raw_biomes) != TYPE_DICTIONARY:
+		return links
+
+	var allowed_lookup := {}
+	for biome_id in normalized_entries:
+		var normalized_biome_id = _normalize_arena_asset_id(String(biome_id))
+		if normalized_biome_id.empty():
+			continue
+		allowed_lookup[normalized_biome_id] = true
+
+	for raw_source_biome_id in raw_biomes.keys():
+		var source_biome_id = _normalize_arena_asset_id(String(raw_source_biome_id))
+		if source_biome_id.empty() or not allowed_lookup.has(source_biome_id):
+			continue
+		if typeof(raw_biomes[raw_source_biome_id]) != TYPE_DICTIONARY:
+			continue
+		var biome_entry: Dictionary = raw_biomes[raw_source_biome_id]
+
+		var candidates := []
+		var weighted_links = biome_entry.get("linked_biomes", [])
+		if typeof(weighted_links) == TYPE_ARRAY:
+			for link_entry in weighted_links:
+				if typeof(link_entry) != TYPE_DICTIONARY:
+					continue
+				var target_biome_id = _normalize_arena_asset_id(String(link_entry.get("target_biome_id", "")))
+				if target_biome_id.empty() or not allowed_lookup.has(target_biome_id) or candidates.has(target_biome_id):
+					continue
+				candidates.append(target_biome_id)
+
+		if candidates.empty():
+			var legacy_links = biome_entry.get("linked_biome_ids", [])
+			if typeof(legacy_links) == TYPE_ARRAY:
+				for raw_target in legacy_links:
+					var legacy_target_biome_id = _normalize_arena_asset_id(String(raw_target))
+					if legacy_target_biome_id.empty() or not allowed_lookup.has(legacy_target_biome_id) or candidates.has(legacy_target_biome_id):
+						continue
+					candidates.append(legacy_target_biome_id)
+
+		if candidates.empty():
+			continue
+
+		links[source_biome_id] = candidates
+
+	return links
+
 func _build_biome_route_policy() -> Dictionary:
 	var rotation: Array = biome_test_arena_rotation
 	var normalized_entries := []
@@ -5383,24 +5479,27 @@ func _build_biome_route_policy() -> Dictionary:
 			continue
 		normalized_entries.append(normalized_entry)
 
-	var linked_biomes := {}
-	if normalized_entries.size() >= 2:
-		for i in range(normalized_entries.size()):
-			var current_biome_id = String(normalized_entries[i])
-			var next_biome_id = String(normalized_entries[(i + 1) % normalized_entries.size()])
-			var prev_biome_id = String(normalized_entries[(i - 1 + normalized_entries.size()) % normalized_entries.size()])
-			var candidates := []
-			if not next_biome_id.empty() and not candidates.has(next_biome_id):
-				candidates.append(next_biome_id)
-			if normalized_entries.size() > 2 and not prev_biome_id.empty() and not candidates.has(prev_biome_id):
-				candidates.append(prev_biome_id)
-			if candidates.empty():
-				candidates.append(current_biome_id)
-			linked_biomes[current_biome_id] = candidates
+	var linked_biomes = _build_rotation_route_links(normalized_entries)
+	var policy_id = "battle_rotation_links_v1"
+	var fallback_mode = "rotation_next"
+
+	var route_catalog = _get_biome_route_graph_catalog()
+	if typeof(route_catalog) == TYPE_DICTIONARY and not route_catalog.empty():
+		var catalog_links = _extract_catalog_route_links(route_catalog, normalized_entries)
+		if not catalog_links.empty():
+			for source_biome_id in catalog_links.keys():
+				linked_biomes[source_biome_id] = catalog_links[source_biome_id]
+			policy_id = String(route_catalog.get("policy_id", "biome_route_graph_v1")).strip_edges().to_lower()
+			if policy_id.empty():
+				policy_id = "biome_route_graph_v1"
+			fallback_mode = String(route_catalog.get("fallback_mode", "rotation_next")).strip_edges().to_lower()
+			if fallback_mode.empty():
+				fallback_mode = "rotation_next"
+			log_debug("Biome route policy: loaded %d route entries from %s" % [catalog_links.size(), biome_route_graph_catalog_path])
 
 	return {
-		"policy_id": "battle_rotation_links_v1",
-		"fallback_mode": "rotation_next",
+		"policy_id": policy_id,
+		"fallback_mode": fallback_mode,
 		"linked_biomes": linked_biomes,
 	}
 
