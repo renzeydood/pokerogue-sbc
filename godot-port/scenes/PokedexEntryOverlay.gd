@@ -17,6 +17,7 @@ export(float) var sprite_vertical_nudge_px := 0.0
 
 const TYPE_TEXTURE_REL := "assets/images/types.png"
 const TYPE_ATLAS_REL := "assets/images/types.json"
+const BIOME_WILD_POOL_CATALOG_PATH := "res://data/biome-wild-pools.v1.json"
 const BASE_STATS_KEYS := ["hp", "atk", "def", "sp_atk", "sp_def", "spd"]
 const BASE_STATS_LABELS := ["HP", "ATK", "DEF", "SPATK", "SPDEF", "SPD"]
 const BASE_BAR_COLOR := Color(0.4, 0.666667, 0.6, 1)
@@ -40,6 +41,9 @@ onready var natures_button = $Panel/UiScaleRoot/EntryWindow/ActionContentMargin/
 onready var ribbons_button = $Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList/RibbonsButton
 onready var evolutions_button = $Panel/UiScaleRoot/EntryWindow/ActionContentMargin/ActionButtonList/EvolutionsButton
 onready var base_stats_window = $Panel/UiScaleRoot/BaseStatsWindow
+onready var biomes_window = $Panel/UiScaleRoot/BiomesWindow
+onready var biomes_window_list = get_node_or_null("Panel/UiScaleRoot/BiomesWindow/ActionContentMargin/ActionButtonList")
+onready var biomes_window_cancel_button = get_node_or_null("Panel/UiScaleRoot/BiomesWindow/ActionContentMargin/ActionButtonList/CancelButton")
 onready var hp_label = $Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/HPContainer/HPLabel
 onready var atk_label = $Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/AtkContainer/AtkLabel
 onready var def_label = $Panel/UiScaleRoot/BaseStatsWindow/ActionContentMargin/ActionButtonList/DefContainer/DefLabel
@@ -74,6 +78,11 @@ var current_base_stats := {}
 var pending_base_stat_values := []
 var base_bar_right_edge_hint := -1.0
 var base_bar_y_offsets := []
+var biome_catalog_cache := {}
+var biome_catalog_loaded := false
+var biome_lookup_cache := {}
+var biome_list_visible := false
+var biomes_window_default_height := 0.0
 
 func _ready() -> void:
 	set_process(true)
@@ -82,6 +91,7 @@ func _ready() -> void:
 	_setup_action_buttons()
 	_setup_type_sprites()
 	_setup_base_stats_window()
+	_setup_biomes_window()
 	if current_pokemon_sprite != null:
 		sprite_editor_base_offset = current_pokemon_sprite.offset
 	visible = false
@@ -125,6 +135,9 @@ func press_focused() -> void:
 func handle_back_action() -> bool:
 	if not visible:
 		return false
+	if biome_list_visible:
+		_biomes_hide_list()
+		return true
 	if base_stats_window != null and base_stats_window.visible:
 		_hide_base_stats_window()
 		return true
@@ -149,7 +162,7 @@ func _refresh_entry_text() -> void:
 	pokemon_number_label.text = _format_species_number(_get_species_dex_number(current_species_id))
 	status_label.text = "Status: Caught" if current_is_caught else "Status: Not Caught"
 	if body_label != null:
-		body_label.text = "Pokedex overlays for %s are wired. Select Base Stats to continue." % display_species
+		body_label.text = _build_default_entry_body_text(display_species)
 	_refresh_growth_rate_text()
 
 func _refresh_growth_rate_text() -> void:
@@ -160,7 +173,7 @@ func _refresh_growth_rate_text() -> void:
 	if current_is_caught:
 		var species_entry = _get_species_entry(current_species_id)
 		if not species_entry.empty():
-			var raw_growth_rate = String(species_entry.get("growth_rate", "")).strip_edges().to_upper()
+			var raw_growth_rate = str(species_entry.get("growth_rate", "")).strip_edges().to_upper()
 			if not raw_growth_rate.empty():
 				growth_rate_text = _format_growth_rate(raw_growth_rate)
 
@@ -169,17 +182,19 @@ func _refresh_growth_rate_text() -> void:
 func _format_growth_rate(raw_growth_rate: String) -> String:
 	var words = raw_growth_rate.split("_", false)
 	for i in range(words.size()):
-		var word = String(words[i]).strip_edges().to_lower()
+		var word = str(words[i]).strip_edges().to_lower()
 		if word.empty():
 			continue
 		words[i] = word.substr(0, 1).to_upper() + word.substr(1)
 	return " ".join(words)
 
 func _refresh_entry_view() -> void:
+	biome_list_visible = false
 	_refresh_entry_text()
 	_load_species_base_stats()
 	_populate_base_stats_window()
 	_hide_base_stats_window()
+	_hide_biomes_window()
 	_load_species_types()
 	_refresh_type_badges()
 	_load_species_sprite()
@@ -194,16 +209,21 @@ func _setup_action_buttons() -> void:
 
 	if base_stats_button != null and not base_stats_button.is_connected("pressed", self, "_on_BaseStatsButton_pressed"):
 		base_stats_button.connect("pressed", self, "_on_BaseStatsButton_pressed")
+	if biomes_button != null and not biomes_button.is_connected("pressed", self, "_on_BiomesButton_pressed"):
+		biomes_button.connect("pressed", self, "_on_BiomesButton_pressed")
 
 	if base_stats_button != null:
 		base_stats_button.disabled = false
 	for button in buttons:
 		if button == null or button == base_stats_button:
 			continue
+		if button == biomes_button:
+			button.disabled = false
+			continue
 		button.disabled = true
 
 	if action_text_label != null:
-		action_text_label.text = "Show its base stats."
+		action_text_label.text = "Show its base stats or biome list."
 
 func _get_action_buttons() -> Array:
 	return [
@@ -223,16 +243,27 @@ func _on_action_button_focus_entered(button: Button) -> void:
 		return
 	if button == base_stats_button:
 		action_text_label.text = "Show or hide base stats."
+	elif button == biomes_button:
+		action_text_label.text = "Show where this Pokemon can be found."
 	else:
 		action_text_label.text = "Overlay not implemented yet."
 
 func _on_BaseStatsButton_pressed() -> void:
 	if base_stats_window == null:
 		return
+	_biomes_hide_list()
 	if base_stats_window.visible:
 		_hide_base_stats_window()
 	else:
 		_show_base_stats_window()
+
+func _on_BiomesButton_pressed() -> void:
+	if current_species_id.strip_edges().empty():
+		return
+	if biome_list_visible:
+		_biomes_hide_list()
+		return
+	_show_biome_list()
 
 func _setup_base_stats_window() -> void:
 	_capture_base_stat_layout_hints()
@@ -283,12 +314,12 @@ func _populate_base_stats_window() -> void:
 	var total := 0
 	pending_base_stat_values.clear()
 	for i in range(BASE_STATS_KEYS.size()):
-		var key = String(BASE_STATS_KEYS[i])
+		var key = str(BASE_STATS_KEYS[i])
 		var value = int(current_base_stats.get(key, 0))
 		pending_base_stat_values.append(value)
 		total += value
 		if i < labels.size() and labels[i] != null:
-			labels[i].text = "%s: %d" % [String(BASE_STATS_LABELS[i]), value]
+			labels[i].text = "%s: %d" % [str(BASE_STATS_LABELS[i]), value]
 	if total_label != null:
 		total_label.text = "Total: %d" % total
 	if base_stats_window != null and base_stats_window.visible:
@@ -297,6 +328,7 @@ func _populate_base_stats_window() -> void:
 func _show_base_stats_window() -> void:
 	if base_stats_window == null:
 		return
+	_hide_biomes_window()
 	_populate_base_stats_window()
 	base_stats_window.visible = true
 	call_deferred("_reflow_base_stat_bars")
@@ -308,6 +340,210 @@ func _hide_base_stats_window() -> void:
 		base_stats_window.visible = false
 	if action_text_label != null:
 		action_text_label.text = "Show or hide base stats."
+
+func _show_biome_list() -> void:
+	if biomes_window == null:
+		return
+	biome_list_visible = true
+	if base_stats_window != null:
+		base_stats_window.visible = false
+	_update_biomes_window_contents()
+	_resize_biomes_window_to_contents()
+	biomes_window.visible = true
+	biomes_window.raise()
+	if action_text_label != null:
+		action_text_label.text = "Biomes shown."
+
+func _biomes_hide_list() -> void:
+	if not biome_list_visible:
+		return
+	_hide_biomes_window()
+
+func _hide_biomes_window() -> void:
+	biome_list_visible = false
+	if biomes_window != null:
+		biomes_window.visible = false
+	if action_text_label != null:
+		action_text_label.text = "Show its base stats or biome list."
+
+func _setup_biomes_window() -> void:
+	if biomes_window != null:
+		biomes_window.visible = false
+		biomes_window.anchor_top = 1.0
+		biomes_window.anchor_bottom = 1.0
+	if biomes_window_list != null:
+		biomes_window_list.size_flags_vertical = 0
+		biomes_window_default_height = max(0.0, biomes_window_list.get_combined_minimum_size().y + 12.0)
+	if biomes_window_cancel_button != null and not biomes_window_cancel_button.is_connected("pressed", self, "_on_BiomesWindowCancelButton_pressed"):
+		biomes_window_cancel_button.connect("pressed", self, "_on_BiomesWindowCancelButton_pressed")
+
+func _on_BiomesWindowCancelButton_pressed() -> void:
+	_hide_biomes_window()
+
+func _update_biomes_window_contents() -> void:
+	if biomes_window_list == null:
+		return
+	for child in biomes_window_list.get_children():
+		if child == biomes_window_cancel_button:
+			continue
+		biomes_window_list.remove_child(child)
+		child.queue_free()
+	var biome_names = _get_found_biome_names_for_current_species()
+	var insert_index = biomes_window_list.get_child_count()
+	if biome_names.empty():
+		var empty_label = Label.new()
+		empty_label.text = "No biome data found."
+		empty_label.size_flags_vertical = 0
+		biomes_window_list.add_child(empty_label)
+		biomes_window_list.move_child(empty_label, max(0, insert_index - 1))
+	else:
+		for biome_name in biome_names:
+			var biome_label = Label.new()
+			biome_label.text = biome_name
+			biome_label.size_flags_vertical = 0
+			biomes_window_list.add_child(biome_label)
+			biomes_window_list.move_child(biome_label, max(0, biomes_window_list.get_child_count() - 2))
+	if biomes_window_cancel_button != null:
+		biomes_window_cancel_button.size_flags_vertical = 0
+	biomes_window_list.minimum_size_changed()
+
+func _resize_biomes_window_to_contents() -> void:
+	if biomes_window == null:
+		return
+	var content_height := 0.0
+	if biomes_window_list != null:
+		content_height = biomes_window_list.get_combined_minimum_size().y + 12.0
+	content_height = max(24.0, content_height)
+	var target_height = max(biomes_window_default_height, content_height)
+	biomes_window.margin_top = biomes_window.margin_bottom - target_height
+	biomes_window.rect_min_size.y = target_height
+
+func _build_default_entry_body_text(display_species: String) -> String:
+	return "Pokedex overlays for %s are wired. Select Base Stats or Biomes to continue." % display_species
+
+func _format_biome_name(biome_id: String) -> String:
+	var raw = biome_id.strip_edges().replace("_", " ").replace("-", " ")
+	if raw.empty():
+		return "Unknown"
+	var words = raw.split(" ", false)
+	for i in range(words.size()):
+		var word = str(words[i]).strip_edges()
+		if word.empty():
+			continue
+		words[i] = word.substr(0, 1).to_upper() + word.substr(1)
+	return " ".join(words)
+
+func _build_biome_list_text() -> String:
+	var biome_names = _get_found_biome_names_for_current_species()
+	var display_species = current_species_id if not current_species_id.empty() else "UNKNOWN"
+	if biome_names.empty():
+		return "No biome data found for %s.\n\nThis usually means the species is not present in the current biome pool export." % display_species
+	return "Found in:\n- %s" % "\n- ".join(biome_names)
+
+func _get_found_biome_names_for_current_species() -> Array:
+	var lineage_ids = _get_species_lineage_ids(current_species_id)
+	var biome_ids := {}
+	for species_id in lineage_ids:
+		for biome_id in _get_biomes_for_species(species_id):
+			biome_ids[biome_id] = true
+	var sorted_ids := biome_ids.keys()
+	sorted_ids.sort()
+	var biome_names := []
+	for biome_id in sorted_ids:
+		biome_names.append(_format_biome_name(str(biome_id)))
+	return biome_names
+
+func _get_species_lineage_ids(species_id: String) -> Array:
+	var normalized_species_id = species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return []
+	var lineage := [normalized_species_id]
+	var species_entry = _get_species_entry(normalized_species_id)
+	if species_entry.empty():
+		return lineage
+	var prevolution_id = str(species_entry.get("prevolution_species_id", "")).strip_edges().to_upper()
+	if not prevolution_id.empty() and not lineage.has(prevolution_id):
+		lineage.append(prevolution_id)
+	var evolution_ids = species_entry.get("evolution_species_ids", [])
+	if typeof(evolution_ids) == TYPE_ARRAY:
+		for evo_id in evolution_ids:
+			var normalized_evo_id = str(evo_id).strip_edges().to_upper()
+			if normalized_evo_id.empty() or lineage.has(normalized_evo_id):
+				continue
+			lineage.append(normalized_evo_id)
+	return lineage
+
+func _get_biomes_for_species(species_id: String) -> Array:
+	var normalized_species_id = species_id.strip_edges().to_upper()
+	if normalized_species_id.empty():
+		return []
+	if biome_lookup_cache.has(normalized_species_id):
+		var cached = biome_lookup_cache[normalized_species_id]
+		if typeof(cached) == TYPE_ARRAY:
+			return cached.duplicate(true)
+		return []
+
+	var catalog = _get_biome_wild_pool_catalog()
+	var biome_ids := []
+	if typeof(catalog) == TYPE_DICTIONARY:
+		var biomes = catalog.get("biomes", {})
+		if typeof(biomes) == TYPE_DICTIONARY:
+			for raw_biome_id in biomes.keys():
+				var biome_entry = biomes[raw_biome_id]
+				if typeof(biome_entry) != TYPE_DICTIONARY:
+					continue
+				if _biome_entry_contains_species(biome_entry, normalized_species_id):
+					biome_ids.append(str(raw_biome_id))
+	biome_ids.sort()
+	biome_lookup_cache[normalized_species_id] = biome_ids.duplicate(true)
+	return biome_ids.duplicate(true)
+
+func _biome_entry_contains_species(biome_entry: Dictionary, species_id: String) -> bool:
+	var tiers = biome_entry.get("tiers", {})
+	if typeof(tiers) != TYPE_DICTIONARY:
+		return false
+	for tier_name in tiers.keys():
+		var tier_entries = tiers[tier_name]
+		if typeof(tier_entries) != TYPE_ARRAY:
+			continue
+		for entry in tier_entries:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			if str(entry.get("species_id", "")).strip_edges().to_upper() == species_id:
+				return true
+	return false
+
+func _get_biome_wild_pool_catalog() -> Dictionary:
+	if biome_catalog_loaded:
+		if typeof(biome_catalog_cache) == TYPE_DICTIONARY:
+			return biome_catalog_cache
+		return {}
+
+	biome_catalog_loaded = true
+	var payload = _read_json_payload(BIOME_WILD_POOL_CATALOG_PATH)
+	if typeof(payload) != TYPE_DICTIONARY:
+		biome_catalog_cache = {}
+		return {}
+	if typeof(payload.get("biomes", {})) != TYPE_DICTIONARY:
+		biome_catalog_cache = {}
+		return {}
+	biome_catalog_cache = payload
+	return biome_catalog_cache
+
+func _read_json_payload(path: String):
+	var file = File.new()
+	if not file.file_exists(path):
+		return null
+	if file.open(path, File.READ) != OK:
+		return null
+	var json_text = file.get_as_text()
+	file.close()
+
+	var parsed = JSON.parse(json_text)
+	if parsed.error != OK:
+		return null
+
+	return parsed.result
 
 func _get_base_stat_labels() -> Array:
 	return [hp_label, atk_label, def_label, spatk_label, spdef_label, spd_label]
@@ -425,7 +661,7 @@ func _load_species_types() -> void:
 		return
 
 	for raw_type in entry_types:
-		var type_name = String(raw_type).strip_edges().to_upper()
+		var type_name = str(raw_type).strip_edges().to_upper()
 		if type_name.empty():
 			continue
 		current_species_types.append(type_name)
@@ -440,9 +676,9 @@ func _refresh_type_badges() -> void:
 	if current_species_types.empty():
 		current_species_types = ["UNKNOWN"]
 
-	_apply_type_badge(details_type1_sprite, String(current_species_types[0]))
+	_apply_type_badge(details_type1_sprite, str(current_species_types[0]))
 	if current_species_types.size() >= 2:
-		_apply_type_badge(details_type2_sprite, String(current_species_types[1]))
+		_apply_type_badge(details_type2_sprite, str(current_species_types[1]))
 	else:
 		details_type2_sprite.visible = false
 
@@ -481,8 +717,8 @@ func _load_species_sprite() -> void:
 			"atlas_rel": "assets/images/pokemon/1.json",
 		}
 
-	var texture_path = minimal_assets_path + String(sprite_paths.get("texture_rel", ""))
-	var atlas_path = minimal_assets_path + String(sprite_paths.get("atlas_rel", ""))
+	var texture_path = minimal_assets_path + str(sprite_paths.get("texture_rel", ""))
+	var atlas_path = minimal_assets_path + str(sprite_paths.get("atlas_rel", ""))
 	if not ResourceLoader.exists(texture_path):
 		current_pokemon_sprite.visible = false
 		current_pokemon_sprite.modulate = Color(1, 1, 1, 1)
@@ -566,7 +802,7 @@ func _parse_sprite_frame(json_path: String, frame_name: String):
 	if frames.empty():
 		return null
 	for frame in frames:
-		if frame.has("filename") and String(frame["filename"]) == frame_name:
+		if frame.has("filename") and str(frame["filename"]) == frame_name:
 			return frame
 	return null
 
@@ -630,7 +866,7 @@ func _normalize_atlas_frames_container(frames_container, atlas_scale: float = 1.
 				continue
 			frame_entry = frame_entry.duplicate(true)
 			if not frame_entry.has("filename"):
-				frame_entry["filename"] = String(key)
+				frame_entry["filename"] = str(key)
 			frame_entry["_atlas_scale"] = atlas_scale
 			normalized.append(frame_entry)
 		return normalized
@@ -651,7 +887,7 @@ func _get_all_numeric_frames(json_path: String) -> Array:
 	for frame in frames:
 		if frame == null or not frame.has("filename"):
 			continue
-		var frame_index = _extract_numeric_frame_index(String(frame["filename"]))
+		var frame_index = _extract_numeric_frame_index(str(frame["filename"]))
 		if frame_index < 0:
 			continue
 		indexed.append({"index": frame_index, "frame": frame})

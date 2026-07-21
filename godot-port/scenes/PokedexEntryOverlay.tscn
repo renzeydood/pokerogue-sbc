@@ -226,6 +226,7 @@ flat = true
 align = 0
 
 [node name="BaseStatsWindow" type="NinePatchRect" parent="Panel/UiScaleRoot"]
+visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_left = 224.0
@@ -369,6 +370,37 @@ margin_right = 83.0
 margin_bottom = 89.0
 custom_colors/font_color = Color( 0.862745, 0.956863, 0.427451, 1 )
 text = "Total: 318"
+
+[node name="BiomesWindow" type="NinePatchRect" parent="Panel/UiScaleRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 175.0
+margin_top = 176.0
+margin_right = -3.0
+margin_bottom = -38.0
+texture = ExtResource( 3 )
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="ActionContentMargin" type="MarginContainer" parent="Panel/UiScaleRoot/BiomesWindow"]
+margin_left = 10.0
+margin_top = 5.0
+margin_right = 136.0
+margin_bottom = 22.0
+theme = ExtResource( 8 )
+
+[node name="ActionButtonList" type="VBoxContainer" parent="Panel/UiScaleRoot/BiomesWindow/ActionContentMargin"]
+margin_right = 126.0
+margin_bottom = 17.0
+custom_constants/separation = 2
+
+[node name="CancelButton" type="Button" parent="Panel/UiScaleRoot/BiomesWindow/ActionContentMargin/ActionButtonList"]
+margin_right = 126.0
+margin_bottom = 17.0
+text = "CANCEL"
+flat = true
 
 [node name="Footer" type="Control" parent="Panel/UiScaleRoot"]
 anchor_top = 1.0
