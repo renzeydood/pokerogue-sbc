@@ -5152,6 +5152,8 @@ func reset_battle_state(message: String):
 	if not handoff_species_id.empty():
 		selected_player_species_id = handoff_species_id
 		if runtime_state_script != null:
+			runtime_state_script.clear_biome_state(get_tree())
+			log_debug("Run reset: cleared runtime biome progression state from selection handoff.")
 			runtime_state_script.add_caught_species(get_tree(), selected_player_species_id)
 
 	var active_party_member := {}
