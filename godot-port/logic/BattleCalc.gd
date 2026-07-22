@@ -1,5 +1,4 @@
 extends Reference
-class_name BattleCalc
 
 const TYPE_CHART := {
 	"NORMAL": {
@@ -64,29 +63,58 @@ const TYPE_CHART := {
 }
 
 # BATTLE-03C scope: add type effectiveness on top of neutral core damage.
-# Intentionally deferred to later tickets: STAB, criticals, status/burn,
+# FEATURE-01A scope: physical/special stat pairing and STAB.
+# Intentionally deferred to later tickets: criticals, status/burn,
 # weather, screens, abilities, and items.
 
-static func calc_damage(attacker, move, defender) -> int:
+static func calc_damage(attacker, move, defender, debug_enabled: bool = false) -> int:
 	if attacker == null or move == null or defender == null:
 		return 1
 
 	var level = max(1, int(attacker.level))
 	var power = max(0, int(move.power))
+	var move_category = _get_move_category(move)
+	var is_physical = move_category == MoveData.CATEGORY_PHYSICAL
+	var is_special = move_category == MoveData.CATEGORY_SPECIAL
 
-	# Neutral baseline uses physical attack/defense only for now.
-	var attack_stat = max(1, int(attacker.get_base_stat("atk")))
-	var defense_stat = max(1, int(defender.get_base_stat("def")))
+	var attack_stat_name = "atk" if is_physical or not is_special else "sp_atk"
+	var defense_stat_name = "def" if is_physical or not is_special else "sp_def"
+	var attack_stat = max(1, int(attacker.get_base_stat(attack_stat_name)))
+	var defense_stat = max(1, int(defender.get_base_stat(defense_stat_name)))
 
 	var level_multiplier = (2.0 * float(level)) / 5.0 + 2.0
 	var base_damage = (level_multiplier * float(power) * float(attack_stat) / float(defense_stat)) / 50.0 + 2.0
 	var type_multiplier = _get_type_multiplier(move.move_type, defender)
-	base_damage *= type_multiplier
+	var stab_multiplier = _get_stab_multiplier(attacker, move)
+	var final_damage = base_damage * stab_multiplier * type_multiplier
+	var applied_damage = _to_damage_value(final_damage)
 
-	return _to_damage_value(base_damage)
+	if debug_enabled:
+		print(
+			"[BattleCalc] Move=%s Cat=%s Lvl=%d Pow=%d Atk(%s)=%d Def(%s)=%d Base=%.4f STAB=%.2f Type=%.2f Final=%.4f Applied=%d" % [
+				str(move.move_id),
+				move_category,
+				level,
+				power,
+				attack_stat_name,
+				attack_stat,
+				defense_stat_name,
+				defense_stat,
+				base_damage,
+				stab_multiplier,
+				type_multiplier,
+				final_damage,
+				applied_damage,
+			]
+		)
+
+	return applied_damage
 
 static func get_type_multiplier(move_type: String, defender) -> float:
 	return _get_type_multiplier(move_type, defender)
+
+static func get_stab_multiplier(attacker, move) -> float:
+	return _get_stab_multiplier(attacker, move)
 
 static func _get_type_multiplier(move_type: String, defender) -> float:
 	if defender == null:
@@ -112,6 +140,39 @@ static func _get_type_multiplier(move_type: String, defender) -> float:
 		total_multiplier *= float(chart_row.get(key, 1.0))
 
 	return total_multiplier
+
+static func _get_stab_multiplier(attacker, move) -> float:
+	if attacker == null or move == null:
+		return 1.0
+
+	var move_category = _get_move_category(move)
+	if move_category == MoveData.CATEGORY_STATUS:
+		return 1.0
+
+	var move_type = String(move.move_type).strip_edges().to_upper()
+	if move_type.empty():
+		return 1.0
+
+	var attacker_types: Array = []
+	if attacker.has_method("get_types"):
+		attacker_types = attacker.get_types()
+	elif "types" in attacker:
+		attacker_types = attacker.types
+
+	for attacker_type in attacker_types:
+		if String(attacker_type).strip_edges().to_upper() == move_type:
+			return 1.5
+
+	return 1.0
+
+static func _get_move_category(move) -> String:
+	if move == null:
+		return ""
+	if move.has_method("get_category"):
+		return String(move.get_category()).strip_edges().to_lower()
+	if "category" in move:
+		return String(move.category).strip_edges().to_lower()
+	return ""
 
 static func _to_damage_value(value: float) -> int:
 	# Match core rounding policy: floor once at end, min 1.
@@ -142,14 +203,41 @@ static func get_fixed_test_vectors() -> Array:
 			"expected": 10,
 		},
 		{
-			"name": "Squirtle Water Gun (type-effective) vs Charmander",
+			"name": "Squirtle Water Gun (type-effective, STAB) vs Charmander",
 			"attacker_level": 5,
 			"attacker_atk": 48,
 			"move_power": 40,
 			"defender_def": 43,
 			"defender_types": ["FIRE"],
 			"move_type": "WATER",
-			"expected": 10,
+			"attacker_types": ["WATER"],
+			"expected": 16,
+		},
+		{
+			"name": "Bulbasaur Vine Whip (STAB) vs Magikarp",
+			"attacker_level": 5,
+			"attacker_atk": 49,
+			"attacker_types": ["GRASS", "POISON"],
+			"move_power": 45,
+			"defender_def": 48,
+			"defender_types": ["WATER", "FLYING"],
+			"move_type": "GRASS",
+			"move_category": MoveData.CATEGORY_PHYSICAL,
+			"expected": 34,
+		},
+		{
+			"name": "Special attack uses sp_atk/sp_def without STAB",
+			"attacker_level": 5,
+			"attacker_atk": 20,
+			"attacker_sp_atk": 30,
+			"move_power": 50,
+			"defender_def": 49,
+			"defender_sp_def": 60,
+			"defender_types": ["NORMAL"],
+			"attacker_types": ["FIRE"],
+			"move_type": "WATER",
+			"move_category": MoveData.CATEGORY_SPECIAL,
+			"expected": 6,
 		},
 		{
 			"name": "Higher level scaling sanity",
@@ -165,17 +253,24 @@ static func run_fixed_test_vectors() -> Array:
 	var results := []
 	for test_case in get_fixed_test_vectors():
 		var level = int(test_case["attacker_level"])
-		var atk = int(test_case["attacker_atk"])
+		var atk = int(test_case.get("attacker_atk", 0))
+		var sp_atk = int(test_case.get("attacker_sp_atk", atk))
 		var power = int(test_case["move_power"])
 		var defense = int(test_case["defender_def"])
+		var sp_def = int(test_case.get("defender_sp_def", defense))
 		var expected = int(test_case["expected"])
 		var move_type = String(test_case.get("move_type", "NORMAL"))
+		var move_category = String(test_case.get("move_category", MoveData.CATEGORY_PHYSICAL))
 		var defender_types = test_case.get("defender_types", [])
+		var attacker_types = test_case.get("attacker_types", [])
 
 		var level_multiplier = (2.0 * float(level)) / 5.0 + 2.0
-		var base_damage = (level_multiplier * float(power) * float(atk) / float(defense)) / 50.0 + 2.0
+		var attack_value = sp_atk if move_category == MoveData.CATEGORY_SPECIAL else atk
+		var defense_value = sp_def if move_category == MoveData.CATEGORY_SPECIAL else defense
+		var base_damage = (level_multiplier * float(power) * float(attack_value) / float(defense_value)) / 50.0 + 2.0
+		var stab_multiplier = 1.5 if attacker_types.has(move_type) and move_category != MoveData.CATEGORY_STATUS else 1.0
 		var defender_stub = {"types": defender_types}
-		base_damage *= _get_type_multiplier(move_type, defender_stub)
+		base_damage *= stab_multiplier * _get_type_multiplier(move_type, defender_stub)
 		var actual = _to_damage_value(base_damage)
 
 		results.append({

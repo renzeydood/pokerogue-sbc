@@ -372,6 +372,7 @@ custom_colors/font_color = Color( 0.862745, 0.956863, 0.427451, 1 )
 text = "Total: 318"
 
 [node name="BiomesWindow" type="NinePatchRect" parent="Panel/UiScaleRoot"]
+visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_left = 175.0
