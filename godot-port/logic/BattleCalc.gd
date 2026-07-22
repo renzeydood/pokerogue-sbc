@@ -1,5 +1,7 @@
 extends Reference
 
+const MoveData = preload("res://data/MoveData.gd")
+
 const TYPE_CHART := {
 	"NORMAL": {
 		"ROCK": 0.5,

@@ -46,6 +46,8 @@ export(int) var biome_level_scale_boss_bonus := 2
 export(float) var biome_level_scale_player_weight := 0.35
 export(int) var biome_level_scale_min_level := 3
 export(bool) var debug_damage_calculation_enabled := true
+export(bool) var debug_pp_override_second_move_one := false
+export(bool) var debug_pp_override_all_moves_one := false
 export(int) var normal_trainer_encounter_every := 5
 export(int) var boss_pokemon_encounter_every := 10
 export(int) var boss_trainer_encounter_every := 30
@@ -230,6 +232,7 @@ export(float) var player_pokeball_particle_fade_delay_sec := 0.5
 export(float) var player_pokeball_particle_fade_duration_sec := 0.075
 
 # Data and helper script dependencies.
+const MoveData = preload("res://data/MoveData.gd")
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
@@ -3004,6 +3007,11 @@ func _on_MoveButton_pressed():
 	if turn_in_progress:
 		return
 
+	var attacker = battle_data["player"] if typeof(battle_data) == TYPE_DICTIONARY and battle_data.has("player") else null
+	if attacker != null and not _pokemon_has_any_usable_move(attacker):
+		execute_player_move(_build_struggle_move(), -1)
+		return
+
 	show_attack_menu()
 	set_battle_text("")
 
@@ -3023,8 +3031,17 @@ func _on_AttackMoveButton_pressed(move_slot: int):
 	if move_slot < 0 or move_slot >= attacker.moves.size():
 		set_battle_text("No move in that slot.")
 		return
+	var move = attacker.moves[move_slot]
+	if not _can_use_move(move):
+		if _pokemon_has_any_usable_move(attacker):
+			set_battle_text("%s has no PP left!" % String(move.move_id))
+		else:
+			execute_player_move(_build_struggle_move(), -1)
+			return
+		refresh_attack_menu()
+		return
 
-	execute_player_move(attacker.moves[move_slot], move_slot)
+	execute_player_move(move, move_slot)
 
 func _on_AttackMoveButton_focus_entered(move_slot: int):
 	refresh_attack_move_details(move_slot)
@@ -3106,13 +3123,31 @@ func _run_turn_command_resolve_phase_state(turn_state: Dictionary, active_turn_t
 
 	var move = turn_state.get("move", null)
 	if move == null:
-		set_battle_text("No move available.")
-		turn_state["battle_error"] = true
-		turn_state["terminal"] = true
-		return turn_state
+		if _pokemon_has_any_usable_move(attacker):
+			set_battle_text("No move available.")
+			turn_state["battle_error"] = true
+			turn_state["terminal"] = true
+			return turn_state
+		move = _build_struggle_move()
+		turn_state["move"] = move
+		turn_state["player_using_struggle"] = true
+	if not _can_use_move(move):
+		if _pokemon_has_any_usable_move(attacker):
+			set_battle_text("%s has no PP left!" % String(move.move_id))
+			turn_state["battle_error"] = true
+			turn_state["terminal"] = true
+			return turn_state
+		move = _build_struggle_move()
+		turn_state["move"] = move
+		turn_state["player_using_struggle"] = true
+
+	_consume_move_pp(move)
+	refresh_attack_menu()
 
 	var move_slot = int(turn_state.get("move_slot", -1))
 	turn_state["move_display_id"] = String(move.move_id)
+	if _is_move_struggle(move):
+		turn_state["player_using_struggle"] = true
 	if _is_debug_ohko_slot(move_slot):
 		turn_state["move_display_id"] = "OHKO"
 		turn_state["forced_player_damage"] = max(1, debug_ohko_damage)
@@ -3134,6 +3169,15 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 		turn_state["battle_error"] = true
 		turn_state["terminal"] = true
 		return turn_state
+
+	if bool(turn_state.get("player_using_struggle", false)):
+		set_battle_text("%s has no moves left that it can use!" % String(attacker.species_id))
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				turn_state["terminal"] = true
+				return turn_state
 
 	var player_move_anim = play_move_animation(move.move_id, player_pokemon_sprite, enemy_pokemon_sprite, active_turn_token)
 	if player_move_anim is GDScriptFunctionState:
@@ -3169,6 +3213,24 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 			turn_state["terminal"] = true
 			return turn_state
 
+	if bool(turn_state.get("player_using_struggle", false)):
+		var player_recoil_damage = _apply_struggle_recoil(attacker)
+		if player_recoil_damage > 0:
+			refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+			sync_active_party_member_from_battle()
+			set_battle_text("%s was damaged by the recoil!" % String(attacker.species_id))
+			if turn_step_delay_sec > 0.0:
+				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+				if _is_turn_token_cancelled(active_turn_token):
+					turn_state["cancelled"] = true
+					turn_state["terminal"] = true
+					return turn_state
+		if attacker.is_fainted():
+			turn_state["player_fainted"] = true
+			turn_state["terminal"] = true
+			turn_state["fainted_species_id"] = String(attacker.species_id)
+			return turn_state
+
 	if defender.is_fainted():
 		turn_state["enemy_fainted"] = true
 		turn_state["terminal"] = true
@@ -3177,12 +3239,14 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 		turn_state["defeated_enemy_level"] = int(defender.level)
 		return turn_state
 
-	if defender.moves.empty():
-		turn_state["enemy_has_move"] = false
-		turn_state["terminal"] = true
-		return turn_state
+	var enemy_move = _get_first_usable_move(defender)
+	if enemy_move == null:
+		enemy_move = _build_struggle_move()
+		turn_state["enemy_using_struggle"] = true
+	elif _is_move_struggle(enemy_move):
+		turn_state["enemy_using_struggle"] = true
 
-	turn_state["enemy_move"] = defender.moves[0]
+	turn_state["enemy_move"] = enemy_move
 	return turn_state
 
 func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token: int):
@@ -3201,6 +3265,15 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 		turn_state["terminal"] = true
 		return turn_state
 
+	if bool(turn_state.get("enemy_using_struggle", false)):
+		set_battle_text("%s has no moves left that it can use!" % String(defender.species_id))
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				turn_state["terminal"] = true
+				return turn_state
+
 	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
 	if enemy_move_anim is GDScriptFunctionState:
 		yield(enemy_move_anim, "completed")
@@ -3209,6 +3282,7 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 			turn_state["terminal"] = true
 			return turn_state
 
+	_consume_move_pp(enemy_move)
 	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker, debug_damage_calculation_enabled))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
@@ -3230,6 +3304,25 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 		if _is_turn_token_cancelled(active_turn_token):
 			turn_state["cancelled"] = true
 			turn_state["terminal"] = true
+			return turn_state
+
+	if bool(turn_state.get("enemy_using_struggle", false)):
+		var enemy_recoil_damage = _apply_struggle_recoil(defender)
+		if enemy_recoil_damage > 0:
+			refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
+			set_battle_text("%s was damaged by the recoil!" % String(defender.species_id))
+			if turn_step_delay_sec > 0.0:
+				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+				if _is_turn_token_cancelled(active_turn_token):
+					turn_state["cancelled"] = true
+					turn_state["terminal"] = true
+					return turn_state
+		if defender.is_fainted():
+			turn_state["enemy_fainted"] = true
+			turn_state["terminal"] = true
+			turn_state["fainted_species_id"] = String(defender.species_id)
+			turn_state["defeated_enemy_species_id"] = String(defender.species_id)
+			turn_state["defeated_enemy_level"] = int(defender.level)
 			return turn_state
 
 	if attacker.is_fainted():
@@ -5330,6 +5423,7 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 				player_move_ids = []
 
 			var player_data = catalog_loader.build_pokemon_data(player_species_id, player_level, player_move_ids)
+			_apply_debug_pp_overrides_to_pokemon(player_data, "seed.player_party_member")
 			var enemy_data = catalog_loader.build_pokemon_data(enemy_species_id, enemy_level)
 			return {
 				"player": player_data,
@@ -5337,18 +5431,56 @@ func build_battle_seed(player_species_id: String, enemy_species_id: String, play
 			}
 
 		var player_data_default = catalog_loader.build_pokemon_data(player_species_id, _resolve_debug_player_level(5))
+		_apply_debug_pp_overrides_to_pokemon(player_data_default, "seed.player_default")
 		var enemy_data_default = catalog_loader.build_pokemon_data(enemy_species_id, enemy_level)
 		return {
 			"player": player_data_default,
 			"enemy": enemy_data_default,
 		}
 
-	return pokemon_data_script.create_battle_02_test_data(player_species_id)
+	var fallback_seed = pokemon_data_script.create_battle_02_test_data(player_species_id)
+	if typeof(fallback_seed) == TYPE_DICTIONARY and fallback_seed.has("player"):
+		_apply_debug_pp_overrides_to_pokemon(fallback_seed.get("player", null), "seed.fallback")
+	return fallback_seed
 
 func _resolve_debug_player_level(base_level: int) -> int:
 	if debug_player_level_override > 0:
 		return int(max(1, debug_player_level_override))
 	return int(max(1, base_level))
+
+func _apply_debug_pp_overrides_to_pokemon(pokemon_data, source: String = "") -> void:
+	if pokemon_data == null:
+		return
+	if not debug_pp_override_all_moves_one and not debug_pp_override_second_move_one:
+		return
+
+	var moves = []
+	if typeof(pokemon_data) == TYPE_DICTIONARY:
+		moves = pokemon_data.get("moves", [])
+	elif pokemon_data.has_method("get"):
+		moves = pokemon_data.get("moves")
+	if typeof(moves) != TYPE_ARRAY or moves.empty():
+		return
+
+	if debug_pp_override_all_moves_one:
+		for move in moves:
+			_set_debug_move_pp_to_one(move)
+		if debug_transition_checkpoints:
+			log_debug("Debug PP override (all moves=1) applied [%s]." % source)
+		return
+
+	if debug_pp_override_second_move_one and moves.size() > 1:
+		_set_debug_move_pp_to_one(moves[1])
+		if debug_transition_checkpoints:
+			log_debug("Debug PP override (second move=1) applied [%s]." % source)
+
+func _set_debug_move_pp_to_one(move) -> void:
+	if move == null or not move.has_method("set_current_pp"):
+		return
+	var max_pp_value = int(move.max_pp)
+	if max_pp_value < 0:
+		return
+	move.set_current_pp(min(1, max_pp_value))
 
 func _ensure_runtime_biome_state() -> Dictionary:
 	if runtime_state_script == null:
@@ -6635,8 +6767,20 @@ func _apply_full_party_restore_for_biome_transition() -> void:
 		if rebuilt_data == null:
 			continue
 		var max_hp = max(1, int(rebuilt_data.get_base_stat("hp")))
+		for move in rebuilt_data.moves:
+			if move == null:
+				continue
+			if move.has_method("restore_pp_full"):
+				move.restore_pp_full()
+		_apply_debug_pp_overrides_to_pokemon(rebuilt_data, "biome_restore.party_slot")
+		var restored_pp := []
+		for move in rebuilt_data.moves:
+			if move == null:
+				continue
+			restored_pp.append(int(move.current_pp))
 		party.update_member_at(slot_index, {
 			"current_hp": max_hp,
+			"move_pp_current": restored_pp,
 		})
 
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
@@ -6656,8 +6800,16 @@ func _apply_full_party_restore_for_biome_transition() -> void:
 	if active_rebuilt == null:
 		return
 	var active_max_hp = max(1, int(active_rebuilt.get_base_stat("hp")))
+	for move in active_rebuilt.moves:
+		if move == null:
+			continue
+		if move.has_method("restore_pp_full"):
+			move.restore_pp_full()
+	_apply_debug_pp_overrides_to_pokemon(active_rebuilt, "biome_restore.active")
 	battle_data["player"].current_hp = active_max_hp
+	battle_data["player"].moves = active_rebuilt.moves.duplicate(true)
 	refresh_hp_ui(battle_data["player"], player_hp_bar, player_hp_value_label)
+	refresh_attack_menu()
 	sync_active_party_member_from_battle()
 
 func _advance_to_next_enemy_run_presentation_phase_state(transition_state: Dictionary, active_turn_token: int = -1):
@@ -7241,6 +7393,7 @@ func sync_active_party_member_from_battle() -> void:
 		return
 
 	var move_ids := []
+	var move_pp_current := []
 	var moves = []
 	if typeof(player_data) == TYPE_DICTIONARY:
 		moves = player_data.get("moves", [])
@@ -7255,6 +7408,10 @@ func sync_active_party_member_from_battle() -> void:
 			if move_id.empty() or move_ids.has(move_id):
 				continue
 			move_ids.append(move_id)
+			if move.has_method("has_pp"):
+				move_pp_current.append(int(move.current_pp))
+			else:
+				move_pp_current.append(-1)
 
 	var next_level = int(player_data.level)
 	var next_current_hp = int(player_data.current_hp)
@@ -7263,16 +7420,19 @@ func sync_active_party_member_from_battle() -> void:
 		var existing_level = int(existing_member.get("level", -1))
 		var existing_current_hp = int(existing_member.get("current_hp", -1))
 		var existing_move_ids = existing_member.get("move_ids", [])
+		var existing_move_pp_current = existing_member.get("move_pp_current", [])
 		if typeof(existing_move_ids) == TYPE_ARRAY \
 				and existing_level == next_level \
 				and existing_current_hp == next_current_hp \
-				and existing_move_ids == move_ids:
+				and existing_move_ids == move_ids \
+				and existing_move_pp_current == move_pp_current:
 			return
 
 	party.update_member_at(active_index, {
 		"level": next_level,
 		"current_hp": next_current_hp,
 		"move_ids": move_ids,
+		"move_pp_current": move_pp_current,
 	})
 
 func _build_player_data_from_party_member(member: Dictionary):
@@ -7294,11 +7454,24 @@ func _build_player_data_from_party_member(member: Dictionary):
 	var player_data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
 	if player_data == null:
 		return null
+	var saved_move_pp_current = member.get("move_pp_current", [])
+	if typeof(saved_move_pp_current) == TYPE_ARRAY:
+		for i in range(min(saved_move_pp_current.size(), player_data.moves.size())):
+			var saved_pp = int(saved_move_pp_current[i])
+			if saved_pp < 0:
+				continue
+			var move = player_data.moves[i]
+			if move == null:
+				continue
+			if move.has_method("set_current_pp"):
+				move.set_current_pp(saved_pp)
 
 	var saved_hp = int(member.get("current_hp", -1))
 	if saved_hp >= 0:
 		var max_hp = max(1, int(player_data.get_base_stat("hp")))
 		player_data.current_hp = int(clamp(saved_hp, 0, max_hp))
+
+	_apply_debug_pp_overrides_to_pokemon(player_data, "build_player_from_party")
 
 	return player_data
 
@@ -7461,13 +7634,25 @@ func _run_enemy_action_after_player_switch(player_data, active_turn_token: int):
 	if enemy == null or enemy.moves.empty():
 		return null
 
-	var enemy_move = enemy.moves[0]
+	var enemy_move = _get_first_usable_move(enemy)
+	if enemy_move == null:
+		enemy_move = _build_struggle_move()
+
+	var enemy_using_struggle = _is_move_struggle(enemy_move)
+	if enemy_using_struggle:
+		set_battle_text("%s has no moves left that it can use!" % String(enemy.species_id))
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if active_turn_token != turn_token:
+				return null
+
 	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
 	if enemy_move_anim is GDScriptFunctionState:
 		yield(enemy_move_anim, "completed")
 		if active_turn_token != turn_token:
 			return null
 
+	_consume_move_pp(enemy_move)
 	var enemy_damage = int(battle_calc_script.calc_damage(enemy, enemy_move, player_data, debug_damage_calculation_enabled))
 	player_data.current_hp = max(0, player_data.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, player_data)
@@ -7486,6 +7671,36 @@ func _run_enemy_action_after_player_switch(player_data, active_turn_token: int):
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
 		if active_turn_token != turn_token:
+			return null
+
+	if enemy_using_struggle:
+		var enemy_recoil_damage = _apply_struggle_recoil(enemy)
+		if enemy_recoil_damage > 0:
+			refresh_hp_ui(enemy, enemy_hp_bar, enemy_hp_value_label)
+			set_battle_text("%s was damaged by the recoil!" % String(enemy.species_id))
+			if turn_step_delay_sec > 0.0:
+				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+				if active_turn_token != turn_token:
+					return null
+		if enemy.is_fainted():
+			var enemy_faint_anim = play_faint_animation(enemy_pokemon_sprite, false, active_turn_token)
+			if enemy_faint_anim is GDScriptFunctionState:
+				yield(enemy_faint_anim, "completed")
+				if active_turn_token != turn_token:
+					return null
+			set_battle_text("%s fainted!" % String(enemy.species_id))
+			if turn_step_delay_sec > 0.0:
+				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+				if active_turn_token != turn_token:
+					return null
+			var exp_flow = _award_exp_for_enemy_result(String(enemy.species_id).strip_edges().to_upper(), int(enemy.level), active_turn_token, "defeat")
+			if exp_flow is GDScriptFunctionState:
+				yield(exp_flow, "completed")
+				if active_turn_token != turn_token:
+					return null
+			var enemy_advance = advance_to_next_enemy(String(enemy.species_id), active_turn_token, false)
+			if enemy_advance is GDScriptFunctionState:
+				yield(enemy_advance, "completed")
 			return null
 
 	if player_data.is_fainted():
@@ -7659,7 +7874,7 @@ func refresh_attack_menu():
 			continue
 		if i < moves.size():
 			var move = moves[i]
-			button.disabled = false
+			button.disabled = not _can_use_move(move)
 			button.text = "OHKO" if _is_debug_ohko_slot(i) else String(move.move_id)
 		else:
 			button.disabled = true
@@ -7746,9 +7961,12 @@ func apply_attack_detail_badge(sprite_node: Sprite, texture_rel: String, atlas_r
 	sprite_node.visible = true
 
 func build_move_pp_text(move) -> String:
-	# Placeholder-first: we will populate real PP once move runtime tracks current/max values.
 	if move == null:
 		return "-/-"
+	if move.has_method("has_pp"):
+		if int(move.max_pp) < 0:
+			return "-/-"
+		return "%d/%d" % [int(move.current_pp), int(move.max_pp)]
 
 	if move is Dictionary:
 		if move.has("current_pp") and move.has("max_pp"):
@@ -7758,6 +7976,58 @@ func build_move_pp_text(move) -> String:
 			return "%d/%d" % [pp, pp]
 
 	return "-/-"
+
+func _can_use_move(move) -> bool:
+	if move == null:
+		return false
+	if move.has_method("has_pp"):
+		return bool(move.has_pp())
+	if move is Dictionary and move.has("current_pp"):
+		return int(move.get("current_pp", 0)) > 0
+	return true
+
+func _consume_move_pp(move, amount: int = 1) -> void:
+	if move == null:
+		return
+	if move.has_method("consume_pp"):
+		move.consume_pp(amount)
+
+func _get_first_usable_move(pokemon_data):
+	if pokemon_data == null:
+		return null
+	var moves = []
+	if typeof(pokemon_data) == TYPE_DICTIONARY:
+		moves = pokemon_data.get("moves", [])
+	elif pokemon_data.has_method("get"):
+		moves = pokemon_data.get("moves")
+	if typeof(moves) != TYPE_ARRAY:
+		return null
+	for move in moves:
+		if _can_use_move(move):
+			return move
+	return null
+
+func _pokemon_has_any_usable_move(pokemon_data) -> bool:
+	return _get_first_usable_move(pokemon_data) != null
+
+func _is_move_struggle(move) -> bool:
+	if move == null:
+		return false
+	return String(move.move_id).strip_edges().to_upper() == "STRUGGLE"
+
+func _build_struggle_move():
+	var move = MoveData.new("STRUGGLE", 50, "", MoveData.CATEGORY_PHYSICAL, -1)
+	move.current_pp = -1
+	return move
+
+func _apply_struggle_recoil(user_data) -> int:
+	if user_data == null or not user_data.has_method("get_base_stat"):
+		return 0
+	var max_hp = max(1, int(user_data.get_base_stat("hp")))
+	var recoil_damage = max(1, int(floor(float(max_hp) * 0.25)))
+	var applied_damage = min(int(user_data.current_hp), recoil_damage)
+	user_data.current_hp = max(0, int(user_data.current_hp) - applied_damage)
+	return applied_damage
 
 func _get_attack_move_buttons() -> Array:
 	return [

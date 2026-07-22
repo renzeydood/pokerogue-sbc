@@ -71,7 +71,11 @@ func build_move_data(move_id: String):
 	var move_entry = get_move(move_id)
 	if move_entry.empty():
 		push_warning("Missing move entry for %s. Using fallback move data." % move_id)
-		return MoveData.new(move_id.strip_edges().to_upper(), 0, "UNKNOWN", MoveData.CATEGORY_STATUS)
+		var fallback_move = MoveData.new(move_id.strip_edges().to_upper(), 0, "UNKNOWN", MoveData.CATEGORY_STATUS)
+		fallback_move.set("max_pp", -1)
+		if fallback_move.has_method("set_current_pp"):
+			fallback_move.set_current_pp(-1)
+		return fallback_move
 
 	var category = String(move_entry.get("category", "STATUS")).to_upper()
 	var category_value = MoveData.CATEGORY_STATUS
@@ -80,12 +84,16 @@ func build_move_data(move_id: String):
 	elif category == "SPECIAL":
 		category_value = MoveData.CATEGORY_SPECIAL
 
-	return MoveData.new(
+	var move_data = MoveData.new(
 		String(move_entry.get("move_id", move_id)).to_upper(),
 		int(move_entry.get("power", 0)),
 		String(move_entry.get("type", "UNKNOWN")).to_upper(),
 		category_value
 	)
+	move_data.set("max_pp", int(move_entry.get("pp", -1)))
+	if move_data.has_method("restore_pp_full"):
+		move_data.restore_pp_full()
+	return move_data
 
 func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []):
 	var pokemon_data_script = load("res://data/PokemonData.gd")

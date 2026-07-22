@@ -1,5 +1,4 @@
 extends Reference
-class_name PartyModel
 
 const DEFAULT_MAX_SLOTS := 6
 
@@ -8,14 +7,14 @@ var members: Array = []
 var active_slot_index: int = -1
 
 func _init(p_max_slots: int = DEFAULT_MAX_SLOTS, initial_members: Array = [], p_active_slot_index: int = -1) -> void:
-	max_slots = max(1, p_max_slots)
+	max_slots = int(max(1, p_max_slots))
 	members = []
 	active_slot_index = -1
 
 	for member_entry in initial_members:
 		if typeof(member_entry) != TYPE_DICTIONARY:
 			continue
-		add_member(member_entry)
+		var _add_result = add_member(member_entry)
 
 	if members.empty():
 		active_slot_index = -1
@@ -77,7 +76,7 @@ func remove_member_at(slot_index: int) -> Dictionary:
 	elif active_slot_index > slot_index:
 		active_slot_index -= 1
 	elif active_slot_index == slot_index:
-		active_slot_index = min(slot_index, members.size() - 1)
+		active_slot_index = int(min(slot_index, members.size() - 1))
 
 	return {"ok": true, "reason": "ok", "index": slot_index}
 
@@ -168,6 +167,7 @@ func _normalize_member(member_data: Dictionary) -> Dictionary:
 	var exp_value = int(member_data.get("exp", -1))
 	var current_hp = int(member_data.get("current_hp", -1))
 	var move_ids = _normalize_move_ids(member_data.get("move_ids", []))
+	var move_pp_current = _normalize_move_pp_current(member_data.get("move_pp_current", []), move_ids.size())
 
 	return {
 		"species_id": species_id,
@@ -175,6 +175,7 @@ func _normalize_member(member_data: Dictionary) -> Dictionary:
 		"exp": exp_value,
 		"current_hp": current_hp,
 		"move_ids": move_ids,
+		"move_pp_current": move_pp_current,
 	}
 
 func _normalize_move_ids(move_ids_payload) -> Array:
@@ -191,3 +192,16 @@ func _normalize_move_ids(move_ids_payload) -> Array:
 		normalized_move_ids.append(move_id)
 
 	return normalized_move_ids
+
+func _normalize_move_pp_current(pp_payload, move_count: int) -> Array:
+	var normalized_pp := []
+	if typeof(pp_payload) != TYPE_ARRAY:
+		pp_payload = []
+
+	for i in range(move_count):
+		if i < pp_payload.size():
+			normalized_pp.append(max(-1, int(pp_payload[i])))
+		else:
+			normalized_pp.append(-1)
+
+	return normalized_pp
