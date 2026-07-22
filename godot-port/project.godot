@@ -10,11 +10,6 @@ config_version=4
 
 _global_script_classes=[ {
 "base": "Reference",
-"class": "BattleCalc",
-"language": "GDScript",
-"path": "res://logic/BattleCalc.gd"
-}, {
-"base": "Reference",
 "class": "BattlePhase",
 "language": "GDScript",
 "path": "res://logic/BattlePhase.gd"
@@ -175,7 +170,6 @@ _global_script_classes=[ {
 "path": "res://logic/phases/TurnPlayerMovePhase.gd"
 } ]
 _global_script_class_icons={
-"BattleCalc": "",
 "BattlePhase": "",
 "BattlePhaseRunner": "",
 "BiomeTransitionPartyRestorePhase": "",

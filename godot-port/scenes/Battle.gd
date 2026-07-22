@@ -45,6 +45,7 @@ export(int) var biome_level_scale_trainer_bonus := 1
 export(int) var biome_level_scale_boss_bonus := 2
 export(float) var biome_level_scale_player_weight := 0.35
 export(int) var biome_level_scale_min_level := 3
+export(bool) var debug_damage_calculation_enabled := true
 export(int) var normal_trainer_encounter_every := 5
 export(int) var boss_pokemon_encounter_every := 10
 export(int) var boss_trainer_encounter_every := 30
@@ -3142,7 +3143,7 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 			turn_state["terminal"] = true
 			return turn_state
 
-	var damage = int(battle_calc_script.calc_damage(attacker, move, defender))
+	var damage = int(battle_calc_script.calc_damage(attacker, move, defender, debug_damage_calculation_enabled))
 	if turn_state.has("forced_player_damage"):
 		damage = max(1, int(turn_state.get("forced_player_damage", damage)))
 	defender.current_hp = max(0, defender.current_hp - damage)
@@ -3208,7 +3209,7 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 			turn_state["terminal"] = true
 			return turn_state
 
-	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker))
+	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker, debug_damage_calculation_enabled))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
 	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
@@ -7467,7 +7468,7 @@ func _run_enemy_action_after_player_switch(player_data, active_turn_token: int):
 		if active_turn_token != turn_token:
 			return null
 
-	var enemy_damage = int(battle_calc_script.calc_damage(enemy, enemy_move, player_data))
+	var enemy_damage = int(battle_calc_script.calc_damage(enemy, enemy_move, player_data, debug_damage_calculation_enabled))
 	player_data.current_hp = max(0, player_data.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, player_data)
 	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
