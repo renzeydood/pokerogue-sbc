@@ -13,7 +13,6 @@ const TYPE_CHART := {
 		"ICE": 2.0,
 		"BUG": 2.0,
 		"STEEL": 2.0,
-		"POISON": 1.0,
 		"FIRE": 0.5,
 		"WATER": 0.5,
 		"ROCK": 0.5,
@@ -27,6 +26,14 @@ const TYPE_CHART := {
 		"GRASS": 0.5,
 		"DRAGON": 0.5,
 	},
+	"ELECTRIC": {
+		"WATER": 2.0,
+		"FLYING": 2.0,
+		"ELECTRIC": 0.5,
+		"GRASS": 0.5,
+		"DRAGON": 0.5,
+		"GROUND": 0.0,
+	},
 	"GRASS": {
 		"FIRE": 0.5,
 		"WATER": 2.0,
@@ -39,6 +46,48 @@ const TYPE_CHART := {
 		"DRAGON": 0.5,
 		"STEEL": 0.5,
 	},
+	"ICE": {
+		"GRASS": 2.0,
+		"GROUND": 2.0,
+		"FLYING": 2.0,
+		"DRAGON": 2.0,
+		"FIRE": 0.5,
+		"WATER": 0.5,
+		"ICE": 0.5,
+		"STEEL": 0.5,
+	},
+	"FIGHTING": {
+		"NORMAL": 2.0,
+		"ICE": 2.0,
+		"ROCK": 2.0,
+		"DARK": 2.0,
+		"STEEL": 2.0,
+		"POISON": 0.5,
+		"FLYING": 0.5,
+		"PSYCHIC": 0.5,
+		"BUG": 0.5,
+		"FAIRY": 0.5,
+		"GHOST": 0.0,
+	},
+	"POISON": {
+		"GRASS": 2.0,
+		"FAIRY": 2.0,
+		"POISON": 0.5,
+		"GROUND": 0.5,
+		"ROCK": 0.5,
+		"GHOST": 0.5,
+		"STEEL": 0.0,
+	},
+	"GROUND": {
+		"FIRE": 2.0,
+		"ELECTRIC": 2.0,
+		"POISON": 2.0,
+		"ROCK": 2.0,
+		"STEEL": 2.0,
+		"GRASS": 0.5,
+		"BUG": 0.5,
+		"FLYING": 0.0,
+	},
 	"FLYING": {
 		"GRASS": 2.0,
 		"FIGHTING": 2.0,
@@ -47,11 +96,52 @@ const TYPE_CHART := {
 		"ROCK": 0.5,
 		"STEEL": 0.5,
 	},
+	"PSYCHIC": {
+		"FIGHTING": 2.0,
+		"POISON": 2.0,
+		"PSYCHIC": 0.5,
+		"STEEL": 0.5,
+		"DARK": 0.0,
+	},
+	"BUG": {
+		"GRASS": 2.0,
+		"PSYCHIC": 2.0,
+		"DARK": 2.0,
+		"FIRE": 0.5,
+		"FIGHTING": 0.5,
+		"POISON": 0.5,
+		"FLYING": 0.5,
+		"GHOST": 0.5,
+		"STEEL": 0.5,
+		"FAIRY": 0.5,
+	},
+	"ROCK": {
+		"FIRE": 2.0,
+		"ICE": 2.0,
+		"FLYING": 2.0,
+		"BUG": 2.0,
+		"FIGHTING": 0.5,
+		"GROUND": 0.5,
+		"STEEL": 0.5,
+	},
 	"GHOST": {
 		"NORMAL": 0.0,
+		"FIGHTING": 0.0,
 		"PSYCHIC": 2.0,
 		"GHOST": 2.0,
 		"DARK": 0.5,
+	},
+	"DRAGON": {
+		"DRAGON": 2.0,
+		"STEEL": 0.5,
+		"FAIRY": 0.0,
+	},
+	"DARK": {
+		"PSYCHIC": 2.0,
+		"GHOST": 2.0,
+		"FIGHTING": 0.5,
+		"DARK": 0.5,
+		"FAIRY": 0.5,
 	},
 	"STEEL": {
 		"ROCK": 2.0,
@@ -60,6 +150,14 @@ const TYPE_CHART := {
 		"FIRE": 0.5,
 		"WATER": 0.5,
 		"ELECTRIC": 0.5,
+		"STEEL": 0.5,
+	},
+	"FAIRY": {
+		"FIRE": 0.5,
+		"FIGHTING": 2.0,
+		"POISON": 0.5,
+		"DRAGON": 2.0,
+		"DARK": 2.0,
 		"STEEL": 0.5,
 	},
 }
@@ -87,6 +185,10 @@ static func calc_damage(attacker, move, defender, debug_enabled: bool = false) -
 	var level_multiplier = (2.0 * float(level)) / 5.0 + 2.0
 	var base_damage = (level_multiplier * float(power) * float(attack_stat) / float(defense_stat)) / 50.0 + 2.0
 	var type_multiplier = _get_type_multiplier(move.move_type, defender)
+	if type_multiplier <= 0.0:
+		if debug_enabled:
+			print("[BattleCalc] Move=%s Cat=%s Lvl=%d Pow=%d Type=0.0 Applied=0" % [str(move.move_id), move_category, level, power])
+		return 0
 	var stab_multiplier = _get_stab_multiplier(attacker, move)
 	var final_damage = base_damage * stab_multiplier * type_multiplier
 	var applied_damage = _to_damage_value(final_damage)
@@ -242,6 +344,26 @@ static func get_fixed_test_vectors() -> Array:
 			"expected": 6,
 		},
 		{
+			"name": "Ghost move is immune against Normal defender",
+			"attacker_level": 5,
+			"attacker_atk": 52,
+			"move_power": 40,
+			"defender_def": 49,
+			"defender_types": ["NORMAL"],
+			"move_type": "GHOST",
+			"expected": 0,
+		},
+		{
+			"name": "Fire move is super effective against Grass and Ice defenders",
+			"attacker_level": 5,
+			"attacker_atk": 52,
+			"move_power": 40,
+			"defender_def": 49,
+			"defender_types": ["GRASS", "ICE"],
+			"move_type": "FIRE",
+			"expected": 21,
+		},
+		{
 			"name": "Higher level scaling sanity",
 			"attacker_level": 50,
 			"attacker_atk": 52,
@@ -272,8 +394,13 @@ static func run_fixed_test_vectors() -> Array:
 		var base_damage = (level_multiplier * float(power) * float(attack_value) / float(defense_value)) / 50.0 + 2.0
 		var stab_multiplier = 1.5 if attacker_types.has(move_type) and move_category != MoveData.CATEGORY_STATUS else 1.0
 		var defender_stub = {"types": defender_types}
-		base_damage *= stab_multiplier * _get_type_multiplier(move_type, defender_stub)
-		var actual = _to_damage_value(base_damage)
+		var type_multiplier = _get_type_multiplier(move_type, defender_stub)
+		var actual = 0
+		if type_multiplier <= 0.0:
+			actual = 0
+		else:
+			base_damage *= stab_multiplier * type_multiplier
+			actual = _to_damage_value(base_damage)
 
 		results.append({
 			"name": test_case["name"],
