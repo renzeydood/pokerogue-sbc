@@ -8085,6 +8085,8 @@ func _build_enemy_appeared_message(enemy_species_id: String) -> String:
 
 func build_type_effectiveness_text(type_multiplier: float) -> String:
 	# Pokerogue-style thresholds: >=2 super effective, <=0.5 not very effective.
+	if type_multiplier <= 0.0:
+		return " It had no effect!"
 	if type_multiplier >= 2.0:
 		return " It's super effective!"
 	if type_multiplier <= 0.5 and type_multiplier > 0.0:
