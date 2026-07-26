@@ -46,6 +46,7 @@ export(int) var biome_level_scale_boss_bonus := 2
 export(float) var biome_level_scale_player_weight := 0.35
 export(int) var biome_level_scale_min_level := 3
 export(bool) var debug_damage_calculation_enabled := true
+export(String) var debug_battle_fixture_scenario_id := ""
 export(bool) var debug_pp_override_second_move_one := false
 export(bool) var debug_pp_override_all_moves_one := false
 export(int) var normal_trainer_encounter_every := 5
@@ -235,6 +236,7 @@ export(float) var player_pokeball_particle_fade_duration_sec := 0.075
 const MoveData = preload("res://data/MoveData.gd")
 var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
+var battle_fixture_loader_script = load("res://logic/BattleFixtureLoader.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
@@ -3192,7 +3194,7 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 		damage = max(1, int(turn_state.get("forced_player_damage", damage)))
 	defender.current_hp = max(0, defender.current_hp - damage)
 	var player_type_multiplier = battle_calc_script.get_type_multiplier(move.move_type, defender)
-
+	var player_effect_result = battle_calc_script.apply_move_effects(attacker, defender, move)
 	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
 	var player_hit_feedback = play_hit_feedback(enemy_pokemon_sprite, active_turn_token)
 	if player_hit_feedback is GDScriptFunctionState:
@@ -3205,6 +3207,10 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 	var move_display_id = String(turn_state.get("move_display_id", String(move.move_id)))
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move_display_id, damage]
 	battle_message += build_type_effectiveness_text(player_type_multiplier)
+	if bool(player_effect_result.get("applied", false)):
+		var effect_messages = player_effect_result.get("messages", [])
+		if typeof(effect_messages) == TYPE_ARRAY and not effect_messages.empty():
+			battle_message += " " + PoolStringArray(effect_messages).join(" ")
 	set_battle_text(battle_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -3286,6 +3292,7 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker, debug_damage_calculation_enabled))
 	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
 	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
+	var enemy_effect_result = battle_calc_script.apply_move_effects(defender, attacker, enemy_move)
 	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
 	sync_active_party_member_from_battle()
 	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
@@ -3298,6 +3305,10 @@ func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token:
 
 	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
 	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
+	if bool(enemy_effect_result.get("applied", false)):
+		var effect_messages = enemy_effect_result.get("messages", [])
+		if typeof(effect_messages) == TYPE_ARRAY and not effect_messages.empty():
+			enemy_message += " " + PoolStringArray(effect_messages).join(" ")
 	set_battle_text(enemy_message)
 	if turn_step_delay_sec > 0.0:
 		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -5395,6 +5406,16 @@ func _on_player_sendout_settled() -> void:
 		_show_main_controls_unlocked()
 
 func build_battle_seed(player_species_id: String, enemy_species_id: String, player_party_member: Dictionary = {}, encounter_meta: Dictionary = {}, biome_state: Dictionary = {}) -> Dictionary:
+	if not debug_battle_fixture_scenario_id.empty():
+		var fixture_loader = battle_fixture_loader_script.new()
+		var fixture_scenario = fixture_loader.load_scenario(debug_battle_fixture_scenario_id)
+		if fixture_scenario != null:
+			var fixture_seed = fixture_loader.build_battle_seed_from_fixture(fixture_scenario)
+			if fixture_seed != null:
+				log_debug("Loaded battle fixture scenario '%s'." % debug_battle_fixture_scenario_id)
+				return fixture_seed
+			log_debug("Battle fixture '%s' could not be applied: %s" % [debug_battle_fixture_scenario_id, fixture_loader.get_last_error()])
+
 	if catalog_loader == null:
 		catalog_loader = catalog_loader_script.new()
 

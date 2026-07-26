@@ -10,8 +10,9 @@ var move_type: String
 var category: String
 var max_pp: int
 var current_pp: int
+var effect_data: Dictionary = {}
 
-func _init(p_move_id: String, p_power: int, p_move_type: String, p_category: String, p_max_pp: int = -1) -> void:
+func _init(p_move_id: String, p_power: int, p_move_type: String, p_category: String, p_max_pp: int = -1, p_effect_data: Dictionary = {}) -> void:
 	move_id = p_move_id
 	power = p_power
 	move_type = p_move_type
@@ -21,6 +22,10 @@ func _init(p_move_id: String, p_power: int, p_move_type: String, p_category: Str
 		current_pp = -1
 	else:
 		current_pp = max_pp
+	if typeof(p_effect_data) == TYPE_DICTIONARY:
+		effect_data = p_effect_data.duplicate(true)
+	else:
+		effect_data = {}
 
 func has_pp() -> bool:
 	if max_pp < 0:
