@@ -3154,6 +3154,43 @@ func _run_turn_command_resolve_phase_state(turn_state: Dictionary, active_turn_t
 		turn_state["move_display_id"] = "OHKO"
 		turn_state["forced_player_damage"] = max(1, debug_ohko_damage)
 
+	var enemy_move = _get_first_usable_move(defender)
+	if enemy_move == null:
+		enemy_move = _build_struggle_move()
+		turn_state["enemy_using_struggle"] = true
+	elif _is_move_struggle(enemy_move):
+		turn_state["enemy_using_struggle"] = true
+
+	turn_state["enemy_move"] = enemy_move
+
+	var player_action = {
+		"actor_key": "player",
+		"attacker": attacker,
+		"defender": defender,
+		"move": move,
+		"using_struggle": bool(turn_state.get("player_using_struggle", false)),
+		"move_display_id": String(turn_state.get("move_display_id", String(move.move_id))),
+		"consume_pp": false,
+		"forced_damage": int(turn_state.get("forced_player_damage", -1)),
+	}
+	var enemy_action = {
+		"actor_key": "enemy",
+		"attacker": defender,
+		"defender": attacker,
+		"move": enemy_move,
+		"using_struggle": bool(turn_state.get("enemy_using_struggle", false)),
+		"move_display_id": String(enemy_move.move_id),
+		"consume_pp": true,
+		"forced_damage": -1,
+	}
+
+	var player_moves_first = _should_player_act_first(attacker, move, defender, enemy_move, active_turn_token)
+	turn_state["player_moves_first"] = player_moves_first
+	turn_state["first_action"] = player_action if player_moves_first else enemy_action
+	turn_state["second_action"] = enemy_action if player_moves_first else player_action
+	turn_state["first_action_executed"] = false
+	turn_state["second_action_executed"] = false
+
 	turn_state["attacker"] = attacker
 	turn_state["defender"] = defender
 	return turn_state
@@ -3164,15 +3201,63 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 	if bool(turn_state.get("terminal", false)) or bool(turn_state.get("cancelled", false)):
 		return turn_state
 
-	var attacker = turn_state.get("attacker", null)
-	var defender = turn_state.get("defender", null)
-	var move = turn_state.get("move", null)
+	var first_action = turn_state.get("first_action", {})
+	var action_result = _run_turn_action_state(turn_state, first_action, active_turn_token)
+	if action_result is GDScriptFunctionState:
+		action_result = yield(action_result, "completed")
+	if typeof(action_result) != TYPE_DICTIONARY:
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
+	turn_state = action_result
+	turn_state["first_action_executed"] = true
+	return turn_state
+
+func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if bool(turn_state.get("cancelled", false)):
+		return turn_state
+	if bool(turn_state.get("enemy_fainted", false)) or bool(turn_state.get("terminal", false)):
+		return turn_state
+
+	var second_action = turn_state.get("second_action", {})
+	var action_result = _run_turn_action_state(turn_state, second_action, active_turn_token)
+	if action_result is GDScriptFunctionState:
+		action_result = yield(action_result, "completed")
+	if typeof(action_result) != TYPE_DICTIONARY:
+		turn_state["battle_error"] = true
+		turn_state["terminal"] = true
+		return turn_state
+	turn_state = action_result
+	turn_state["second_action_executed"] = true
+
+	return turn_state
+
+func _run_turn_action_state(turn_state: Dictionary, action: Dictionary, active_turn_token: int):
+	if typeof(turn_state) != TYPE_DICTIONARY:
+		return {}
+	if typeof(action) != TYPE_DICTIONARY or action.empty():
+		return turn_state
+	if bool(turn_state.get("cancelled", false)) or bool(turn_state.get("terminal", false)):
+		return turn_state
+
+	var actor_key = String(action.get("actor_key", "")).strip_edges().to_lower()
+	var attacker = action.get("attacker", null)
+	var defender = action.get("defender", null)
+	var move = action.get("move", null)
 	if attacker == null or defender == null or move == null:
 		turn_state["battle_error"] = true
 		turn_state["terminal"] = true
 		return turn_state
 
-	if bool(turn_state.get("player_using_struggle", false)):
+	if attacker.has_method("is_fainted") and attacker.is_fainted():
+		return turn_state
+	if defender.has_method("is_fainted") and defender.is_fainted():
+		return turn_state
+
+	var using_struggle = bool(action.get("using_struggle", false))
+	if using_struggle:
 		set_battle_text("%s has no moves left that it can use!" % String(attacker.species_id))
 		if turn_step_delay_sec > 0.0:
 			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -3181,34 +3266,55 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 				turn_state["terminal"] = true
 				return turn_state
 
-	var player_move_anim = play_move_animation(move.move_id, player_pokemon_sprite, enemy_pokemon_sprite, active_turn_token)
-	if player_move_anim is GDScriptFunctionState:
-		yield(player_move_anim, "completed")
+	var attacker_sprite = player_pokemon_sprite if actor_key == "player" else enemy_pokemon_sprite
+	var defender_sprite = enemy_pokemon_sprite if actor_key == "player" else player_pokemon_sprite
+	var defender_hp_bar = enemy_hp_bar if actor_key == "player" else player_hp_bar
+	var defender_hp_label = enemy_hp_value_label if actor_key == "player" else player_hp_value_label
+
+	var move_anim = play_move_animation(move.move_id, attacker_sprite, defender_sprite, active_turn_token)
+	if move_anim is GDScriptFunctionState:
+		yield(move_anim, "completed")
 		if _is_turn_token_cancelled(active_turn_token):
 			turn_state["cancelled"] = true
 			turn_state["terminal"] = true
 			return turn_state
+
+	if bool(action.get("consume_pp", false)):
+		_consume_move_pp(move)
+
+	var move_display_id = String(action.get("move_display_id", String(move.move_id)))
+	if not _does_move_hit(attacker, defender, move, actor_key, active_turn_token):
+		set_battle_text("%s used %s! But it missed!" % [attacker.species_id, move_display_id])
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				turn_state["terminal"] = true
+		return turn_state
 
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender, debug_damage_calculation_enabled))
-	if turn_state.has("forced_player_damage"):
-		damage = max(1, int(turn_state.get("forced_player_damage", damage)))
+	var forced_damage = int(action.get("forced_damage", -1))
+	if forced_damage >= 0:
+		damage = max(1, forced_damage)
 	defender.current_hp = max(0, defender.current_hp - damage)
-	var player_type_multiplier = battle_calc_script.get_type_multiplier(move.move_type, defender)
-	var player_effect_result = battle_calc_script.apply_move_effects(attacker, defender, move)
-	refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
-	var player_hit_feedback = play_hit_feedback(enemy_pokemon_sprite, active_turn_token)
-	if player_hit_feedback is GDScriptFunctionState:
-		yield(player_hit_feedback, "completed")
+	var type_multiplier = battle_calc_script.get_type_multiplier(move.move_type, defender)
+	var effect_result = battle_calc_script.apply_move_effects(attacker, defender, move)
+	refresh_hp_ui(defender, defender_hp_bar, defender_hp_label)
+	if actor_key == "enemy":
+		sync_active_party_member_from_battle()
+
+	var hit_feedback = play_hit_feedback(defender_sprite, active_turn_token)
+	if hit_feedback is GDScriptFunctionState:
+		yield(hit_feedback, "completed")
 		if _is_turn_token_cancelled(active_turn_token):
 			turn_state["cancelled"] = true
 			turn_state["terminal"] = true
 			return turn_state
 
-	var move_display_id = String(turn_state.get("move_display_id", String(move.move_id)))
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move_display_id, damage]
-	battle_message += build_type_effectiveness_text(player_type_multiplier)
-	if bool(player_effect_result.get("applied", false)):
-		var effect_messages = player_effect_result.get("messages", [])
+	battle_message += build_type_effectiveness_text(type_multiplier)
+	if bool(effect_result.get("applied", false)):
+		var effect_messages = effect_result.get("messages", [])
 		if typeof(effect_messages) == TYPE_ARRAY and not effect_messages.empty():
 			battle_message += " " + PoolStringArray(effect_messages).join(" ")
 	set_battle_text(battle_message)
@@ -3219,11 +3325,14 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 			turn_state["terminal"] = true
 			return turn_state
 
-	if bool(turn_state.get("player_using_struggle", false)):
-		var player_recoil_damage = _apply_struggle_recoil(attacker)
-		if player_recoil_damage > 0:
-			refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
-			sync_active_party_member_from_battle()
+	if using_struggle:
+		var recoil_damage = _apply_struggle_recoil(attacker)
+		if recoil_damage > 0:
+			if actor_key == "player":
+				refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+				sync_active_party_member_from_battle()
+			else:
+				refresh_hp_ui(attacker, enemy_hp_bar, enemy_hp_value_label)
 			set_battle_text("%s was damaged by the recoil!" % String(attacker.species_id))
 			if turn_step_delay_sec > 0.0:
 				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
@@ -3232,116 +3341,30 @@ func _run_turn_player_move_phase_state(turn_state: Dictionary, active_turn_token
 					turn_state["terminal"] = true
 					return turn_state
 		if attacker.is_fainted():
-			turn_state["player_fainted"] = true
-			turn_state["terminal"] = true
-			turn_state["fainted_species_id"] = String(attacker.species_id)
+			_mark_turn_side_fainted(turn_state, actor_key, attacker)
 			return turn_state
 
 	if defender.is_fainted():
-		turn_state["enemy_fainted"] = true
-		turn_state["terminal"] = true
-		turn_state["fainted_species_id"] = String(defender.species_id)
-		turn_state["defeated_enemy_species_id"] = String(defender.species_id)
-		turn_state["defeated_enemy_level"] = int(defender.level)
+		var fainted_side = "enemy" if actor_key == "player" else "player"
+		_mark_turn_side_fainted(turn_state, fainted_side, defender)
 		return turn_state
 
-	var enemy_move = _get_first_usable_move(defender)
-	if enemy_move == null:
-		enemy_move = _build_struggle_move()
-		turn_state["enemy_using_struggle"] = true
-	elif _is_move_struggle(enemy_move):
-		turn_state["enemy_using_struggle"] = true
-
-	turn_state["enemy_move"] = enemy_move
 	return turn_state
 
-func _run_turn_enemy_move_phase_state(turn_state: Dictionary, active_turn_token: int):
-	if typeof(turn_state) != TYPE_DICTIONARY:
-		return {}
-	if bool(turn_state.get("cancelled", false)):
-		return turn_state
-	if bool(turn_state.get("enemy_fainted", false)) or not bool(turn_state.get("enemy_has_move", true)):
-		return turn_state
-
-	var attacker = turn_state.get("attacker", null)
-	var defender = turn_state.get("defender", null)
-	var enemy_move = turn_state.get("enemy_move", null)
-	if attacker == null or defender == null or enemy_move == null:
-		turn_state["battle_error"] = true
-		turn_state["terminal"] = true
-		return turn_state
-
-	if bool(turn_state.get("enemy_using_struggle", false)):
-		set_battle_text("%s has no moves left that it can use!" % String(defender.species_id))
-		if turn_step_delay_sec > 0.0:
-			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-			if _is_turn_token_cancelled(active_turn_token):
-				turn_state["cancelled"] = true
-				turn_state["terminal"] = true
-				return turn_state
-
-	var enemy_move_anim = play_move_animation(enemy_move.move_id, enemy_pokemon_sprite, player_pokemon_sprite, active_turn_token)
-	if enemy_move_anim is GDScriptFunctionState:
-		yield(enemy_move_anim, "completed")
-		if _is_turn_token_cancelled(active_turn_token):
-			turn_state["cancelled"] = true
-			turn_state["terminal"] = true
-			return turn_state
-
-	_consume_move_pp(enemy_move)
-	var enemy_damage = int(battle_calc_script.calc_damage(defender, enemy_move, attacker, debug_damage_calculation_enabled))
-	attacker.current_hp = max(0, attacker.current_hp - enemy_damage)
-	var enemy_type_multiplier = battle_calc_script.get_type_multiplier(enemy_move.move_type, attacker)
-	var enemy_effect_result = battle_calc_script.apply_move_effects(defender, attacker, enemy_move)
-	refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
-	sync_active_party_member_from_battle()
-	var enemy_hit_feedback = play_hit_feedback(player_pokemon_sprite, active_turn_token)
-	if enemy_hit_feedback is GDScriptFunctionState:
-		yield(enemy_hit_feedback, "completed")
-		if _is_turn_token_cancelled(active_turn_token):
-			turn_state["cancelled"] = true
-			turn_state["terminal"] = true
-			return turn_state
-
-	var enemy_message = "%s used %s! %d damage." % [defender.species_id, enemy_move.move_id, enemy_damage]
-	enemy_message += build_type_effectiveness_text(enemy_type_multiplier)
-	if bool(enemy_effect_result.get("applied", false)):
-		var effect_messages = enemy_effect_result.get("messages", [])
-		if typeof(effect_messages) == TYPE_ARRAY and not effect_messages.empty():
-			enemy_message += " " + PoolStringArray(effect_messages).join(" ")
-	set_battle_text(enemy_message)
-	if turn_step_delay_sec > 0.0:
-		yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-		if _is_turn_token_cancelled(active_turn_token):
-			turn_state["cancelled"] = true
-			turn_state["terminal"] = true
-			return turn_state
-
-	if bool(turn_state.get("enemy_using_struggle", false)):
-		var enemy_recoil_damage = _apply_struggle_recoil(defender)
-		if enemy_recoil_damage > 0:
-			refresh_hp_ui(defender, enemy_hp_bar, enemy_hp_value_label)
-			set_battle_text("%s was damaged by the recoil!" % String(defender.species_id))
-			if turn_step_delay_sec > 0.0:
-				yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
-				if _is_turn_token_cancelled(active_turn_token):
-					turn_state["cancelled"] = true
-					turn_state["terminal"] = true
-					return turn_state
-		if defender.is_fainted():
-			turn_state["enemy_fainted"] = true
-			turn_state["terminal"] = true
-			turn_state["fainted_species_id"] = String(defender.species_id)
-			turn_state["defeated_enemy_species_id"] = String(defender.species_id)
-			turn_state["defeated_enemy_level"] = int(defender.level)
-			return turn_state
-
-	if attacker.is_fainted():
+func _mark_turn_side_fainted(turn_state: Dictionary, side_key: String, battler) -> void:
+	if typeof(turn_state) != TYPE_DICTIONARY or battler == null:
+		return
+	var normalized_side = String(side_key).strip_edges().to_lower()
+	if normalized_side == "player":
 		turn_state["player_fainted"] = true
 		turn_state["terminal"] = true
-		turn_state["fainted_species_id"] = String(attacker.species_id)
-
-	return turn_state
+		turn_state["fainted_species_id"] = String(battler.species_id)
+		return
+	turn_state["enemy_fainted"] = true
+	turn_state["terminal"] = true
+	turn_state["fainted_species_id"] = String(battler.species_id)
+	turn_state["defeated_enemy_species_id"] = String(battler.species_id)
+	turn_state["defeated_enemy_level"] = int(battler.level)
 
 func _run_turn_faint_resolve_phase_state(turn_state: Dictionary, active_turn_token: int):
 	if typeof(turn_state) != TYPE_DICTIONARY:
@@ -8039,7 +8062,145 @@ func _is_move_struggle(move) -> bool:
 func _build_struggle_move():
 	var move = MoveData.new("STRUGGLE", 50, "", MoveData.CATEGORY_PHYSICAL, -1)
 	move.current_pp = -1
+	move.accuracy = 100
+	move.priority = 0
 	return move
+
+func _should_player_act_first(player_data, player_move, enemy_data, enemy_move, active_turn_token: int) -> bool:
+	var player_priority = _get_move_priority(player_move)
+	var enemy_priority = _get_move_priority(enemy_move)
+	if player_priority != enemy_priority:
+		return player_priority > enemy_priority
+
+	var player_speed = _get_effective_speed(player_data)
+	var enemy_speed = _get_effective_speed(enemy_data)
+	if player_speed != enemy_speed:
+		return player_speed > enemy_speed
+
+	return _resolve_speed_tie_to_player(player_data, player_move, enemy_data, enemy_move, active_turn_token)
+
+func _get_move_priority(move) -> int:
+	if move == null:
+		return 0
+	if move is Dictionary:
+		var dict_priority = move.get("priority", 0)
+		if typeof(dict_priority) == TYPE_INT or typeof(dict_priority) == TYPE_REAL:
+			return int(dict_priority)
+		if typeof(dict_priority) == TYPE_STRING and not String(dict_priority).strip_edges().empty():
+			return int(dict_priority)
+		return 0
+	if "priority" in move:
+		var prop_priority = move.priority
+		if typeof(prop_priority) == TYPE_INT or typeof(prop_priority) == TYPE_REAL:
+			return int(prop_priority)
+		if typeof(prop_priority) == TYPE_STRING and not String(prop_priority).strip_edges().empty():
+			return int(prop_priority)
+		return 0
+	if move.has_method("get"):
+		var dynamic_priority = move.get("priority")
+		if typeof(dynamic_priority) == TYPE_INT or typeof(dynamic_priority) == TYPE_REAL:
+			return int(dynamic_priority)
+		if typeof(dynamic_priority) == TYPE_STRING and not String(dynamic_priority).strip_edges().empty():
+			return int(dynamic_priority)
+	return 0
+
+func _get_move_accuracy(move) -> int:
+	if move == null:
+		return 100
+	var accuracy = 100
+	if move is Dictionary:
+		var dict_accuracy = move.get("accuracy", 100)
+		if typeof(dict_accuracy) == TYPE_INT or typeof(dict_accuracy) == TYPE_REAL:
+			accuracy = int(dict_accuracy)
+		elif typeof(dict_accuracy) == TYPE_STRING and not String(dict_accuracy).strip_edges().empty():
+			accuracy = int(dict_accuracy)
+	elif "accuracy" in move:
+		var prop_accuracy = move.accuracy
+		if typeof(prop_accuracy) == TYPE_INT or typeof(prop_accuracy) == TYPE_REAL:
+			accuracy = int(prop_accuracy)
+		elif typeof(prop_accuracy) == TYPE_STRING and not String(prop_accuracy).strip_edges().empty():
+			accuracy = int(prop_accuracy)
+	elif move.has_method("get"):
+		var dynamic_accuracy = move.get("accuracy")
+		if typeof(dynamic_accuracy) == TYPE_INT or typeof(dynamic_accuracy) == TYPE_REAL:
+			accuracy = int(dynamic_accuracy)
+		elif typeof(dynamic_accuracy) == TYPE_STRING and not String(dynamic_accuracy).strip_edges().empty():
+			accuracy = int(dynamic_accuracy)
+	if accuracy < 0:
+		return 100
+	return int(clamp(accuracy, 0, 100))
+
+func _get_effective_speed(pokemon_data) -> int:
+	if pokemon_data == null or not pokemon_data.has_method("get_base_stat"):
+		return 1
+	var speed_base = max(1, int(pokemon_data.get_base_stat("spd")))
+	var stage = _get_battler_stat_stage(pokemon_data, "spd")
+	return int(max(1, int(round(float(speed_base) * _get_stat_stage_multiplier(stage)))))
+
+func _get_battler_stat_stage(pokemon_data, stat_name: String) -> int:
+	if pokemon_data == null:
+		return 0
+	if pokemon_data.has_method("get_stat_stage"):
+		return int(pokemon_data.get_stat_stage(stat_name))
+	if "stat_stages" in pokemon_data and typeof(pokemon_data.stat_stages) == TYPE_DICTIONARY:
+		return int(pokemon_data.stat_stages.get(String(stat_name).strip_edges().to_lower(), 0))
+	return 0
+
+func _get_stat_stage_multiplier(stage_value: int) -> float:
+	if stage_value == 0:
+		return 1.0
+	if stage_value > 0:
+		return 1.0 + (float(stage_value) / 2.0)
+	return 1.0 / (1.0 + (float(abs(stage_value)) / 2.0))
+
+func _get_accuracy_stage_multiplier(stage_value: int) -> float:
+	if stage_value >= 0:
+		return float(stage_value + 3) / 3.0
+	return 3.0 / float(abs(stage_value) + 3)
+
+func _resolve_speed_tie_to_player(player_data, player_move, enemy_data, enemy_move, active_turn_token: int) -> bool:
+	var tie_key = "%d|%s|%s|%s|%s|%s" % [
+		active_turn_token,
+		String(player_data.species_id),
+		String(player_move.move_id),
+		String(enemy_data.species_id),
+		String(enemy_move.move_id),
+		String(active_turn_run_id),
+	]
+	var tie_hash = int(hash(tie_key))
+	if tie_hash < 0:
+		tie_hash = -tie_hash
+	return int(tie_hash % 2) == 0
+
+func _does_move_hit(attacker, defender, move, actor_key: String, active_turn_token: int) -> bool:
+	if move == null:
+		return true
+	if _is_move_struggle(move):
+		return true
+
+	var move_accuracy = _get_move_accuracy(move)
+	if move_accuracy >= 100:
+		return true
+	if move_accuracy <= 0:
+		return false
+
+	var attacker_acc_stage = _get_battler_stat_stage(attacker, "acc")
+	var defender_eva_stage = _get_battler_stat_stage(defender, "eva")
+	var effective_accuracy = float(move_accuracy) * _get_accuracy_stage_multiplier(attacker_acc_stage) / max(0.001, _get_accuracy_stage_multiplier(defender_eva_stage))
+	effective_accuracy = clamp(effective_accuracy, 1.0, 100.0)
+
+	var roll_key = "%d|%s|%s|%s|%s" % [
+		active_turn_token,
+		String(actor_key).strip_edges().to_lower(),
+		String(attacker.species_id),
+		String(defender.species_id),
+		String(move.move_id),
+	]
+	var roll_hash = int(hash(roll_key))
+	if roll_hash < 0:
+		roll_hash = -roll_hash
+	var roll = int(roll_hash % 100) + 1
+	return float(roll) <= effective_accuracy
 
 func _apply_struggle_recoil(user_data) -> int:
 	if user_data == null or not user_data.has_method("get_base_stat"):

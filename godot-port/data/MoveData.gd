@@ -11,6 +11,8 @@ var category: String
 var max_pp: int
 var current_pp: int
 var effect_data: Dictionary = {}
+var accuracy: int = 100
+var priority: int = 0
 
 func _init(p_move_id: String, p_power: int, p_move_type: String, p_category: String, p_max_pp: int = -1, p_effect_data: Dictionary = {}) -> void:
 	move_id = p_move_id

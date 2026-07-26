@@ -90,7 +90,9 @@ func build_move_data(move_id: String):
 		String(move_entry.get("type", "UNKNOWN")).to_upper(),
 		category_value
 	)
-	move_data.set("max_pp", int(move_entry.get("pp", -1)))
+	move_data.max_pp = int(move_entry.get("pp", -1))
+	move_data.accuracy = int(move_entry.get("accuracy", 100))
+	move_data.priority = int(move_entry.get("priority", 0))
 	if move_data.has_method("restore_pp_full"):
 		move_data.restore_pp_full()
 	return move_data
