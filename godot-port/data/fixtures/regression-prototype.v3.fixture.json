@@ -247,5 +247,89 @@
       "pp": 25,
       "priority": 0
     }
+  ],
+  "scenarios": [
+    {
+      "id": "basic-damage",
+      "name": "Basic physical damage",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      }
+    },
+    {
+      "id": "type-effectiveness",
+      "name": "Type effectiveness bonus",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {"move_id": "EMBER"}
+        ]
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      }
+    },
+    {
+      "id": "special-attack-scaling",
+      "name": "Special attack uses special stats",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {"move_id": "WATER_GUN", "category": "SPECIAL"}
+        ]
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      }
+    },
+    {
+      "id": "stat-stage-reduction",
+      "name": "Stat stage reduction effect",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {
+            "move_id": "TACKLE",
+            "effect_data": {
+              "stat_changes": {
+                "atk": -1
+              }
+            }
+          }
+        ],
+        "stat_stages": {
+          "atk": 0
+        }
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      }
+    }
   ]
 }

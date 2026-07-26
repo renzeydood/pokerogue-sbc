@@ -181,9 +181,13 @@ static func calc_damage(attacker, move, defender, debug_enabled: bool = false) -
 	var defense_stat_name = "def" if is_physical or not is_special else "sp_def"
 	var attack_stat = max(1, int(attacker.get_base_stat(attack_stat_name)))
 	var defense_stat = max(1, int(defender.get_base_stat(defense_stat_name)))
+	var attack_stat_multiplier = _get_stat_stage_multiplier(attacker, attack_stat_name)
+	var defense_stat_multiplier = _get_stat_stage_multiplier(defender, defense_stat_name)
+	var effective_attack_stat = max(1, int(round(float(attack_stat) * attack_stat_multiplier)))
+	var effective_defense_stat = max(1, int(round(float(defense_stat) * defense_stat_multiplier)))
 
 	var level_multiplier = (2.0 * float(level)) / 5.0 + 2.0
-	var base_damage = (level_multiplier * float(power) * float(attack_stat) / float(defense_stat)) / 50.0 + 2.0
+	var base_damage = (level_multiplier * float(power) * float(effective_attack_stat) / float(effective_defense_stat)) / 50.0 + 2.0
 	var type_multiplier = _get_type_multiplier(move.move_type, defender)
 	if type_multiplier <= 0.0:
 		if debug_enabled:
@@ -201,9 +205,9 @@ static func calc_damage(attacker, move, defender, debug_enabled: bool = false) -
 				level,
 				power,
 				attack_stat_name,
-				attack_stat,
+				effective_attack_stat,
 				defense_stat_name,
-				defense_stat,
+				effective_defense_stat,
 				base_damage,
 				stab_multiplier,
 				type_multiplier,
@@ -269,6 +273,67 @@ static func _get_stab_multiplier(attacker, move) -> float:
 
 	return 1.0
 
+static func apply_move_effects(attacker, defender, move) -> Dictionary:
+	if move == null:
+		return {"applied": false, "messages": [], "stat_changes": {}}
+
+	var effect_data = _get_effect_data(move)
+	if typeof(effect_data) != TYPE_DICTIONARY or effect_data.empty():
+		return {"applied": false, "messages": [], "stat_changes": {}}
+
+	var stat_changes = effect_data.get("stat_changes", {})
+	if typeof(stat_changes) != TYPE_DICTIONARY or stat_changes.empty():
+		return {"applied": false, "messages": [], "stat_changes": {}}
+
+	var target_key = String(effect_data.get("target", "defender")).strip_edges().to_lower()
+	var target_pokemon = defender if target_key != "attacker" else attacker
+	if target_pokemon == null:
+		return {"applied": false, "messages": [], "stat_changes": {}}
+
+	var applied_messages := []
+	var applied_stat_changes := {}
+	for stat_name in stat_changes:
+		var change_amount = int(stat_changes[stat_name])
+		if change_amount == 0:
+			continue
+		var current_stage = 0
+		if target_pokemon.has_method("get_stat_stage"):
+			current_stage = int(target_pokemon.get_stat_stage(String(stat_name)))
+		elif "stat_stages" in target_pokemon and typeof(target_pokemon.stat_stages) == TYPE_DICTIONARY:
+			current_stage = int(target_pokemon.stat_stages.get(String(stat_name), 0))
+		var next_stage = int(clamp(current_stage + change_amount, -6, 6))
+		if target_pokemon.has_method("set_stat_stage"):
+			target_pokemon.set_stat_stage(String(stat_name), next_stage)
+		elif "stat_stages" in target_pokemon and typeof(target_pokemon.stat_stages) == TYPE_DICTIONARY:
+			target_pokemon.stat_stages[String(stat_name)] = next_stage
+		applied_stat_changes[String(stat_name)] = next_stage
+		var stat_label = String(stat_name).to_upper()
+		var direction = "rose" if change_amount > 0 else "fell"
+		var target_name = "The target"
+		if target_pokemon != null and "species_id" in target_pokemon:
+			target_name = String(target_pokemon.species_id).strip_edges().to_upper()
+		applied_messages.append("%s's %s %s!" % [target_name, stat_label, direction])
+
+	return {
+		"applied": not applied_messages.empty(),
+		"messages": applied_messages,
+		"stat_changes": applied_stat_changes,
+	}
+
+static func _get_stat_stage_multiplier(pokemon, stat_name: String) -> float:
+	if pokemon == null:
+		return 1.0
+	var stage_value := 0
+	if pokemon.has_method("get_stat_stage"):
+		stage_value = int(pokemon.get_stat_stage(stat_name))
+	elif "stat_stages" in pokemon and typeof(pokemon.stat_stages) == TYPE_DICTIONARY:
+		stage_value = int(pokemon.stat_stages.get(String(stat_name), 0))
+	if stage_value == 0:
+		return 1.0
+	if stage_value > 0:
+		return 1.0 + (float(stage_value) / 2.0)
+	return 1.0 / (1.0 + (float(abs(stage_value)) / 2.0))
+
 static func _get_move_category(move) -> String:
 	if move == null:
 		return ""
@@ -277,6 +342,17 @@ static func _get_move_category(move) -> String:
 	if "category" in move:
 		return String(move.category).strip_edges().to_lower()
 	return ""
+
+static func _get_effect_data(move) -> Dictionary:
+	if move == null:
+		return {}
+	if move.has_method("get_effect_data"):
+		var effect_data = move.get_effect_data()
+		if typeof(effect_data) == TYPE_DICTIONARY:
+			return effect_data.duplicate(true)
+	if "effect_data" in move and typeof(move.effect_data) == TYPE_DICTIONARY:
+		return move.effect_data.duplicate(true)
+	return {}
 
 static func _to_damage_value(value: float) -> int:
 	# Match core rounding policy: floor once at end, min 1.
