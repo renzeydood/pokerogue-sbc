@@ -30,7 +30,6 @@ theme = ExtResource( 15 )
 script = ExtResource( 1 )
 debug_player_level_override = -1
 biome_switch_every_levels = 5
-debug_battle_fixture_scenario_id = "special-attack-scaling"
 force_first_encounter_trainer = false
 debug_enemy_baseline_overlay_enabled = false
 player_trainer_exit_duration_sec = 0.7

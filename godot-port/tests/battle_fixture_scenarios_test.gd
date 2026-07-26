@@ -8,7 +8,14 @@ func _init() -> void:
 		return
 
 	var loader = loader_script.new()
-	var scenario_ids = ["basic-damage", "type-effectiveness", "special-attack-scaling", "stat-stage-reduction"]
+	var scenario_ids = [
+		"basic-damage",
+		"type-effectiveness",
+		"special-attack-scaling",
+		"stat-stage-reduction",
+		"accuracy-check-baseline",
+		"turn-priority-baseline",
+	]
 	for scenario_id in scenario_ids:
 		var scenario = loader.load_scenario(scenario_id)
 		if scenario == null:

@@ -159,6 +159,8 @@ func _build_move_from_fixture(moves_index: Dictionary, entry) -> MoveData:
 	var move_type = String(entry.get("type", move_entry.get("type", "NORMAL"))).strip_edges().to_upper()
 	var category = String(entry.get("category", move_entry.get("category", "STATUS"))).strip_edges().to_upper()
 	var pp = int(entry.get("pp", move_entry.get("pp", 25)))
+	var accuracy = int(entry.get("accuracy", move_entry.get("accuracy", 100)))
+	var priority = int(entry.get("priority", move_entry.get("priority", 0)))
 	var effect_data = entry.get("effect_data", move_entry.get("effect_data", {}))
 	if typeof(effect_data) != TYPE_DICTIONARY:
 		effect_data = {}
@@ -174,6 +176,8 @@ func _build_move_from_fixture(moves_index: Dictionary, entry) -> MoveData:
 	move_data.power = power
 	move_data.move_type = move_type
 	move_data.category = category_value
+	move_data.accuracy = int(clamp(accuracy, 0, 100))
+	move_data.priority = priority
 	return move_data
 
 func _normalize_side_fixture(fixture) -> Dictionary:

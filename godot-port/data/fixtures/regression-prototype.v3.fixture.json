@@ -330,6 +330,42 @@
           {"move_id": "TACKLE"}
         ]
       }
+    },
+    {
+      "id": "accuracy-check-baseline",
+      "name": "Accuracy metadata baseline",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE", "accuracy": 35}
+        ]
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE"}
+        ]
+      }
+    },
+    {
+      "id": "turn-priority-baseline",
+      "name": "Priority metadata baseline",
+      "player": {
+        "species_id": "CHARMANDER",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE", "priority": 0}
+        ]
+      },
+      "enemy": {
+        "species_id": "BULBASAUR",
+        "level": 5,
+        "moves": [
+          {"move_id": "TACKLE", "priority": 1}
+        ]
+      }
     }
   ]
 }
