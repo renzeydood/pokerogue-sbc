@@ -7,6 +7,27 @@ const MOVES_CATALOG_PATH := "res://godot-minimal-assets/data/moves-catalog.v1.js
 const POKEMON_SPRITE_ROOT := "assets/images/pokemon/"
 const DEFAULT_MOVE_ID := "TACKLE"
 const MAX_BATTLE_MOVE_SLOTS := 4
+const MOVE_EFFECT_OVERRIDES := {
+	"GROWL": {"target": "defender", "stat_changes": {"atk": -1}},
+	"TAIL_WHIP": {"target": "defender", "stat_changes": {"def": -1}},
+	"LEER": {"target": "defender", "stat_changes": {"def": -1}},
+	"STRING_SHOT": {"target": "defender", "stat_changes": {"spd": -1}},
+	"SCARY_FACE": {"target": "defender", "stat_changes": {"spd": -2}},
+	"SMOKESCREEN": {"target": "defender", "stat_changes": {"acc": -1}},
+	"SAND_ATTACK": {"target": "defender", "stat_changes": {"acc": -1}},
+	"CHARM": {"target": "defender", "stat_changes": {"atk": -2}},
+	"BABY_DOLL_EYES": {"target": "defender", "stat_changes": {"atk": -1}},
+	"METAL_SOUND": {"target": "defender", "stat_changes": {"sp_def": -2}},
+	"AGILITY": {"target": "attacker", "stat_changes": {"spd": 2}},
+	"HARDEN": {"target": "attacker", "stat_changes": {"def": 1}},
+	"IRON_DEFENSE": {"target": "attacker", "stat_changes": {"def": 2}},
+	"GROWTH": {"target": "attacker", "stat_changes": {"atk": 1, "sp_atk": 1}},
+	"HONE_CLAWS": {"target": "attacker", "stat_changes": {"atk": 1, "acc": 1}},
+	"WORK_UP": {"target": "attacker", "stat_changes": {"atk": 1, "sp_atk": 1}},
+	"SWORDS_DANCE": {"target": "attacker", "stat_changes": {"atk": 2}},
+	"DEFENSE_CURL": {"target": "attacker", "stat_changes": {"def": 1}},
+	"WITHDRAW": {"target": "attacker", "stat_changes": {"def": 1}},
+}
 
 var _loaded := false
 var _species_by_id := {}
@@ -93,9 +114,18 @@ func build_move_data(move_id: String):
 	move_data.max_pp = int(move_entry.get("pp", -1))
 	move_data.accuracy = int(move_entry.get("accuracy", 100))
 	move_data.priority = int(move_entry.get("priority", 0))
+	move_data.effect_data = _resolve_move_effect_data(move_data.move_id, move_entry)
 	if move_data.has_method("restore_pp_full"):
 		move_data.restore_pp_full()
 	return move_data
+
+func _resolve_move_effect_data(move_id: String, move_entry: Dictionary) -> Dictionary:
+	if move_entry.has("effect_data") and typeof(move_entry.get("effect_data")) == TYPE_DICTIONARY:
+		return move_entry.get("effect_data", {}).duplicate(true)
+	var key = String(move_id).strip_edges().to_upper()
+	if MOVE_EFFECT_OVERRIDES.has(key):
+		return MOVE_EFFECT_OVERRIDES[key].duplicate(true)
+	return {}
 
 func build_pokemon_data(species_id: String, level: int = 5, move_ids: Array = []):
 	var pokemon_data_script = load("res://data/PokemonData.gd")

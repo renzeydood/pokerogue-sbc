@@ -311,7 +311,7 @@
         "level": 5,
         "moves": [
           {
-            "move_id": "TACKLE",
+            "move_id": "GROWL",
             "effect_data": {
               "stat_changes": {
                 "atk": -1

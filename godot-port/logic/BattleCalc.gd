@@ -224,6 +224,9 @@ static func get_type_multiplier(move_type: String, defender) -> float:
 static func get_stab_multiplier(attacker, move) -> float:
 	return _get_stab_multiplier(attacker, move)
 
+static func is_status_move(move) -> bool:
+	return _get_move_category(move) == MoveData.CATEGORY_STATUS
+
 static func _get_type_multiplier(move_type: String, defender) -> float:
 	if defender == null:
 		return 1.0
@@ -275,23 +278,26 @@ static func _get_stab_multiplier(attacker, move) -> float:
 
 static func apply_move_effects(attacker, defender, move) -> Dictionary:
 	if move == null:
-		return {"applied": false, "messages": [], "stat_changes": {}}
+		return {"applied": false, "messages": [], "stat_changes": {}, "failed": false}
 
 	var effect_data = _get_effect_data(move)
 	if typeof(effect_data) != TYPE_DICTIONARY or effect_data.empty():
-		return {"applied": false, "messages": [], "stat_changes": {}}
+		return {"applied": false, "messages": [], "stat_changes": {}, "failed": false}
 
 	var stat_changes = effect_data.get("stat_changes", {})
 	if typeof(stat_changes) != TYPE_DICTIONARY or stat_changes.empty():
-		return {"applied": false, "messages": [], "stat_changes": {}}
+		return {"applied": false, "messages": [], "stat_changes": {}, "failed": false}
 
 	var target_key = String(effect_data.get("target", "defender")).strip_edges().to_lower()
 	var target_pokemon = defender if target_key != "attacker" else attacker
 	if target_pokemon == null:
-		return {"applied": false, "messages": [], "stat_changes": {}}
+		return {"applied": false, "messages": [], "stat_changes": {}, "failed": false}
 
 	var applied_messages := []
 	var applied_stat_changes := {}
+	var any_applied := false
+	var any_failed := false
+	var target_name = _get_target_display_name(target_pokemon)
 	for stat_name in stat_changes:
 		var change_amount = int(stat_changes[stat_name])
 		if change_amount == 0:
@@ -302,22 +308,24 @@ static func apply_move_effects(attacker, defender, move) -> Dictionary:
 		elif "stat_stages" in target_pokemon and typeof(target_pokemon.stat_stages) == TYPE_DICTIONARY:
 			current_stage = int(target_pokemon.stat_stages.get(String(stat_name), 0))
 		var next_stage = int(clamp(current_stage + change_amount, -6, 6))
+		var applied_delta = next_stage - current_stage
 		if target_pokemon.has_method("set_stat_stage"):
 			target_pokemon.set_stat_stage(String(stat_name), next_stage)
 		elif "stat_stages" in target_pokemon and typeof(target_pokemon.stat_stages) == TYPE_DICTIONARY:
 			target_pokemon.stat_stages[String(stat_name)] = next_stage
 		applied_stat_changes[String(stat_name)] = next_stage
-		var stat_label = String(stat_name).to_upper()
-		var direction = "rose" if change_amount > 0 else "fell"
-		var target_name = "The target"
-		if target_pokemon != null and "species_id" in target_pokemon:
-			target_name = String(target_pokemon.species_id).strip_edges().to_upper()
-		applied_messages.append("%s's %s %s!" % [target_name, stat_label, direction])
+		if applied_delta != 0:
+			any_applied = true
+			applied_messages.append(_build_stat_stage_change_message(target_name, String(stat_name), applied_delta))
+		else:
+			any_failed = true
+			applied_messages.append(_build_stat_stage_cap_message(target_name, String(stat_name), change_amount))
 
 	return {
-		"applied": not applied_messages.empty(),
+		"applied": any_applied,
 		"messages": applied_messages,
 		"stat_changes": applied_stat_changes,
+		"failed": any_failed and not any_applied,
 	}
 
 static func _get_stat_stage_multiplier(pokemon, stat_name: String) -> float:
@@ -353,6 +361,51 @@ static func _get_effect_data(move) -> Dictionary:
 	if "effect_data" in move and typeof(move.effect_data) == TYPE_DICTIONARY:
 		return move.effect_data.duplicate(true)
 	return {}
+
+static func _get_target_display_name(target_pokemon) -> String:
+	if target_pokemon != null and "species_id" in target_pokemon:
+		return String(target_pokemon.species_id).strip_edges().to_upper()
+	return "The target"
+
+static func _build_stat_stage_change_message(target_name: String, stat_name: String, applied_delta: int) -> String:
+	var stat_label = _get_stat_label(stat_name)
+	var magnitude = abs(int(applied_delta))
+	if applied_delta > 0:
+		if magnitude >= 3:
+			return "%s's %s rose drastically!" % [target_name, stat_label]
+		if magnitude == 2:
+			return "%s's %s rose sharply!" % [target_name, stat_label]
+		return "%s's %s rose!" % [target_name, stat_label]
+	if magnitude >= 3:
+		return "%s's %s severely fell!" % [target_name, stat_label]
+	if magnitude == 2:
+		return "%s's %s harshly fell!" % [target_name, stat_label]
+	return "%s's %s fell!" % [target_name, stat_label]
+
+static func _build_stat_stage_cap_message(target_name: String, stat_name: String, requested_delta: int) -> String:
+	var stat_label = _get_stat_label(stat_name)
+	if int(requested_delta) > 0:
+		return "%s's %s won't go any higher!" % [target_name, stat_label]
+	return "%s's %s won't go any lower!" % [target_name, stat_label]
+
+static func _get_stat_label(stat_name: String) -> String:
+	match String(stat_name).strip_edges().to_lower():
+		"atk":
+			return "Attack"
+		"def":
+			return "Defense"
+		"sp_atk":
+			return "Sp. Atk"
+		"sp_def":
+			return "Sp. Def"
+		"spd":
+			return "Speed"
+		"acc":
+			return "Accuracy"
+		"eva":
+			return "Evasion"
+		_:
+			return String(stat_name).strip_edges().to_upper()
 
 static func _to_damage_value(value: float) -> int:
 	# Match core rounding policy: floor once at end, min 1.
