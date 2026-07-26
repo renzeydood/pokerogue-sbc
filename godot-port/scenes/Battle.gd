@@ -3292,6 +3292,23 @@ func _run_turn_action_state(turn_state: Dictionary, action: Dictionary, active_t
 				turn_state["terminal"] = true
 		return turn_state
 
+	var is_status_move = battle_calc_script.is_status_move(move)
+	if is_status_move:
+		var status_effect_result = battle_calc_script.apply_move_effects(attacker, defender, move)
+		var status_message = "%s used %s!" % [attacker.species_id, move_display_id]
+		var status_effect_messages = status_effect_result.get("messages", [])
+		if typeof(status_effect_messages) == TYPE_ARRAY and not status_effect_messages.empty():
+			status_message += " " + PoolStringArray(status_effect_messages).join(" ")
+		else:
+			status_message += " But it failed!"
+		set_battle_text(status_message)
+		if turn_step_delay_sec > 0.0:
+			yield(get_tree().create_timer(turn_step_delay_sec), "timeout")
+			if _is_turn_token_cancelled(active_turn_token):
+				turn_state["cancelled"] = true
+				turn_state["terminal"] = true
+		return turn_state
+
 	var damage = int(battle_calc_script.calc_damage(attacker, move, defender, debug_damage_calculation_enabled))
 	var forced_damage = int(action.get("forced_damage", -1))
 	if forced_damage >= 0:
