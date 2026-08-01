@@ -48,6 +48,8 @@ export(int) var biome_level_scale_min_level := 3
 export(bool) var debug_damage_calculation_enabled := true
 export(String) var debug_battle_fixture_scenario_id := ""
 export(bool) var debug_pp_override_second_move_one := false
+
+# Post-battle item menu animation exports
 export(bool) var debug_pp_override_all_moves_one := false
 export(int) var normal_trainer_encounter_every := 5
 export(int) var boss_pokemon_encounter_every := 10
@@ -83,6 +85,7 @@ export(float) var scene_change_bgm_fade_out_sec := 0.35
 export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "abyss", "beach", "cave", "mountains", "temple", "volcano"]
 export(bool) var debug_open_party_menu_on_ready := false
 export(bool) var debug_transition_checkpoints := true
+export(int, -1, 99) var debug_post_battle_item_potion_count_override := -1
 export(float) var party_menu_overlay_fade_duration_sec := 0.12
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
@@ -266,9 +269,12 @@ var run_finalize_phase_script = load("res://logic/phases/RunFinalizePhase.gd")
 var capture_begin_phase_script = load("res://logic/phases/CaptureBeginPhase.gd")
 var capture_sequence_phase_script = load("res://logic/phases/CaptureSequencePhase.gd")
 var capture_post_encounter_phase_script = load("res://logic/phases/CapturePostEncounterPhase.gd")
+var post_battle_item_menu_phase_script = load("res://logic/phases/PostBattleItemMenuPhase.gd")
 var party_menu_scene = preload("res://scenes/PartyMenuOverlay.tscn")
 var pokedex_overlay_scene = load("res://scenes/PokedexEntryOverlay.tscn")
 var pokemon_evolution_overlay_scene = load("res://scenes/PokemonEvolutionOverlay.tscn")
+var item_selection_overlay_scene = load("res://scenes/ItemSelectionOverlay.tscn")
+const AtlasFrameParser = preload("res://logic/AtlasFrameParser.gd")
 
 func _resolve_first_existing(paths: Array):
 	for path in paths:
@@ -496,11 +502,18 @@ var pokedex_overlay = null
 var pokedex_overlay_visible := false
 var pokemon_evolution_overlay = null
 var pokemon_evolution_overlay_visible := false
+var item_selection_overlay = null
+var item_menu_visible := false
+var item_menu_result = ""
+var item_menu_selected_item_id = ""
 var pokedex_return_to_party_menu := false
 var enemy_species_pool := []
 var trainers_catalog_by_id := {}
 var trainers_catalog_ordered := []
 var ball_inventory := BALL_DEFAULT_COUNTS.duplicate(true)
+var post_battle_item_inventory := {
+	"potion": 1,
+}
 var capture_in_progress := false
 var sendout_controls_locked := false
 var forced_switch_pending := false
@@ -573,6 +586,7 @@ func _ready():
 	setup_party_menu_overlay()
 	setup_pokedex_overlay()
 	setup_pokemon_evolution_overlay()
+	setup_item_selection_overlay()
 	reset_battle_state("Battle ready.")
 	if ball_menu_container != null:
 		ball_menu_container.visible = false
@@ -1371,6 +1385,31 @@ func setup_pokemon_evolution_overlay() -> void:
 	pokemon_evolution_overlay_visible = false
 	add_child(pokemon_evolution_overlay)
 	pokemon_evolution_overlay.raise()
+
+func setup_item_selection_overlay() -> void:
+	if item_selection_overlay_scene == null:
+		return
+
+	item_selection_overlay = item_selection_overlay_scene.instance()
+	if item_selection_overlay == null:
+		return
+
+	item_selection_overlay.visible = false
+	item_menu_visible = false
+	item_menu_result = ""
+	item_menu_selected_item_id = ""
+	_connect_once(item_selection_overlay, "close_requested", "_on_ItemSelection_close_requested")
+	add_child(item_selection_overlay)
+	item_selection_overlay.raise()
+
+func _on_ItemSelection_close_requested() -> void:
+	if not item_menu_visible:
+		return
+	item_menu_result = "skip"
+	item_menu_selected_item_id = ""
+	if item_selection_overlay != null:
+		item_selection_overlay.close_menu(false)
+	item_menu_visible = false
 
 func _play_evolution_overlay_sequence(from_species_id: String, to_species_id: String, active_turn_token: int):
 	if pokemon_evolution_overlay == null:
@@ -2868,6 +2907,34 @@ func _input(event):
 		return
 	if not event.pressed or event.echo:
 		return
+	if item_menu_visible:
+		if _is_back_input(event):
+			if item_selection_overlay != null and item_selection_overlay.handle_back_action():
+				accept_event()
+				return
+			_on_post_battle_item_skip_pressed()
+			accept_event()
+			return
+		if event.is_action_pressed("ui_up"):
+			move_post_battle_item_menu_focus("ui_up", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_down"):
+			move_post_battle_item_menu_focus("ui_down", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_left"):
+			move_post_battle_item_menu_focus("ui_left", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_right"):
+			move_post_battle_item_menu_focus("ui_right", get_focus_owner())
+			accept_event()
+			return
+		if event.is_action_pressed("ui_accept"):
+			press_focused_button()
+			accept_event()
+			return
 	if pokedex_overlay_visible:
 		if _is_back_input(event):
 			if pokedex_overlay != null and pokedex_overlay.handle_back_action():
@@ -2966,6 +3033,8 @@ func _unhandled_input(event):
 	if party_menu_visible:
 		return
 	if pokedex_overlay_visible:
+		return
+	if item_menu_visible:
 		return
 	if ball_menu_visible:
 		return
@@ -3800,7 +3869,7 @@ func _run_run_finalize_phase_state(run_state: Dictionary, active_turn_token: int
 	if escaped_species_id.empty():
 		escaped_species_id = "UNKNOWN"
 
-	var next_transition = advance_to_next_enemy(escaped_species_id, active_turn_token, false)
+	var next_transition = advance_to_next_enemy(escaped_species_id, active_turn_token, false, false)
 	if next_transition is GDScriptFunctionState:
 		yield(next_transition, "completed")
 
@@ -5205,12 +5274,15 @@ func _run_trainer_victory_outro_and_start_next_encounter(fainted_species_id: Str
 	turn_in_progress = false
 	capture_in_progress = false
 	_clear_active_trainer_encounter_state()
+	var post_battle_item_state = _run_post_battle_item_menu_phase_state(fainted_species_id, -1)
+	if post_battle_item_state is GDScriptFunctionState:
+		post_battle_item_state = yield(post_battle_item_state, "completed")
 	if enemy_trainer_pb_panel != null:
 		enemy_trainer_pb_panel.visible = false
 	if player_trainer_pb_panel != null:
 		player_trainer_pb_panel.visible = false
 
-	var next_transition = advance_to_next_enemy(fainted_species_id, -1, false)
+	var next_transition = advance_to_next_enemy(fainted_species_id, -1, false, false)
 	if next_transition is GDScriptFunctionState:
 		yield(next_transition, "completed")
 
@@ -6443,15 +6515,19 @@ func pick_random_enemy_species_id(current_enemy_species_id: String) -> String:
 
 	return String(candidates[randi() % candidates.size()])
 
-func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = -1, include_fainted_text: bool = true):
+func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = -1, include_fainted_text: bool = true, include_post_battle_item_menu: bool = true):
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
 		end_battle(true, fainted_species_id)
 		return
+	var effective_include_post_battle_item_menu = include_post_battle_item_menu and not _is_active_trainer_encounter()
 	active_transition_run_id = _next_transition_run_id()
 	_log_transition_checkpoint("advance_to_next_enemy.entry", {
 		"fainted_species_id": fainted_species_id,
 		"active_turn_token": active_turn_token,
 		"include_fainted_text": include_fainted_text,
+		"include_post_battle_item_menu": include_post_battle_item_menu,
+		"effective_include_post_battle_item_menu": effective_include_post_battle_item_menu,
+		"trainer_encounter_active": _is_active_trainer_encounter(),
 	})
 
 	var transition_context := {
@@ -6467,6 +6543,14 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 			include_fainted_text
 		)
 	)
+	if effective_include_post_battle_item_menu:
+		phase_runner.push_phase(
+			post_battle_item_menu_phase_script.new(
+				self,
+				transition_context,
+				active_turn_token
+			)
+		)
 	phase_runner.push_phase(
 		encounter_transition_seed_load_phase_script.new(
 			self,
@@ -6508,6 +6592,308 @@ func advance_to_next_enemy(fainted_species_id: String, active_turn_token: int = 
 	active_transition_run_id = ""
 
 	return
+
+func _run_post_battle_item_menu_phase_state(_phase_payload, active_turn_token: int = -1) -> Dictionary:
+	if _is_turn_token_cancelled(active_turn_token):
+		return {
+			"aborted": true,
+			"cancelled": true,
+		}
+	if item_selection_overlay == null:
+		return {
+			"aborted": false,
+			"result": "overlay-missing",
+		}
+
+	var potion_count = _get_post_battle_item_potion_count()
+	if potion_count <= 0:
+		return {
+			"aborted": false,
+			"result": "no-items",
+		}
+
+	var menu_result = _open_post_battle_item_menu_and_wait(active_turn_token)
+	if menu_result is GDScriptFunctionState:
+		menu_result = yield(menu_result, "completed")
+
+	if _is_turn_token_cancelled(active_turn_token):
+		return {
+			"aborted": true,
+			"cancelled": true,
+		}
+
+	if typeof(menu_result) != TYPE_DICTIONARY:
+		return {
+			"aborted": false,
+			"result": "skipped",
+		}
+
+	if String(menu_result.get("result", "skip")) == "use" and String(menu_result.get("item_id", "")) == "potion":
+		_apply_post_battle_potion_to_active_player_mon()
+		return {
+			"aborted": false,
+			"result": "used",
+			"item_id": "potion",
+		}
+
+	return {
+		"aborted": false,
+		"result": "skipped",
+	}
+
+func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1) -> Dictionary:
+	if item_selection_overlay == null:
+		return {
+			"result": "skip",
+			"item_id": "",
+		}
+
+	hide_all_command_menus()
+	item_menu_result = ""
+	item_menu_selected_item_id = ""
+	item_menu_visible = true
+
+	var potion_count = _get_post_battle_item_potion_count()
+	var context = {
+		"items": [
+			{
+				"id": "potion",
+				"label": "Potion x%d" % max(0, potion_count),
+				"description": "Heals active Pokemon by 20 HP.",
+				"enabled": potion_count > 0,
+				"cost": 0,
+			},
+		],
+	}
+	item_selection_overlay.open_menu(context)
+	_build_post_battle_item_menu_controls(context)
+	var reveal_anim = item_selection_overlay.animate_post_battle_item_menu_reveal(self, "_is_turn_token_cancelled", active_turn_token, minimal_assets_path)
+	if reveal_anim is GDScriptFunctionState:
+		yield(reveal_anim, "completed")
+
+	while item_menu_visible and not _is_turn_token_cancelled(active_turn_token):
+		yield(get_tree(), "idle_frame")
+
+	if _is_turn_token_cancelled(active_turn_token):
+		item_menu_result = "skip"
+		item_menu_selected_item_id = ""
+
+	var result := {
+		"result": item_menu_result if not item_menu_result.empty() else "skip",
+		"item_id": item_menu_selected_item_id,
+	}
+
+	if item_selection_overlay != null:
+		item_selection_overlay.close_menu(false)
+	item_menu_visible = false
+	_show_main_controls_unlocked()
+	ensure_button_focus()
+	return result
+
+func _build_post_battle_item_menu_controls(context: Dictionary) -> void:
+	if item_selection_overlay == null:
+		return
+
+	var footer_root = item_selection_overlay.get_footer_root()
+	var reroll_button = null
+	var manage_items_button = null
+	var check_team_button = null
+	if footer_root != null:
+		reroll_button = footer_root.find_node("RerollButton", true, false)
+		manage_items_button = footer_root.find_node("ManageItemsButton", true, false)
+		check_team_button = footer_root.find_node("CheckTeamButton", true, false)
+
+	var free_items := _build_post_battle_free_items(context)
+	var preview_free_item_count := 0
+	if item_selection_overlay != null and item_selection_overlay.has_method("get_preview_free_item_count"):
+		preview_free_item_count = int(item_selection_overlay.call("get_preview_free_item_count"))
+	free_items = _coerce_free_items_for_preview(free_items, preview_free_item_count)
+	var shop_items := _build_post_battle_shop_items(context)
+	var preview_shop_item_count := 0
+	if item_selection_overlay != null and item_selection_overlay.has_method("get_preview_shop_item_count"):
+		preview_shop_item_count = int(item_selection_overlay.call("get_preview_shop_item_count"))
+	shop_items = _coerce_shop_items_for_preview(shop_items, preview_shop_item_count)
+	if item_selection_overlay.has_method("populate_post_battle_item_menu_slots"):
+		item_selection_overlay.call("populate_post_battle_item_menu_slots", free_items, shop_items, self, "_on_post_battle_item_pressed")
+
+	if reroll_button is Button:
+		reroll_button.focus_mode = Control.FOCUS_ALL
+		reroll_button.disabled = false
+	if manage_items_button is Button:
+		manage_items_button.focus_mode = Control.FOCUS_ALL
+		manage_items_button.disabled = false
+	if check_team_button is Button:
+		check_team_button.focus_mode = Control.FOCUS_ALL
+		check_team_button.disabled = false
+
+	call_deferred("_focus_first_post_battle_item_button")
+
+func _focus_first_post_battle_item_button() -> void:
+	for button in _get_post_battle_item_menu_buttons():
+		if button == null or button.disabled or not button.visible:
+			continue
+		button.grab_focus()
+		return
+
+func _on_post_battle_item_pressed(item_id: String) -> void:
+	if not item_menu_visible:
+		return
+	item_menu_selected_item_id = item_id.strip_edges().to_lower()
+	item_menu_result = "use"
+	item_menu_visible = false
+
+func _on_post_battle_item_skip_pressed() -> void:
+	if not item_menu_visible:
+		return
+	item_menu_selected_item_id = ""
+	item_menu_result = "skip"
+	item_menu_visible = false
+
+func _on_post_battle_item_continue_pressed() -> void:
+	if not item_menu_visible:
+		return
+	item_menu_selected_item_id = ""
+	item_menu_result = "continue"
+	item_menu_visible = false
+
+func _build_post_battle_free_items(context: Dictionary) -> Array:
+	var free_items := []
+	var items = context.get("items", [])
+	if typeof(items) != TYPE_ARRAY:
+		return free_items
+	for item in items:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		free_items.append({
+			"id": String(item.get("id", "")).strip_edges().to_lower(),
+			"label": String(item.get("label", "Item")),
+			"enabled": bool(item.get("enabled", true)),
+			"cost": int(item.get("cost", 0)),
+			"icon": String(item.get("id", "")).strip_edges().to_lower(),
+			"kind": "free",
+		})
+	return free_items
+
+func _coerce_free_items_for_preview(free_items: Array, target_count: int) -> Array:
+	var clamped_target = int(clamp(target_count, 0, 14))
+	if clamped_target <= 0:
+		return free_items
+
+	var adjusted_items = free_items.duplicate(true)
+	if adjusted_items.empty():
+		adjusted_items.append({
+			"id": "potion",
+			"label": "Potion x1",
+			"enabled": true,
+			"cost": 0,
+			"icon": "potion",
+			"kind": "free",
+		})
+
+	if adjusted_items.size() > clamped_target:
+		adjusted_items.resize(clamped_target)
+		return adjusted_items
+
+	var seed_items = adjusted_items.duplicate(true)
+	var seed_index := 0
+	while adjusted_items.size() < clamped_target:
+		var seed_entry = seed_items[seed_index % seed_items.size()]
+		var clone_entry = seed_entry.duplicate(true)
+		clone_entry["id"] = "%s_preview_%d" % [String(clone_entry.get("id", "item")), adjusted_items.size()]
+		adjusted_items.append(clone_entry)
+		seed_index += 1
+
+	return adjusted_items
+
+func _build_post_battle_shop_items(_context: Dictionary) -> Array:
+	var wave_index = int(_get_battle_biome_state().get("wave_index", 1))
+	if wave_index % 10 == 0:
+		return []
+	var base_cost = _resolve_post_battle_shop_base_cost()
+
+	var tiers = int(clamp(ceil(float(max(0, wave_index + 10)) / 30.0), 0, 7))
+	var tier_pool := [
+		[{"id": "potion", "label": "Potion", "icon": "potion", "cost_mult": 0.2}, {"id": "ether", "label": "Ether", "icon": "ether", "cost_mult": 0.4}, {"id": "revive", "label": "Revive", "icon": "revive", "cost_mult": 2.0}],
+		[{"id": "super_potion", "label": "Super Potion", "icon": "super_potion", "cost_mult": 0.45}, {"id": "full_heal", "label": "Full Heal", "icon": "full_heal", "cost_mult": 1.0}],
+		[{"id": "elixir", "label": "Elixir", "icon": "elixir", "cost_mult": 1.0}, {"id": "max_ether", "label": "Max Ether", "icon": "max_ether", "cost_mult": 1.0}],
+		[{"id": "hyper_potion", "label": "Hyper Potion", "icon": "hyper_potion", "cost_mult": 0.8}, {"id": "max_revive", "label": "Max Revive", "icon": "max_revive", "cost_mult": 2.75}, {"id": "memory_mushroom", "label": "Memory Mushroom", "icon": "memory_mushroom", "cost_mult": 4.0}],
+		[{"id": "max_potion", "label": "Max Potion", "icon": "max_potion", "cost_mult": 1.5}, {"id": "max_elixir", "label": "Max Elixir", "icon": "max_elixir", "cost_mult": 2.5}],
+		[{"id": "full_restore", "label": "Full Restore", "icon": "full_restore", "cost_mult": 2.25}],
+		[{"id": "sacred_ash", "label": "Sacred Ash", "icon": "sacred_ash", "cost_mult": 10.0}],
+	]
+
+	var shop_items := []
+	for i in range(min(tiers, tier_pool.size())):
+		for item in tier_pool[i]:
+			var cost_mult = float(item.get("cost_mult", 1.0))
+			var item_cost = int(round(float(base_cost) * cost_mult))
+			shop_items.append({
+				"id": String(item.get("id", "")),
+				"label": String(item.get("label", "Item")),
+				"enabled": true,
+				"cost": item_cost,
+				"icon": String(item.get("icon", "")),
+				"kind": "shop",
+			})
+	return shop_items
+
+func _coerce_shop_items_for_preview(shop_items: Array, target_count: int) -> Array:
+	var clamped_target = int(clamp(target_count, 0, 14))
+	if clamped_target <= 0:
+		return shop_items
+
+	var adjusted_items = shop_items.duplicate(true)
+	if adjusted_items.empty():
+		adjusted_items.append({
+			"id": "potion",
+			"label": "Potion",
+			"enabled": true,
+			"cost": _resolve_post_battle_shop_base_cost(),
+			"icon": "potion",
+			"kind": "shop",
+		})
+
+	if adjusted_items.size() > clamped_target:
+		adjusted_items.resize(clamped_target)
+		return adjusted_items
+
+	var seed_items = adjusted_items.duplicate(true)
+	var seed_index := 0
+	while adjusted_items.size() < clamped_target:
+		var seed_entry = seed_items[seed_index % seed_items.size()]
+		var clone_entry = seed_entry.duplicate(true)
+		clone_entry["id"] = "%s_preview_%d" % [String(clone_entry.get("id", "item")), adjusted_items.size()]
+		adjusted_items.append(clone_entry)
+		seed_index += 1
+
+	return adjusted_items
+
+func _resolve_post_battle_shop_base_cost() -> int:
+	var biome_state = _get_battle_biome_state()
+	var encounter_number = int(biome_state.get("encounter_number", 1))
+	# Placeholder base cost model: scales with wave progression and can be swapped later.
+	return int(max(100, encounter_number * 100))
+
+func _apply_post_battle_potion_to_active_player_mon() -> void:
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return
+	var player_data = battle_data["player"]
+	if not player_data.has_method("get_base_stat"):
+		return
+
+	var max_hp = max(1, int(player_data.get_base_stat("hp")))
+	var current_hp = int(player_data.current_hp)
+	if current_hp >= max_hp:
+		set_battle_text("Potion had no effect.")
+		return
+
+	var heal_amount = min(20, max_hp - current_hp)
+	player_data.current_hp = min(max_hp, current_hp + heal_amount)
+	post_battle_item_inventory["potion"] = max(0, int(post_battle_item_inventory.get("potion", 0)) - 1)
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+
+	var healed_species = String(player_data.species_id)
+	set_battle_text("Used Potion on %s. Restored %d HP." % [healed_species, heal_amount])
 
 func _is_turn_token_cancelled(active_turn_token: int) -> bool:
 	return active_turn_token != -1 and active_turn_token != turn_token
@@ -7153,6 +7539,13 @@ func ensure_input_action_key(action_name: String, key_code: int):
 	InputMap.action_add_event(action_name, new_event)
 
 func ensure_button_focus():
+	if item_menu_visible:
+		var item_focus_owner = get_focus_owner()
+		if is_post_battle_item_menu_button(item_focus_owner):
+			return
+		_focus_first_post_battle_item_button()
+		return
+
 	if pokedex_overlay_visible and pokedex_overlay != null:
 		var pokedex_focus_owner = get_focus_owner()
 		if pokedex_overlay.is_overlay_focus_owner(pokedex_focus_owner):
@@ -7190,6 +7583,9 @@ func ensure_button_focus():
 		move_button.grab_focus()
 
 func move_button_focus(action_name: String):
+	if item_menu_visible:
+		move_post_battle_item_menu_focus(action_name, get_focus_owner())
+		return
 	if pokedex_overlay_visible and pokedex_overlay != null:
 		pokedex_overlay.move_focus(action_name)
 		return
@@ -7293,6 +7689,12 @@ func move_ball_menu_focus(action_name: String, focus_owner):
 		return
 
 func press_focused_button():
+	if item_menu_visible:
+		ensure_button_focus()
+		var item_focus_owner = get_focus_owner()
+		if item_focus_owner is Button and not item_focus_owner.disabled:
+			item_focus_owner.emit_signal("pressed")
+		return
 	if pokedex_overlay_visible and pokedex_overlay != null:
 		pokedex_overlay.press_focused()
 		return
@@ -7332,6 +7734,7 @@ func hide_all_command_menus():
 	_set_command_menu_visibility(false, false, false)
 	_close_pokedex_overlay_internal()
 	_close_party_menu_internal()
+	_close_item_selection_overlay_internal()
 
 func _set_command_menu_visibility(show_controls: bool, show_attack: bool, show_ball: bool) -> void:
 	attack_menu_visible = show_attack
@@ -7845,6 +8248,11 @@ func _close_pokedex_overlay_internal() -> void:
 	if pokedex_overlay != null:
 		pokedex_overlay.close_menu()
 
+func _close_item_selection_overlay_internal() -> void:
+	item_menu_visible = false
+	if item_selection_overlay != null:
+		item_selection_overlay.close_menu(false)
+
 func close_pokedex_overlay() -> void:
 	if not pokedex_overlay_visible:
 		return
@@ -8096,6 +8504,11 @@ func _should_player_act_first(player_data, player_move, enemy_data, enemy_move, 
 
 	return _resolve_speed_tie_to_player(player_data, player_move, enemy_data, enemy_move, active_turn_token)
 
+func _get_post_battle_item_potion_count() -> int:
+	if debug_post_battle_item_potion_count_override >= 0:
+		return int(debug_post_battle_item_potion_count_override)
+	return int(post_battle_item_inventory.get("potion", 0))
+
 func _get_move_priority(move) -> int:
 	if move == null:
 		return 0
@@ -8250,6 +8663,58 @@ func _get_ball_menu_buttons() -> Array:
 		ball_masterball_button,
 		ball_cancel_button,
 	]
+
+func _get_post_battle_item_menu_buttons() -> Array:
+	var buttons := []
+	if item_selection_overlay == null:
+		return buttons
+	var content_root = item_selection_overlay.get_content_root()
+	if content_root != null:
+		var free_slots_container = content_root.find_node("FreeItemSlots", true, false)
+		if free_slots_container != null:
+			for row in free_slots_container.get_children():
+				for child in row.get_children():
+					if child is Button:
+						buttons.append(child)
+	var footer_root = item_selection_overlay.get_footer_root()
+	if footer_root != null:
+		for child in footer_root.get_children():
+			if child is Button:
+				buttons.append(child)
+	return buttons
+
+func is_post_battle_item_menu_button(focus_owner) -> bool:
+	for button in _get_post_battle_item_menu_buttons():
+		if focus_owner == button:
+			return true
+	return false
+
+func move_post_battle_item_menu_focus(action_name: String, focus_owner) -> void:
+	if focus_owner == null or not is_post_battle_item_menu_button(focus_owner):
+		_focus_first_post_battle_item_button()
+		return
+
+	var enabled_order := []
+	for button in _get_post_battle_item_menu_buttons():
+		if button == null:
+			continue
+		if button.visible and not button.disabled:
+			enabled_order.append(button)
+	if enabled_order.empty():
+		return
+
+	var current_index = enabled_order.find(focus_owner)
+	if current_index == -1:
+		_focus_first_post_battle_item_button()
+		return
+
+	if action_name == "ui_up" or action_name == "ui_left":
+		enabled_order[(current_index - 1 + enabled_order.size()) % enabled_order.size()].grab_focus()
+		return
+
+	if action_name == "ui_down" or action_name == "ui_right":
+		enabled_order[(current_index + 1) % enabled_order.size()].grab_focus()
+		return
 
 func focus_first_attack_move_button():
 	for button in _get_attack_move_buttons():
@@ -8758,103 +9223,10 @@ func restore_battler_sprite_state(target_sprite: Sprite, home_pos: Vector2):
 
 # Sprite atlas parsing helpers.
 func parse_sprite_frame(json_path: String, frame_name: String):
-	var frames = parse_all_sprite_frames(json_path)
-	if frames.empty():
-		return null
-
-	for frame in frames:
-		if frame.has("filename") and frame["filename"] == frame_name:
-			return frame
-
-	return null
+	return AtlasFrameParser.parse_sprite_frame(json_path, frame_name)
 
 func parse_all_sprite_frames(json_path: String) -> Array:
-	var f = File.new()
-	if not f.file_exists(json_path):
-		log_debug("Missing atlas json: %s" % json_path)
-		return []
-
-	f.open(json_path, File.READ)
-	var json_text = f.get_as_text()
-	f.close()
-
-	var result = JSON.parse(json_text)
-	if result.error != OK:
-		log_debug("JSON parse failed: %s" % json_path)
-		return []
-
-	var data = result.result
-	if typeof(data) != TYPE_DICTIONARY:
-		log_debug("Atlas payload is not a dictionary: %s" % json_path)
-		return []
-
-	var root_scale = _parse_atlas_scale(data.get("meta", {}).get("scale", 1.0))
-	# Support both TexturePacker-style atlases (`textures[].frames`) and
-	# Aseprite-style atlases (`frames` at the root).
-	if data.has("textures"):
-		var textures = data["textures"]
-		if textures.size() == 0:
-			log_debug("Atlas textures list empty: %s" % json_path)
-			return []
-
-		var merged_frames := []
-		for texture_entry in textures:
-			if typeof(texture_entry) != TYPE_DICTIONARY:
-				continue
-			var texture_scale = _parse_atlas_scale(texture_entry.get("scale", root_scale))
-			var texture_frames = _normalize_atlas_frames_container(texture_entry.get("frames", null), texture_scale)
-			if texture_frames.empty():
-				continue
-			for frame in texture_frames:
-				merged_frames.append(frame)
-
-		if not merged_frames.empty():
-			return merged_frames
-
-	if data.has("frames"):
-		var root_frames = _normalize_atlas_frames_container(data.get("frames", null), root_scale)
-		if not root_frames.empty():
-			return root_frames
-
-	log_debug("Atlas has no usable frames: %s" % json_path)
-	return []
-
-func _normalize_atlas_frames_container(frames_container, atlas_scale: float = 1.0) -> Array:
-	if frames_container == null:
-		return []
-
-	if typeof(frames_container) == TYPE_ARRAY:
-		var normalized_array := []
-		for frame_entry in frames_container:
-			if typeof(frame_entry) != TYPE_DICTIONARY:
-				continue
-			var normalized_frame = frame_entry.duplicate(true)
-			normalized_frame["_atlas_scale"] = atlas_scale
-			normalized_array.append(normalized_frame)
-		return normalized_array
-
-	if typeof(frames_container) == TYPE_DICTIONARY:
-		var keys = frames_container.keys()
-		keys.sort()
-		var normalized := []
-		for key in keys:
-			var frame_entry = frames_container[key]
-			if typeof(frame_entry) != TYPE_DICTIONARY:
-				continue
-			frame_entry = frame_entry.duplicate(true)
-			if not frame_entry.has("filename"):
-				frame_entry["filename"] = String(key)
-			frame_entry["_atlas_scale"] = atlas_scale
-			normalized.append(frame_entry)
-		return normalized
-
-	return []
-
-func _parse_atlas_scale(value) -> float:
-	var scale = float(value)
-	if scale <= 0.0:
-		return 1.0
-	return scale
+	return AtlasFrameParser.parse_all_sprite_frames(json_path)
 
 func get_all_numeric_frames(json_path: String) -> Array:
 	var frames = parse_all_sprite_frames(json_path)

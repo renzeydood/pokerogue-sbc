@@ -21,6 +21,7 @@ const BIOME_WILD_POOL_CATALOG_PATH := "res://data/biome-wild-pools.v1.json"
 const BASE_STATS_KEYS := ["hp", "atk", "def", "sp_atk", "sp_def", "spd"]
 const BASE_STATS_LABELS := ["HP", "ATK", "DEF", "SPATK", "SPDEF", "SPD"]
 const BASE_BAR_COLOR := Color(0.4, 0.666667, 0.6, 1)
+const AtlasFrameParser = preload("res://logic/AtlasFrameParser.gd")
 
 onready var ui_scale_root = $Panel/UiScaleRoot
 onready var current_pokemon_sprite = $Panel/UiScaleRoot/CurrentPokemonSprite
@@ -798,85 +799,10 @@ func _format_species_number(dex_number: int) -> String:
 	return "%03d" % dex_number
 
 func _parse_sprite_frame(json_path: String, frame_name: String):
-	var frames = _parse_all_sprite_frames(json_path)
-	if frames.empty():
-		return null
-	for frame in frames:
-		if frame.has("filename") and str(frame["filename"]) == frame_name:
-			return frame
-	return null
+	return AtlasFrameParser.parse_sprite_frame(json_path, frame_name)
 
 func _parse_all_sprite_frames(json_path: String) -> Array:
-	var file = File.new()
-	if not file.file_exists(json_path):
-		return []
-	if file.open(json_path, File.READ) != OK:
-		return []
-	var json_text = file.get_as_text()
-	file.close()
-
-	var result = JSON.parse(json_text)
-	if result.error != OK:
-		return []
-	var data = result.result
-	if typeof(data) != TYPE_DICTIONARY:
-		return []
-	var root_scale = _parse_atlas_scale(data.get("meta", {}).get("scale", 1.0))
-
-	if data.has("textures"):
-		var textures = data["textures"]
-		if typeof(textures) == TYPE_ARRAY and not textures.empty():
-			var merged_frames := []
-			for texture_entry in textures:
-				if typeof(texture_entry) != TYPE_DICTIONARY:
-					continue
-				var texture_scale = _parse_atlas_scale(texture_entry.get("scale", root_scale))
-				var texture_frames = _normalize_atlas_frames_container(texture_entry.get("frames", null), texture_scale)
-				for frame in texture_frames:
-					merged_frames.append(frame)
-			if not merged_frames.empty():
-				return merged_frames
-
-	if data.has("frames"):
-		var root_frames = _normalize_atlas_frames_container(data.get("frames", null), root_scale)
-		if not root_frames.empty():
-			return root_frames
-
-	return []
-
-func _normalize_atlas_frames_container(frames_container, atlas_scale: float = 1.0) -> Array:
-	if frames_container == null:
-		return []
-	if typeof(frames_container) == TYPE_ARRAY:
-		var normalized_array := []
-		for frame_entry in frames_container:
-			if typeof(frame_entry) != TYPE_DICTIONARY:
-				continue
-			var normalized_frame = frame_entry.duplicate(true)
-			normalized_frame["_atlas_scale"] = atlas_scale
-			normalized_array.append(normalized_frame)
-		return normalized_array
-	if typeof(frames_container) == TYPE_DICTIONARY:
-		var keys = frames_container.keys()
-		keys.sort()
-		var normalized := []
-		for key in keys:
-			var frame_entry = frames_container[key]
-			if typeof(frame_entry) != TYPE_DICTIONARY:
-				continue
-			frame_entry = frame_entry.duplicate(true)
-			if not frame_entry.has("filename"):
-				frame_entry["filename"] = str(key)
-			frame_entry["_atlas_scale"] = atlas_scale
-			normalized.append(frame_entry)
-		return normalized
-	return []
-
-func _parse_atlas_scale(value) -> float:
-	var scale = float(value)
-	if scale <= 0.0:
-		return 1.0
-	return scale
+	return AtlasFrameParser.parse_all_sprite_frames(json_path)
 
 func _get_all_numeric_frames(json_path: String) -> Array:
 	var frames = _parse_all_sprite_frames(json_path)
