@@ -5,7 +5,7 @@ const EditorPreviewSync = preload("res://logic/EditorPreviewSync.gd")
 
 signal close_requested
 signal modal_opened(context)
-signal modal_closed
+signal overlay_closed
 
 export(float) var ui_scale := 2.0 setget set_ui_scale
 export(bool) var editor_preview_enabled := true
@@ -57,7 +57,7 @@ func close_menu(emit_close: bool = true) -> void:
 	hide()
 	if emit_close:
 		emit_signal("close_requested")
-	emit_signal("modal_closed")
+	emit_signal("overlay_closed")
 
 func handle_back_action() -> bool:
 	if not close_on_back:
@@ -132,4 +132,4 @@ func _is_back_input(event: InputEvent) -> bool:
 	return false
 
 func _on_BackButton_pressed() -> void:
-	handle_back_action()
+	var _handled = handle_back_action()

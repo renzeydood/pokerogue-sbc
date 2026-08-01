@@ -1,0 +1,152 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://scenes/ItemSelectionOverlay.gd" type="Script" id=1]
+[ext_resource path="res://godot-minimal-assets/assets/images/ui/overlay_message.png" type="Texture" id=2]
+[ext_resource path="res://themes/PokemonUiThemeFooter.tres" type="Theme" id=3]
+[ext_resource path="res://themes/PokemonUiThemeCancel.tres" type="Theme" id=4]
+[ext_resource path="res://themes/PokemonUiTheme.tres" type="Theme" id=5]
+
+[node name="UiScaledModalTemplate" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme = ExtResource( 5 )
+script = ExtResource( 1 )
+title_label_path = NodePath("")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0.258824, 0.258824, 0.258824, 0.843137 )
+
+[node name="Panel" type="Control" parent="Backdrop"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -317.0
+margin_top = -238.0
+margin_right = 320.0
+margin_bottom = 237.0
+
+[node name="UiScaleRoot" type="Control" parent="Backdrop/Panel"]
+margin_left = -2.0
+margin_top = -2.0
+margin_right = 317.0
+margin_bottom = 237.0
+rect_scale = Vector2( 2, 2 )
+
+[node name="ModalRoot" type="Control" parent="Backdrop/Panel/UiScaleRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ContentRoot" type="MarginContainer" parent="Backdrop/Panel/UiScaleRoot/ModalRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 1.0
+margin_top = 15.0
+margin_right = -2.0
+margin_bottom = -91.0
+custom_constants/margin_right = 6
+custom_constants/margin_top = 6
+custom_constants/margin_left = 6
+custom_constants/margin_bottom = 6
+
+[node name="ItemSlotsRoot" type="VBoxContainer" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot"]
+margin_left = 6.0
+margin_top = 6.0
+margin_right = 310.0
+margin_bottom = 127.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_constants/separation = 6
+
+[node name="ShopHeader" type="Label" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot/ItemSlotsRoot"]
+visible = false
+margin_right = 304.0
+margin_bottom = 11.0
+text = "Shop Items"
+
+[node name="ShopItemSlots" type="VBoxContainer" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot/ItemSlotsRoot"]
+margin_right = 304.0
+margin_bottom = 115.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_constants/separation = 2
+
+[node name="FreeHeader" type="Label" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot/ItemSlotsRoot"]
+visible = false
+margin_top = 115.0
+margin_right = 304.0
+margin_bottom = 126.0
+text = "Free Items"
+
+[node name="FreeItemSlots" type="VBoxContainer" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot/ItemSlotsRoot"]
+margin_top = 121.0
+margin_right = 304.0
+margin_bottom = 121.0
+size_flags_horizontal = 3
+custom_constants/separation = 2
+
+[node name="FooterRoot" type="Control" parent="Backdrop/Panel/UiScaleRoot/ModalRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 148.5
+margin_right = -9.0
+margin_bottom = -74.5
+theme = ExtResource( 4 )
+
+[node name="RerollButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/FooterRoot"]
+margin_top = -2.0
+margin_right = 67.0
+margin_bottom = 18.0
+disabled = true
+text = "Reroll $xxxxx"
+flat = true
+
+[node name="ManageItemsButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/FooterRoot"]
+margin_left = 166.0
+margin_top = -2.0
+margin_right = 235.0
+margin_bottom = 18.0
+disabled = true
+text = "Manage Items"
+flat = true
+
+[node name="CheckTeamButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/FooterRoot"]
+margin_left = 249.5
+margin_top = -2.0
+margin_right = 308.5
+margin_bottom = 18.0
+disabled = true
+text = "Check Team"
+flat = true
+
+[node name="MessagePanel" type="Control" parent="Backdrop/Panel/UiScaleRoot/ModalRoot"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 15.0
+margin_top = -66.0
+margin_right = -17.0
+margin_bottom = -2.0
+theme = ExtResource( 3 )
+
+[node name="Sprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/MessagePanel"]
+position = Vector2( 144.5, 34 )
+scale = Vector2( 0.625, 0.666667 )
+texture = ExtResource( 2 )
+
+[node name="MessageMargin" type="MarginContainer" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/MessagePanel"]
+margin_left = -9.0
+margin_top = 7.0
+margin_right = 167.0
+margin_bottom = 59.0
+
+[node name="BattleTextLabel" type="Label" parent="Backdrop/Panel/UiScaleRoot/ModalRoot/MessagePanel/MessageMargin"]
+margin_top = 19.0
+margin_right = 176.0
+margin_bottom = 33.0
+text = "Battle ready."
+autowrap = true
