@@ -241,6 +241,7 @@ var pokemon_data_script = load("res://data/PokemonData.gd")
 var battle_calc_script = load("res://logic/BattleCalc.gd")
 var battle_fixture_loader_script = load("res://logic/BattleFixtureLoader.gd")
 var catalog_loader_script = load("res://logic/CatalogDataLoader.gd")
+var item_reward_model_resolver_script = load("res://logic/ItemRewardModelResolver.gd")
 var runtime_state_script = load("res://logic/RuntimeState.gd")
 var battle_phase_runner_script = load("res://logic/BattlePhaseRunner.gd")
 var encounter_transition_intro_phase_script = load("res://logic/phases/EncounterTransitionIntroPhase.gd")
@@ -493,6 +494,7 @@ var pokeball_particles_texture = null
 var pokeball_particles_frames := []
 var pokeball_open_particle_sprite_frames: SpriteFrames = null
 var catalog_loader = null
+var item_reward_model_resolver = null
 var selected_player_species_id := ""
 var attack_menu_visible := false
 var ball_menu_visible := false
@@ -6605,14 +6607,16 @@ func _run_post_battle_item_menu_phase_state(_phase_payload, active_turn_token: i
 			"result": "overlay-missing",
 		}
 
-	var potion_count = _get_post_battle_item_potion_count()
-	if potion_count <= 0:
+	var reward_model = _resolve_post_battle_item_model()
+	var free_items = reward_model.get("free_items", [])
+	var shop_items = reward_model.get("shop_items", [])
+	if bool(reward_model.get("skip_menu", false)) or (typeof(free_items) == TYPE_ARRAY and typeof(shop_items) == TYPE_ARRAY and free_items.empty() and shop_items.empty()):
 		return {
 			"aborted": false,
 			"result": "no-items",
 		}
 
-	var menu_result = _open_post_battle_item_menu_and_wait(active_turn_token)
+	var menu_result = _open_post_battle_item_menu_and_wait(active_turn_token, reward_model)
 	if menu_result is GDScriptFunctionState:
 		menu_result = yield(menu_result, "completed")
 
@@ -6641,7 +6645,7 @@ func _run_post_battle_item_menu_phase_state(_phase_payload, active_turn_token: i
 		"result": "skipped",
 	}
 
-func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1) -> Dictionary:
+func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_model: Dictionary = {}) -> Dictionary:
 	if item_selection_overlay == null:
 		return {
 			"result": "skip",
@@ -6653,17 +6657,30 @@ func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1) -> Dictio
 	item_menu_selected_item_id = ""
 	item_menu_visible = true
 
+	var free_items = reward_model.get("free_items", [])
+	var shop_items = reward_model.get("shop_items", [])
+	if typeof(free_items) != TYPE_ARRAY:
+		free_items = []
+	if typeof(shop_items) != TYPE_ARRAY:
+		shop_items = []
+
 	var potion_count = _get_post_battle_item_potion_count()
+	var potion_label = "Potion x%d" % max(0, potion_count)
+	if not free_items.empty() and typeof(free_items[0]) == TYPE_DICTIONARY:
+		potion_label = String(free_items[0].get("label", potion_label))
 	var context = {
 		"items": [
 			{
 				"id": "potion",
-				"label": "Potion x%d" % max(0, potion_count),
+				"label": potion_label,
 				"description": "Heals active Pokemon by 20 HP.",
 				"enabled": potion_count > 0,
 				"cost": 0,
 			},
 		],
+		"free_items": free_items,
+		"shop_items": shop_items,
+		"model_meta": reward_model.get("meta", {}),
 	}
 	item_selection_overlay.open_menu(context)
 	_build_post_battle_item_menu_controls(context)
@@ -6757,6 +6774,10 @@ func _on_post_battle_item_continue_pressed() -> void:
 	item_menu_visible = false
 
 func _build_post_battle_free_items(context: Dictionary) -> Array:
+	var explicit_free_items = context.get("free_items", null)
+	if typeof(explicit_free_items) == TYPE_ARRAY:
+		return _normalize_post_battle_item_entries(explicit_free_items, "free")
+
 	var free_items := []
 	var items = context.get("items", [])
 	if typeof(items) != TYPE_ARRAY:
@@ -6773,6 +6794,25 @@ func _build_post_battle_free_items(context: Dictionary) -> Array:
 			"kind": "free",
 		})
 	return free_items
+
+func _normalize_post_battle_item_entries(item_entries: Array, default_kind: String) -> Array:
+	var normalized_items := []
+	for item in item_entries:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		normalized_items.append({
+			"id": String(item.get("id", "")).strip_edges().to_lower(),
+			"label": String(item.get("label", "Item")),
+			"enabled": bool(item.get("enabled", true)),
+			"cost": int(item.get("cost", 0)),
+			"icon": String(item.get("icon", item.get("id", ""))).strip_edges().to_lower(),
+			"kind": String(item.get("kind", default_kind)),
+			"usage": String(item.get("usage", "consumable")),
+			"effect_key": String(item.get("effect_key", "")),
+			"target_hint": String(item.get("target_hint", "self_party_single")),
+			"trigger_hint": String(item.get("trigger_hint", "on_use")),
+		})
+	return normalized_items
 
 func _coerce_free_items_for_preview(free_items: Array, target_count: int) -> Array:
 	var clamped_target = int(clamp(target_count, 0, 14))
@@ -6806,36 +6846,45 @@ func _coerce_free_items_for_preview(free_items: Array, target_count: int) -> Arr
 	return adjusted_items
 
 func _build_post_battle_shop_items(_context: Dictionary) -> Array:
-	var wave_index = int(_get_battle_biome_state().get("wave_index", 1))
-	if wave_index % 10 == 0:
-		return []
-	var base_cost = _resolve_post_battle_shop_base_cost()
+	var explicit_shop_items = _context.get("shop_items", null)
+	if typeof(explicit_shop_items) == TYPE_ARRAY:
+		return _normalize_post_battle_item_entries(explicit_shop_items, "shop")
+	return []
 
-	var tiers = int(clamp(ceil(float(max(0, wave_index + 10)) / 30.0), 0, 7))
-	var tier_pool := [
-		[{"id": "potion", "label": "Potion", "icon": "potion", "cost_mult": 0.2}, {"id": "ether", "label": "Ether", "icon": "ether", "cost_mult": 0.4}, {"id": "revive", "label": "Revive", "icon": "revive", "cost_mult": 2.0}],
-		[{"id": "super_potion", "label": "Super Potion", "icon": "super_potion", "cost_mult": 0.45}, {"id": "full_heal", "label": "Full Heal", "icon": "full_heal", "cost_mult": 1.0}],
-		[{"id": "elixir", "label": "Elixir", "icon": "elixir", "cost_mult": 1.0}, {"id": "max_ether", "label": "Max Ether", "icon": "max_ether", "cost_mult": 1.0}],
-		[{"id": "hyper_potion", "label": "Hyper Potion", "icon": "hyper_potion", "cost_mult": 0.8}, {"id": "max_revive", "label": "Max Revive", "icon": "max_revive", "cost_mult": 2.75}, {"id": "memory_mushroom", "label": "Memory Mushroom", "icon": "memory_mushroom", "cost_mult": 4.0}],
-		[{"id": "max_potion", "label": "Max Potion", "icon": "max_potion", "cost_mult": 1.5}, {"id": "max_elixir", "label": "Max Elixir", "icon": "max_elixir", "cost_mult": 2.5}],
-		[{"id": "full_restore", "label": "Full Restore", "icon": "full_restore", "cost_mult": 2.25}],
-		[{"id": "sacred_ash", "label": "Sacred Ash", "icon": "sacred_ash", "cost_mult": 10.0}],
-	]
+func _ensure_item_reward_model_resolver():
+	if item_reward_model_resolver != null:
+		return item_reward_model_resolver
+	if item_reward_model_resolver_script == null:
+		return null
+	item_reward_model_resolver = item_reward_model_resolver_script.new()
+	return item_reward_model_resolver
 
-	var shop_items := []
-	for i in range(min(tiers, tier_pool.size())):
-		for item in tier_pool[i]:
-			var cost_mult = float(item.get("cost_mult", 1.0))
-			var item_cost = int(round(float(base_cost) * cost_mult))
-			shop_items.append({
-				"id": String(item.get("id", "")),
-				"label": String(item.get("label", "Item")),
-				"enabled": true,
-				"cost": item_cost,
-				"icon": String(item.get("icon", "")),
-				"kind": "shop",
-			})
-	return shop_items
+func _build_post_battle_item_run_context() -> Dictionary:
+	var biome_state = _get_battle_biome_state()
+	return {
+		"wave_index": int(biome_state.get("wave_index", 1)),
+		"encounter_number": int(biome_state.get("encounter_number", 1)),
+		"base_cost": _resolve_post_battle_shop_base_cost(),
+		"battle_type": String(battle_data.get("encounter_type", "wild")) if battle_data != null else "wild",
+	}
+
+func _resolve_post_battle_item_model() -> Dictionary:
+	var potion_count = _get_post_battle_item_potion_count()
+	var resolver = _ensure_item_reward_model_resolver()
+	if resolver != null and resolver.has_method("resolve_post_battle_model"):
+		var model = resolver.call("resolve_post_battle_model", _build_post_battle_item_run_context(), {
+			"potion": potion_count,
+		})
+		if typeof(model) == TYPE_DICTIONARY:
+			return model
+	return {
+		"free_items": [],
+		"shop_items": [],
+		"skip_menu": true,
+		"meta": {
+			"source": "resolver-unavailable",
+		},
+	}
 
 func _coerce_shop_items_for_preview(shop_items: Array, target_count: int) -> Array:
 	var clamped_target = int(clamp(target_count, 0, 14))

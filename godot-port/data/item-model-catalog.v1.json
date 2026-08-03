@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "generated_from": "dependency/pokerogue/src/modifier/modifier-type.ts#getPlayerShopModifierTypeOptionsForWave",
+  "generated_at": "2026-08-03T16:49:46.601221+00:00",
+  "free_reward_defaults": [
+    {
+      "modifier_id": "POTION",
+      "id": "potion",
+      "label": "Potion",
+      "icon": "potion",
+      "inventory_key": "potion",
+      "kind": "free",
+      "usage": "consumable",
+      "effect_key": "effect.heal.hp_flat_20",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "effect_type": "heal_hp_flat",
+      "effect_params": {
+        "amount": 20
+      }
+    }
+  ],
+  "shop_progression_tiers": [
+    [
+      {
+        "modifier_id": "POTION",
+        "id": "potion",
+        "label": "Potion",
+        "icon": "potion",
+        "cost_mult": 0.2,
+        "usage": "consumable",
+        "effect_key": "effect.heal.hp_flat_20",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_hp_flat",
+        "effect_params": {
+          "amount": 20
+        }
+      },
+      {
+        "modifier_id": "ETHER",
+        "id": "ether",
+        "label": "Ether",
+        "icon": "ether",
+        "cost_mult": 0.4,
+        "usage": "consumable",
+        "effect_key": "effect.pp.single_restore_10",
+        "target_hint": "self_party_single_move",
+        "trigger_hint": "on_use",
+        "effect_type": "restore_pp_single",
+        "effect_params": {
+          "amount": 10
+        }
+      },
+      {
+        "modifier_id": "REVIVE",
+        "id": "revive",
+        "label": "Revive",
+        "icon": "revive",
+        "cost_mult": 2.0,
+        "usage": "consumable",
+        "effect_key": "effect.revive.hp_percent_50",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "revive",
+        "effect_params": {
+          "percent": 50
+        }
+      },
+      {
+        "modifier_id": "ORAN_BERRY",
+        "id": "oran_berry",
+        "label": "Oran Berry",
+        "icon": "oran_berry",
+        "cost_mult": 0.6,
+        "usage": "held",
+        "effect_key": "effect.held.low_hp_heal_flat_10",
+        "target_hint": "holder",
+        "trigger_hint": "on_low_hp",
+        "effect_type": "held_low_hp_heal",
+        "effect_params": {
+          "amount": 10
+        }
+      }
+    ],
+    [
+      {
+        "modifier_id": "SUPER_POTION",
+        "id": "super_potion",
+        "label": "Super Potion",
+        "icon": "super_potion",
+        "cost_mult": 0.45,
+        "usage": "consumable",
+        "effect_key": "effect.heal.hp_flat_50",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_hp_flat",
+        "effect_params": {
+          "amount": 50
+        }
+      },
+      {
+        "modifier_id": "FULL_HEAL",
+        "id": "full_heal",
+        "label": "Full Heal",
+        "icon": "full_heal",
+        "cost_mult": 1.0,
+        "usage": "consumable",
+        "effect_key": "effect.heal.status_clear",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_status",
+        "effect_params": {}
+      }
+    ],
+    [
+      {
+        "modifier_id": "ELIXIR",
+        "id": "elixir",
+        "label": "Elixir",
+        "icon": "elixir",
+        "cost_mult": 1.0,
+        "usage": "consumable",
+        "effect_key": "effect.pp.all_restore_10",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "restore_pp_all",
+        "effect_params": {
+          "amount": 10
+        }
+      },
+      {
+        "modifier_id": "MAX_ETHER",
+        "id": "max_ether",
+        "label": "Max Ether",
+        "icon": "max_ether",
+        "cost_mult": 1.0,
+        "usage": "consumable",
+        "effect_key": "effect.pp.single_restore_full",
+        "target_hint": "self_party_single_move",
+        "trigger_hint": "on_use",
+        "effect_type": "restore_pp_single",
+        "effect_params": {
+          "amount": -1
+        }
+      },
+      {
+        "modifier_id": "SHELL_BELL",
+        "id": "shell_bell",
+        "label": "Shell Bell",
+        "icon": "shell_bell",
+        "cost_mult": 1.8,
+        "usage": "held",
+        "effect_key": "effect.held.hit_heal_fraction",
+        "target_hint": "holder",
+        "trigger_hint": "on_hit",
+        "effect_type": "held_on_hit_heal",
+        "effect_params": {
+          "fraction": "1/8"
+        }
+      }
+    ],
+    [
+      {
+        "modifier_id": "HYPER_POTION",
+        "id": "hyper_potion",
+        "label": "Hyper Potion",
+        "icon": "hyper_potion",
+        "cost_mult": 0.8,
+        "usage": "consumable",
+        "effect_key": "effect.heal.hp_flat_200",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_hp_flat",
+        "effect_params": {
+          "amount": 200
+        }
+      },
+      {
+        "modifier_id": "MAX_REVIVE",
+        "id": "max_revive",
+        "label": "Max Revive",
+        "icon": "max_revive",
+        "cost_mult": 2.75,
+        "usage": "consumable",
+        "effect_key": "effect.revive.hp_percent_100",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "revive",
+        "effect_params": {
+          "percent": 100
+        }
+      }
+    ],
+    [
+      {
+        "modifier_id": "MAX_POTION",
+        "id": "max_potion",
+        "label": "Max Potion",
+        "icon": "max_potion",
+        "cost_mult": 1.5,
+        "usage": "consumable",
+        "effect_key": "effect.heal.hp_full",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_hp_percent",
+        "effect_params": {
+          "percent": 100
+        }
+      },
+      {
+        "modifier_id": "MAX_ELIXIR",
+        "id": "max_elixir",
+        "label": "Max Elixir",
+        "icon": "max_elixir",
+        "cost_mult": 2.5,
+        "usage": "consumable",
+        "effect_key": "effect.pp.all_restore_full",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "restore_pp_all",
+        "effect_params": {
+          "amount": -1
+        }
+      },
+      {
+        "modifier_id": "LEFTOVERS",
+        "id": "leftovers",
+        "label": "Leftovers",
+        "icon": "leftovers",
+        "cost_mult": 2.6,
+        "usage": "held",
+        "effect_key": "effect.held.turn_heal_fraction",
+        "target_hint": "holder",
+        "trigger_hint": "turn_end",
+        "effect_type": "held_turn_heal",
+        "effect_params": {
+          "fraction": "1/16"
+        }
+      }
+    ],
+    [
+      {
+        "modifier_id": "FULL_RESTORE",
+        "id": "full_restore",
+        "label": "Full Restore",
+        "icon": "full_restore",
+        "cost_mult": 2.25,
+        "usage": "consumable",
+        "effect_key": "effect.heal.hp_full_and_status",
+        "target_hint": "self_party_single",
+        "trigger_hint": "on_use",
+        "effect_type": "heal_hp_and_status",
+        "effect_params": {
+          "percent": 100,
+          "heal_status": true
+        }
+      }
+    ],
+    [
+      {
+        "modifier_id": "SACRED_ASH",
+        "id": "sacred_ash",
+        "label": "Sacred Ash",
+        "icon": "sacred_ash",
+        "cost_mult": 10.0,
+        "usage": "consumable",
+        "effect_key": "effect.revive.party_full",
+        "target_hint": "self_party_all",
+        "trigger_hint": "on_use",
+        "effect_type": "party_revive",
+        "effect_params": {
+          "percent": 100
+        }
+      }
+    ]
+  ]
+}

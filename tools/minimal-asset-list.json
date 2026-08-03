@@ -12,6 +12,15 @@
   ],
   "attacks": [4],
   "arenas": ["abyss", "beach", "cave", "grass", "metropolis", "mountains", "temple", "volcano"],
+  "items": [
+    "POTION", "SUPER_POTION", "HYPER_POTION", "MAX_POTION", 
+    "ETHER", "MAX_ETHER", "ELIXIR", "MAX_ELIXIR",
+    "REVIVE", "MAX_REVIVE",
+    "FULL_HEAL", "FULL_RESTORE",
+    "ORAN_BERRY",   
+    "SHELL_BELL", "LEFTOVERS", 
+    "SACRED_ASH"
+  ],
   "general_assets": [
     "assets/images/pokemon_icons_0.png",
     "assets/images/pokemon_icons_0.json",

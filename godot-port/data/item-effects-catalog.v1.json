@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "generated_from": "godot-port/data/item-model-catalog.v1.json",
+  "generated_at": "2026-08-03T16:49:46.601221+00:00",
+  "items": [
+    {
+      "effect_key": "effect.heal.hp_flat_20",
+      "usage": "consumable",
+      "effect_type": "heal_hp_flat",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": 20
+      },
+      "source_item_ids": [
+        "potion"
+      ]
+    },
+    {
+      "effect_key": "effect.heal.hp_flat_200",
+      "usage": "consumable",
+      "effect_type": "heal_hp_flat",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": 200
+      },
+      "source_item_ids": [
+        "hyper_potion"
+      ]
+    },
+    {
+      "effect_key": "effect.heal.hp_flat_50",
+      "usage": "consumable",
+      "effect_type": "heal_hp_flat",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": 50
+      },
+      "source_item_ids": [
+        "super_potion"
+      ]
+    },
+    {
+      "effect_key": "effect.heal.hp_full",
+      "usage": "consumable",
+      "effect_type": "heal_hp_percent",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "percent": 100
+      },
+      "source_item_ids": [
+        "max_potion"
+      ]
+    },
+    {
+      "effect_key": "effect.heal.hp_full_and_status",
+      "usage": "consumable",
+      "effect_type": "heal_hp_and_status",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "percent": 100,
+        "heal_status": true
+      },
+      "source_item_ids": [
+        "full_restore"
+      ]
+    },
+    {
+      "effect_key": "effect.heal.status_clear",
+      "usage": "consumable",
+      "effect_type": "heal_status",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {},
+      "source_item_ids": [
+        "full_heal"
+      ]
+    },
+    {
+      "effect_key": "effect.held.hit_heal_fraction",
+      "usage": "held",
+      "effect_type": "held_on_hit_heal",
+      "target_hint": "holder",
+      "trigger_hint": "on_hit",
+      "params": {
+        "fraction": "1/8"
+      },
+      "source_item_ids": [
+        "shell_bell"
+      ]
+    },
+    {
+      "effect_key": "effect.held.low_hp_heal_flat_10",
+      "usage": "held",
+      "effect_type": "held_low_hp_heal",
+      "target_hint": "holder",
+      "trigger_hint": "on_low_hp",
+      "params": {
+        "amount": 10
+      },
+      "source_item_ids": [
+        "oran_berry"
+      ]
+    },
+    {
+      "effect_key": "effect.held.turn_heal_fraction",
+      "usage": "held",
+      "effect_type": "held_turn_heal",
+      "target_hint": "holder",
+      "trigger_hint": "turn_end",
+      "params": {
+        "fraction": "1/16"
+      },
+      "source_item_ids": [
+        "leftovers"
+      ]
+    },
+    {
+      "effect_key": "effect.pp.all_restore_10",
+      "usage": "consumable",
+      "effect_type": "restore_pp_all",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": 10
+      },
+      "source_item_ids": [
+        "elixir"
+      ]
+    },
+    {
+      "effect_key": "effect.pp.all_restore_full",
+      "usage": "consumable",
+      "effect_type": "restore_pp_all",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": -1
+      },
+      "source_item_ids": [
+        "max_elixir"
+      ]
+    },
+    {
+      "effect_key": "effect.pp.single_restore_10",
+      "usage": "consumable",
+      "effect_type": "restore_pp_single",
+      "target_hint": "self_party_single_move",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": 10
+      },
+      "source_item_ids": [
+        "ether"
+      ]
+    },
+    {
+      "effect_key": "effect.pp.single_restore_full",
+      "usage": "consumable",
+      "effect_type": "restore_pp_single",
+      "target_hint": "self_party_single_move",
+      "trigger_hint": "on_use",
+      "params": {
+        "amount": -1
+      },
+      "source_item_ids": [
+        "max_ether"
+      ]
+    },
+    {
+      "effect_key": "effect.revive.hp_percent_100",
+      "usage": "consumable",
+      "effect_type": "revive",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "percent": 100
+      },
+      "source_item_ids": [
+        "max_revive"
+      ]
+    },
+    {
+      "effect_key": "effect.revive.hp_percent_50",
+      "usage": "consumable",
+      "effect_type": "revive",
+      "target_hint": "self_party_single",
+      "trigger_hint": "on_use",
+      "params": {
+        "percent": 50
+      },
+      "source_item_ids": [
+        "revive"
+      ]
+    },
+    {
+      "effect_key": "effect.revive.party_full",
+      "usage": "consumable",
+      "effect_type": "party_revive",
+      "target_hint": "self_party_all",
+      "trigger_hint": "on_use",
+      "params": {
+        "percent": 100
+      },
+      "source_item_ids": [
+        "sacred_ash"
+      ]
+    }
+  ]
+}

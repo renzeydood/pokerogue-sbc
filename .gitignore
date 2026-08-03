@@ -1,3 +1,4 @@
 .import
 .vscode
 **/assets/
+**/__pycache__/
