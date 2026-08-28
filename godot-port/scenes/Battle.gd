@@ -86,6 +86,9 @@ export(Array, String) var biome_test_arena_rotation := ["grass", "metropolis", "
 export(bool) var debug_open_party_menu_on_ready := false
 export(bool) var debug_transition_checkpoints := true
 export(int, -1, 99) var debug_post_battle_item_potion_count_override := -1
+export(bool) var debug_allow_shop_item_use_without_currency := false
+export(int, -1, 999) var debug_wave_index_override := -1
+export(bool) var debug_item_effect_logs := false
 export(float) var party_menu_overlay_fade_duration_sec := 0.12
 export(bool) var player_trainer_enabled := true
 export(float) var player_trainer_idle_hold_sec := 0.5
@@ -381,6 +384,7 @@ onready var ball_cancel_button = ball_button_list.get_node_or_null("BallCancelBu
 # Runtime state and asset metadata.
 var minimal_assets_path = "res://godot-minimal-assets/"
 var hp_overlay_json = "assets/images/ui/overlay_hp.json"
+var item_effects_catalog_path = "res://data/item-effects-catalog.v1.json"
 var debug_log_path = "user://battle_debug.log"
 var biome_wild_pool_catalog_path = "res://data/biome-wild-pools.v1.json"
 var biome_trainer_rules_catalog_path = "res://data/biome-trainer-rules.v1.json"
@@ -495,6 +499,8 @@ var pokeball_particles_frames := []
 var pokeball_open_particle_sprite_frames: SpriteFrames = null
 var catalog_loader = null
 var item_reward_model_resolver = null
+var item_effects_catalog_loaded := false
+var item_effects_catalog_by_key := {}
 var selected_player_species_id := ""
 var attack_menu_visible := false
 var ball_menu_visible := false
@@ -505,9 +511,18 @@ var pokedex_overlay_visible := false
 var pokemon_evolution_overlay = null
 var pokemon_evolution_overlay_visible := false
 var item_selection_overlay = null
+const PARTY_MENU_MODE_FIELD := 0
+const PARTY_MENU_MODE_ITEM_TARGET := 1
+const PARTY_MENU_MODE_ITEM_MOVE_TARGET := 2
+
 var item_menu_visible := false
+var berry_trigger_used_this_turn := false
+var item_target_selection_pending := false
+var item_target_selected_slot_index := -1
+var item_target_selected_move_index := -1
 var item_menu_result = ""
 var item_menu_selected_item_id = ""
+var item_menu_selected_item_kind = ""
 var pokedex_return_to_party_menu := false
 var enemy_species_pool := []
 var trainers_catalog_by_id := {}
@@ -711,6 +726,15 @@ func _log_capture_checkpoint(label: String, details: Dictionary = {}) -> void:
 func _next_capture_run_id() -> String:
 	capture_run_counter += 1
 	return "cp-%s" % String(capture_run_counter)
+
+func _log_item_effect_checkpoint(label: String, details: Dictionary = {}) -> void:
+	if not debug_item_effect_logs:
+		return
+	var message = "Item effect checkpoint: " + label
+	if typeof(details) == TYPE_DICTIONARY:
+		for key in details.keys():
+			message += " | %s=%s" % [String(key), String(details[key])]
+	log_debug(message)
 
 func _log_biome_route_decision_checkpoint(biome_state: Dictionary) -> void:
 	if not debug_transition_checkpoints:
@@ -1356,6 +1380,8 @@ func setup_party_menu_overlay():
 	party_menu_visible = false
 	_connect_once(party_menu_overlay, "close_requested", "_on_PartyMenu_close_requested")
 	_connect_once(party_menu_overlay, "switch_slot_requested", "_on_PartyMenu_switch_slot_requested")
+	_connect_once(party_menu_overlay, "apply_slot_requested", "_on_PartyMenu_apply_slot_requested")
+	_connect_once(party_menu_overlay, "apply_move_slot_requested", "_on_PartyMenu_apply_move_slot_requested")
 	_connect_once(party_menu_overlay, "pokedex_entry_requested", "_on_PartyMenu_pokedex_entry_requested")
 	add_child(party_menu_overlay)
 	party_menu_overlay.raise()
@@ -2917,6 +2943,17 @@ func _input(event):
 			_on_post_battle_item_skip_pressed()
 			accept_event()
 			return
+		if item_selection_overlay != null and item_selection_overlay.is_skip_confirmation_pending():
+			if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down") \
+					or event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
+				item_selection_overlay.move_skip_confirmation_focus()
+				accept_event()
+				return
+			if event.is_action_pressed("ui_accept"):
+				press_focused_button()
+				accept_event()
+				return
+			return
 		if event.is_action_pressed("ui_up"):
 			move_post_battle_item_menu_focus("ui_up", get_focus_owner())
 			accept_event()
@@ -3400,6 +3437,12 @@ func _run_turn_action_state(turn_state: Dictionary, action: Dictionary, active_t
 			return turn_state
 
 	var battle_message = "%s used %s! %d damage." % [attacker.species_id, move_display_id, damage]
+	if actor_key == "player":
+		var on_hit_heal = _apply_active_player_held_on_hit_heal_trigger(damage)
+		if on_hit_heal > 0:
+			refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
+			sync_active_party_member_from_battle()
+			battle_message += " %s restored %d HP with a held item." % [String(attacker.species_id), on_hit_heal]
 	battle_message += build_type_effectiveness_text(type_multiplier)
 	if bool(effect_result.get("applied", false)):
 		var effect_messages = effect_result.get("messages", [])
@@ -3415,6 +3458,8 @@ func _run_turn_action_state(turn_state: Dictionary, action: Dictionary, active_t
 
 	if using_struggle:
 		var recoil_damage = _apply_struggle_recoil(attacker)
+		if actor_key == "player":
+			_apply_active_player_low_hp_held_trigger()
 		if recoil_damage > 0:
 			if actor_key == "player":
 				refresh_hp_ui(attacker, player_hp_bar, player_hp_value_label)
@@ -3436,6 +3481,9 @@ func _run_turn_action_state(turn_state: Dictionary, action: Dictionary, active_t
 		var fainted_side = "enemy" if actor_key == "player" else "player"
 		_mark_turn_side_fainted(turn_state, fainted_side, defender)
 		return turn_state
+
+	if actor_key == "enemy":
+		_apply_active_player_low_hp_held_trigger()
 
 	return turn_state
 
@@ -3732,6 +3780,8 @@ func _run_turn_end_unlock_phase_state(turn_state: Dictionary, _active_turn_token
 		return {}
 	if bool(turn_state.get("cancelled", false)):
 		return turn_state
+	_apply_active_player_low_hp_held_trigger()
+	_apply_active_player_turn_end_held_heal_trigger()
 	_finish_turn()
 	return turn_state
 
@@ -5073,6 +5123,7 @@ func set_action_lock(locked: bool):
 
 func _finish_turn():
 	turn_in_progress = false
+	berry_trigger_used_this_turn = false
 	if battle_ended:
 		return
 	if sendout_controls_locked:
@@ -6616,36 +6667,75 @@ func _run_post_battle_item_menu_phase_state(_phase_payload, active_turn_token: i
 			"result": "no-items",
 		}
 
-	var menu_result = _open_post_battle_item_menu_and_wait(active_turn_token, reward_model)
-	if menu_result is GDScriptFunctionState:
-		menu_result = yield(menu_result, "completed")
+	# Shop purchases loop back to the same menu (buy multiple items per visit); a used free
+	# item or an explicit skip/continue ends the phase, matching upstream SelectModifierPhase.
+	var is_first_menu_open := true
+	while true:
+		var menu_result = _open_post_battle_item_menu_and_wait(active_turn_token, reward_model, is_first_menu_open)
+		is_first_menu_open = false
+		if menu_result is GDScriptFunctionState:
+			menu_result = yield(menu_result, "completed")
 
-	if _is_turn_token_cancelled(active_turn_token):
-		return {
-			"aborted": true,
-			"cancelled": true,
-		}
+		if _is_turn_token_cancelled(active_turn_token):
+			return {
+				"aborted": true,
+				"cancelled": true,
+			}
 
-	if typeof(menu_result) != TYPE_DICTIONARY:
-		return {
-			"aborted": false,
-			"result": "skipped",
-		}
+		if typeof(menu_result) != TYPE_DICTIONARY:
+			return {
+				"aborted": false,
+				"result": "skipped",
+			}
 
-	if String(menu_result.get("result", "skip")) == "use" and String(menu_result.get("item_id", "")) == "potion":
-		_apply_post_battle_potion_to_active_player_mon()
-		return {
-			"aborted": false,
-			"result": "used",
-			"item_id": "potion",
-		}
+		if String(menu_result.get("result", "skip")) != "use":
+			return {
+				"aborted": false,
+				"result": "skipped",
+			}
+
+		var selected_item_id = String(menu_result.get("item_id", "")).strip_edges().to_lower()
+		var selected_item_kind_hint = String(menu_result.get("item_kind", "")).strip_edges().to_lower()
+		var selected_item_entry = _find_post_battle_item_entry_by_id(selected_item_id, reward_model, selected_item_kind_hint)
+		if selected_item_entry.empty():
+			set_battle_text("Selected item could not be resolved.")
+			continue
+
+		var apply_result = _apply_post_battle_selected_item(selected_item_entry)
+		if apply_result is GDScriptFunctionState:
+			apply_result = yield(apply_result, "completed")
+		if typeof(apply_result) != TYPE_DICTIONARY:
+			apply_result = {}
+
+		if _is_turn_token_cancelled(active_turn_token):
+			return {
+				"aborted": true,
+				"cancelled": true,
+			}
+
+		if not bool(apply_result.get("applied", false)):
+			# Includes target-selection cancel: reopen the same menu instead of ending the phase.
+			continue
+
+		var selected_item_kind = String(selected_item_entry.get("kind", "free")).strip_edges().to_lower()
+		if selected_item_kind == "free":
+			_consume_post_battle_free_item_inventory(selected_item_entry)
+			sync_active_party_member_from_battle()
+			return {
+				"aborted": false,
+				"result": "used",
+				"item_id": String(selected_item_entry.get("id", selected_item_id)).strip_edges().to_lower(),
+			}
+
+		# Shop item purchased: stay in the shop for further purchases.
+		sync_active_party_member_from_battle()
 
 	return {
 		"aborted": false,
 		"result": "skipped",
 	}
 
-func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_model: Dictionary = {}) -> Dictionary:
+func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_model: Dictionary = {}, play_reveal_animation: bool = true) -> Dictionary:
 	if item_selection_overlay == null:
 		return {
 			"result": "skip",
@@ -6655,6 +6745,7 @@ func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_mo
 	hide_all_command_menus()
 	item_menu_result = ""
 	item_menu_selected_item_id = ""
+	item_menu_selected_item_kind = ""
 	item_menu_visible = true
 
 	var free_items = reward_model.get("free_items", [])
@@ -6684,9 +6775,12 @@ func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_mo
 	}
 	item_selection_overlay.open_menu(context)
 	_build_post_battle_item_menu_controls(context)
-	var reveal_anim = item_selection_overlay.animate_post_battle_item_menu_reveal(self, "_is_turn_token_cancelled", active_turn_token, minimal_assets_path)
-	if reveal_anim is GDScriptFunctionState:
-		yield(reveal_anim, "completed")
+	if play_reveal_animation:
+		var reveal_anim = item_selection_overlay.animate_post_battle_item_menu_reveal(self, "_is_turn_token_cancelled", active_turn_token, minimal_assets_path)
+		if reveal_anim is GDScriptFunctionState:
+			yield(reveal_anim, "completed")
+	else:
+		item_selection_overlay.show_post_battle_item_menu_immediate()
 
 	while item_menu_visible and not _is_turn_token_cancelled(active_turn_token):
 		yield(get_tree(), "idle_frame")
@@ -6698,6 +6792,7 @@ func _open_post_battle_item_menu_and_wait(active_turn_token: int = -1, reward_mo
 	var result := {
 		"result": item_menu_result if not item_menu_result.empty() else "skip",
 		"item_id": item_menu_selected_item_id,
+		"item_kind": item_menu_selected_item_kind,
 	}
 
 	if item_selection_overlay != null:
@@ -6752,10 +6847,11 @@ func _focus_first_post_battle_item_button() -> void:
 		button.grab_focus()
 		return
 
-func _on_post_battle_item_pressed(item_id: String) -> void:
+func _on_post_battle_item_pressed(item_id: String, item_kind: String = "free") -> void:
 	if not item_menu_visible:
 		return
 	item_menu_selected_item_id = item_id.strip_edges().to_lower()
+	item_menu_selected_item_kind = item_kind.strip_edges().to_lower()
 	item_menu_result = "use"
 	item_menu_visible = false
 
@@ -6848,7 +6944,14 @@ func _coerce_free_items_for_preview(free_items: Array, target_count: int) -> Arr
 func _build_post_battle_shop_items(_context: Dictionary) -> Array:
 	var explicit_shop_items = _context.get("shop_items", null)
 	if typeof(explicit_shop_items) == TYPE_ARRAY:
-		return _normalize_post_battle_item_entries(explicit_shop_items, "shop")
+		var normalized_shop_items = _normalize_post_battle_item_entries(explicit_shop_items, "shop")
+		for i in range(normalized_shop_items.size()):
+			var entry = normalized_shop_items[i]
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			entry["enabled"] = bool(debug_allow_shop_item_use_without_currency)
+			normalized_shop_items[i] = entry
+		return normalized_shop_items
 	return []
 
 func _ensure_item_reward_model_resolver():
@@ -6859,14 +6962,27 @@ func _ensure_item_reward_model_resolver():
 	item_reward_model_resolver = item_reward_model_resolver_script.new()
 	return item_reward_model_resolver
 
-func _build_post_battle_item_run_context() -> Dictionary:
+func _resolve_current_wave_index() -> int:
+	if debug_wave_index_override > 0:
+		return int(debug_wave_index_override)
 	var biome_state = _get_battle_biome_state()
-	return {
-		"wave_index": int(biome_state.get("wave_index", 1)),
-		"encounter_number": int(biome_state.get("encounter_number", 1)),
+	var floor_index = int(biome_state.get("floor_index", biome_state.get("encounter_index", 0)))
+	return int(max(1, floor_index + 1))
+
+func _build_post_battle_item_run_context() -> Dictionary:
+	var wave_index = _resolve_current_wave_index()
+	var run_context = {
+		"wave_index": wave_index,
+		"encounter_number": wave_index,
 		"base_cost": _resolve_post_battle_shop_base_cost(),
 		"battle_type": String(battle_data.get("encounter_type", "wild")) if battle_data != null else "wild",
 	}
+	_log_item_effect_checkpoint("shop run context", {
+		"wave_index": wave_index,
+		"wave_override": debug_wave_index_override,
+		"base_cost": run_context["base_cost"],
+	})
+	return run_context
 
 func _resolve_post_battle_item_model() -> Dictionary:
 	var potion_count = _get_post_battle_item_potion_count()
@@ -6918,10 +7034,896 @@ func _coerce_shop_items_for_preview(shop_items: Array, target_count: int) -> Arr
 	return adjusted_items
 
 func _resolve_post_battle_shop_base_cost() -> int:
-	var biome_state = _get_battle_biome_state()
-	var encounter_number = int(biome_state.get("encounter_number", 1))
+	var encounter_number = _resolve_current_wave_index()
 	# Placeholder base cost model: scales with wave progression and can be swapped later.
 	return int(max(100, encounter_number * 100))
+
+func _find_post_battle_item_entry_by_id(item_id: String, reward_model: Dictionary, preferred_kind: String = "") -> Dictionary:
+	var normalized_item_id = item_id.strip_edges().to_lower()
+	if normalized_item_id.empty():
+		return {}
+
+	var candidate_ids = [normalized_item_id]
+	var preview_marker_index = normalized_item_id.find("_preview_")
+	if preview_marker_index > 0:
+		candidate_ids.append(normalized_item_id.substr(0, preview_marker_index))
+
+	var free_items = reward_model.get("free_items", [])
+	if typeof(free_items) != TYPE_ARRAY:
+		free_items = []
+	var shop_items = reward_model.get("shop_items", [])
+	if typeof(shop_items) != TYPE_ARRAY:
+		shop_items = []
+
+	# Search the pressed section first so a duplicate id (e.g. potion in both free and shop) resolves correctly.
+	var normalized_preferred_kind = preferred_kind.strip_edges().to_lower()
+	var ordered_entry_lists = [shop_items, free_items] if normalized_preferred_kind == "shop" else [free_items, shop_items]
+
+	for candidate_id in candidate_ids:
+		for entries in ordered_entry_lists:
+			for raw_entry in entries:
+				if typeof(raw_entry) != TYPE_DICTIONARY:
+					continue
+				var entry_id = String(raw_entry.get("id", "")).strip_edges().to_lower()
+				if entry_id == candidate_id:
+					return raw_entry.duplicate(true)
+
+	return {}
+
+func _apply_post_battle_selected_item(item_entry: Dictionary):
+	var item_kind = String(item_entry.get("kind", "free")).strip_edges().to_lower()
+	if item_kind == "shop" and not debug_allow_shop_item_use_without_currency:
+		set_battle_text("Shop purchases are disabled until currency flow is implemented.")
+		return {"applied": false, "reason": "shop-currency-disabled"}
+
+	var item_usage = String(item_entry.get("usage", "consumable")).strip_edges().to_lower()
+	var effect = _resolve_item_effect_definition(item_entry)
+	_log_item_effect_checkpoint("item selected", {
+		"item_id": String(item_entry.get("id", "")),
+		"kind": item_kind,
+		"usage": item_usage,
+		"effect_type": String(effect.get("effect_type", "")),
+		"max_stack": int(effect.get("max_stack", 1)),
+	})
+	if not _item_requires_party_target(item_usage, effect):
+		if item_usage == "held":
+			return _attach_held_item_to_party_slot(item_entry, _get_active_party_slot_index(), effect)
+		return _apply_consumable_item_effect(item_entry)
+
+	var target_slot_index = _select_party_target_slot_for_item(item_entry, item_usage, effect)
+	if target_slot_index is GDScriptFunctionState:
+		target_slot_index = yield(target_slot_index, "completed")
+	target_slot_index = int(target_slot_index)
+	var selected_move_index = item_target_selected_move_index
+	item_target_selected_move_index = -1
+	if target_slot_index == -2:
+		set_battle_text("%s had no valid target." % _resolve_item_label(item_entry))
+		return {"applied": false, "reason": "no-eligible-target"}
+	if target_slot_index < 0:
+		return {"applied": false, "reason": "target-cancelled"}
+
+	if item_usage == "held":
+		return _attach_held_item_to_party_slot(item_entry, target_slot_index, effect)
+	return _apply_consumable_item_effect_to_slot(item_entry, target_slot_index, effect, selected_move_index)
+
+func _resolve_item_label(item_entry: Dictionary) -> String:
+	return String(item_entry.get("label", _title_case_item_id(String(item_entry.get("id", "item")))))
+
+func _get_active_party_slot_index() -> int:
+	if runtime_state_script == null:
+		return -1
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return -1
+	return int(party.get_active_slot_index())
+
+# Party-wide effects (e.g. Sacred Ash) skip target selection, mirroring upstream AllPokemon modifier types.
+func _item_requires_party_target(item_usage: String, effect: Dictionary) -> bool:
+	if item_usage == "held":
+		return true
+	var effect_type = String(effect.get("effect_type", "")).strip_edges().to_lower()
+	return effect_type in [
+		"heal_hp_flat",
+		"heal_hp_percent",
+		"heal_hp_and_status",
+		"heal_status",
+		"restore_pp_single",
+		"restore_pp_all",
+		"revive",
+	]
+
+func _resolve_item_target_eligible_slots(item_entry: Dictionary, item_usage: String, effect: Dictionary) -> Array:
+	var eligible_slots := []
+	if runtime_state_script == null:
+		return eligible_slots
+	# Sync the live battle HP into the party model first, or the active slot's stored
+	# current_hp may be stale/sentinel and get misjudged by the checks below.
+	sync_active_party_member_from_battle()
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return eligible_slots
+
+	var effect_type = String(effect.get("effect_type", "")).strip_edges().to_lower()
+	var held_item_id = String(item_entry.get("id", "")).strip_edges().to_lower()
+	var max_stack = int(max(1, int(effect.get("max_stack", 1))))
+	var members = party.get_members_copy()
+	for slot_index in range(members.size()):
+		var member = members[slot_index]
+		if typeof(member) != TYPE_DICTIONARY or member.empty():
+			continue
+		var current_hp = int(member.get("current_hp", -1))
+		var is_fainted = current_hp == 0
+		if item_usage == "held":
+			if _count_held_item_stacks(member.get("held_item_ids", []), held_item_id) < max_stack:
+				eligible_slots.append(slot_index)
+			continue
+		if effect_type == "revive":
+			if is_fainted:
+				eligible_slots.append(slot_index)
+			continue
+		if is_fainted:
+			continue
+		if effect_type in ["heal_hp_flat", "heal_hp_percent", "heal_hp_and_status"]:
+			# -1 is the "never synced" sentinel and means full HP, matching the overlay's display normalization.
+			var normalized_current_hp = current_hp if current_hp >= 0 else _resolve_party_member_max_hp(member)
+			var slot_max_hp = _resolve_party_member_max_hp(member)
+			if normalized_current_hp < slot_max_hp:
+				eligible_slots.append(slot_index)
+			continue
+		eligible_slots.append(slot_index)
+	return eligible_slots
+
+func _item_requires_move_target(effect: Dictionary) -> bool:
+	return String(effect.get("target_hint", "")).strip_edges().to_lower() == "self_party_single_move"
+
+func _select_party_target_slot_for_item(item_entry: Dictionary, item_usage: String, effect: Dictionary):
+	if party_menu_overlay == null:
+		return _get_active_party_slot_index()
+
+	var eligible_slots = _resolve_item_target_eligible_slots(item_entry, item_usage, effect)
+
+	var item_label = _resolve_item_label(item_entry)
+	var prompt = ("Give %s to which Pokemon?" % item_label) if item_usage == "held" else ("Use %s on which Pokemon?" % item_label)
+
+	item_target_selection_pending = true
+	item_target_selected_slot_index = -1
+	item_target_selected_move_index = -1
+	var requires_move_target = _item_requires_move_target(effect)
+	var menu_mode = PARTY_MENU_MODE_ITEM_MOVE_TARGET if requires_move_target else PARTY_MENU_MODE_ITEM_TARGET
+	var menu_context = {
+		"prompt": prompt,
+		"eligible_slots": eligible_slots,
+	}
+	if requires_move_target:
+		menu_context["move_options"] = _build_item_move_options_by_slot(eligible_slots)
+	open_party_menu(true, menu_mode, menu_context)
+
+	while item_target_selection_pending:
+		yield(get_tree(), "idle_frame")
+
+	var selected_slot_index = item_target_selected_slot_index
+	item_target_selected_slot_index = -1
+	_close_party_menu_internal()
+	return selected_slot_index
+
+func _apply_consumable_item_effect_to_slot(item_entry: Dictionary, slot_index: int, effect: Dictionary, move_index: int = -1) -> Dictionary:
+	var effect_type = String(effect.get("effect_type", "")).strip_edges().to_lower()
+	var active_slot_index = _get_active_party_slot_index()
+	var uses_selected_move = effect_type == "restore_pp_single" and move_index >= 0
+	if effect_type != "revive" and not uses_selected_move and slot_index == active_slot_index:
+		var active_result = _apply_consumable_item_effect(item_entry)
+		if bool(active_result.get("applied", false)):
+			sync_active_party_member_from_battle()
+		return active_result
+
+	if runtime_state_script == null:
+		return {"applied": false, "reason": "runtime-state-missing"}
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return {"applied": false, "reason": "party-missing"}
+	var member = party.get_member_at(slot_index)
+	if member.empty():
+		return {"applied": false, "reason": "member-missing"}
+
+	var params = effect.get("params", {})
+	if typeof(params) != TYPE_DICTIONARY:
+		params = {}
+	var item_label = _resolve_item_label(item_entry)
+	var species_label = String(member.get("species_id", "Pokemon"))
+	var max_hp = _resolve_party_member_max_hp(member)
+	var raw_current_hp = int(member.get("current_hp", -1))
+	# -1 is the "never synced" sentinel and means full HP, matching the overlay's display normalization.
+	var current_hp = raw_current_hp if raw_current_hp >= 0 else max_hp
+
+	match effect_type:
+		"heal_hp_flat":
+			return _apply_party_slot_hp_restore(party, slot_index, int(max(0, int(params.get("amount", 0)))), item_label, species_label, current_hp, max_hp)
+		"heal_hp_percent", "heal_hp_and_status":
+			var percent = max(0.0, float(params.get("percent", 100.0)))
+			var heal_value = int(round((percent / 100.0) * float(max_hp)))
+			return _apply_party_slot_hp_restore(party, slot_index, heal_value, item_label, species_label, current_hp, max_hp)
+		"revive":
+			if current_hp != 0:
+				set_battle_text("%s had no effect." % item_label)
+				return {"applied": false, "reason": "target-not-fainted"}
+			var revive_hp = _resolve_party_member_revive_hp(member, float(params.get("percent", 50.0)))
+			party.update_member_at(slot_index, {"current_hp": revive_hp})
+			if slot_index == active_slot_index and battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+				battle_data["player"].current_hp = revive_hp
+				refresh_hp_ui(battle_data["player"], player_hp_bar, player_hp_value_label)
+			set_battle_text("Used %s. %s was revived." % [item_label, species_label])
+			return {"applied": true, "reason": "ok"}
+		"heal_status":
+			set_battle_text("Used %s on %s. Status-clearing effects await FEATURE-02C status conditions." % [item_label, species_label])
+			return {"applied": true, "reason": "status-placeholder"}
+		"restore_pp_single", "restore_pp_all":
+			if effect_type == "restore_pp_single" and move_index >= 0:
+				return _apply_party_slot_pp_restore_move(party, slot_index, member, move_index, int(params.get("amount", 0)), item_label, species_label)
+			return _apply_party_slot_pp_restore(party, slot_index, member, int(params.get("amount", 0)), effect_type == "restore_pp_all", item_label, species_label)
+		_:
+			set_battle_text("%s has no mapped effect yet." % item_label)
+			return {"applied": false, "reason": "effect-unmapped"}
+
+func _build_item_move_options_by_slot(eligible_slots: Array) -> Dictionary:
+	var move_options_by_slot := {}
+	if runtime_state_script == null:
+		return move_options_by_slot
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return move_options_by_slot
+
+	for slot_index in eligible_slots:
+		var member = party.get_member_at(int(slot_index))
+		if member.empty():
+			continue
+		var move_labels := []
+		for move_state in _resolve_party_member_move_states(int(slot_index), member):
+			move_labels.append("%s %d/%d" % [
+				String(move_state.get("move_id", "-")),
+				int(move_state.get("current_pp", 0)),
+				int(move_state.get("max_pp", 0)),
+			])
+		move_options_by_slot[int(slot_index)] = move_labels
+	return move_options_by_slot
+
+# Active slot reads live battle moves so PP shown matches in-battle usage.
+func _resolve_party_member_move_states(slot_index: int, member: Dictionary) -> Array:
+	var move_states := []
+	if slot_index == _get_active_party_slot_index() and battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		var moves = battle_data["player"].moves
+		if typeof(moves) == TYPE_ARRAY:
+			for move in moves:
+				if move == null:
+					continue
+				move_states.append({
+					"move_id": String(move.move_id),
+					"current_pp": int(move.current_pp),
+					"max_pp": int(move.max_pp),
+				})
+		return move_states
+
+	var move_ids = _resolve_party_member_effective_move_ids(member)
+	if move_ids.empty():
+		return move_states
+	var max_pp_values = _resolve_party_member_move_max_pp(member)
+	var move_pp_current = member.get("move_pp_current", [])
+	if typeof(move_pp_current) != TYPE_ARRAY:
+		move_pp_current = []
+	for move_index in range(move_ids.size()):
+		var max_pp = int(max_pp_values[move_index]) if move_index < max_pp_values.size() else -1
+		var current_pp = int(move_pp_current[move_index]) if move_index < move_pp_current.size() else -1
+		if current_pp < 0:
+			current_pp = max(0, max_pp)
+		move_states.append({
+			"move_id": String(move_ids[move_index]),
+			"current_pp": current_pp,
+			"max_pp": max(0, max_pp),
+		})
+	return move_states
+
+func _apply_party_slot_pp_restore_move(party, slot_index: int, member: Dictionary, move_index: int, amount: int, item_label: String, species_label: String) -> Dictionary:
+	if slot_index == _get_active_party_slot_index() and battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		var moves = battle_data["player"].moves
+		if typeof(moves) != TYPE_ARRAY or move_index < 0 or move_index >= moves.size():
+			return {"applied": false, "reason": "move-missing"}
+		var move = moves[move_index]
+		if move == null:
+			return {"applied": false, "reason": "move-missing"}
+		var active_max_pp = int(move.max_pp)
+		var active_current_pp = int(move.current_pp)
+		if active_max_pp < 0 or active_current_pp >= active_max_pp:
+			set_battle_text("%s had no effect." % item_label)
+			return {"applied": false, "reason": "pp-full"}
+		if amount < 0:
+			move.restore_pp_full()
+		else:
+			move.set_current_pp(min(active_max_pp, active_current_pp + max(0, amount)))
+		sync_active_party_member_from_battle()
+		set_battle_text("Used %s. Restored PP for %s." % [item_label, String(move.move_id)])
+		return {"applied": true, "reason": "ok"}
+
+	var move_ids = _resolve_party_member_effective_move_ids(member)
+	if move_index < 0 or move_index >= move_ids.size():
+		return {"applied": false, "reason": "move-missing"}
+	var max_pp_values = _resolve_party_member_move_max_pp(member)
+	if move_index >= max_pp_values.size():
+		return {"applied": false, "reason": "move-data-missing"}
+	var max_pp = int(max_pp_values[move_index])
+	var move_pp_current = member.get("move_pp_current", [])
+	if typeof(move_pp_current) != TYPE_ARRAY:
+		move_pp_current = []
+	move_pp_current = move_pp_current.duplicate()
+	while move_pp_current.size() < move_ids.size():
+		move_pp_current.append(-1)
+
+	var current_pp = int(move_pp_current[move_index])
+	if max_pp < 0 or current_pp < 0 or current_pp >= max_pp:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "pp-full"}
+
+	move_pp_current[move_index] = max_pp if amount < 0 else int(min(max_pp, current_pp + max(0, amount)))
+	# Persist the resolved move_ids too, since bench members may not have had a stored moveset yet.
+	party.update_member_at(slot_index, {"move_ids": move_ids, "move_pp_current": move_pp_current})
+	set_battle_text("Used %s on %s. Restored PP for %s." % [item_label, species_label, String(move_ids[move_index])])
+	return {"applied": true, "reason": "ok"}
+
+func _apply_party_slot_hp_restore(party, slot_index: int, heal_amount: int, item_label: String, species_label: String, current_hp: int, max_hp: int) -> Dictionary:
+	if current_hp >= max_hp:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "hp-full"}
+	var applied_heal = int(min(max(0, heal_amount), max_hp - current_hp))
+	if applied_heal <= 0:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "zero-heal"}
+	party.update_member_at(slot_index, {"current_hp": current_hp + applied_heal})
+	set_battle_text("Used %s on %s. Restored %d HP." % [item_label, species_label, applied_heal])
+	return {"applied": true, "reason": "ok"}
+
+func _apply_party_slot_pp_restore(party, slot_index: int, member: Dictionary, amount: int, restore_all: bool, item_label: String, species_label: String) -> Dictionary:
+	var move_ids = _resolve_party_member_effective_move_ids(member)
+	if move_ids.empty():
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "moves-missing"}
+
+	var max_pp_values = _resolve_party_member_move_max_pp(member)
+	if max_pp_values.empty():
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "move-data-missing"}
+
+	var move_pp_current = member.get("move_pp_current", [])
+	if typeof(move_pp_current) != TYPE_ARRAY:
+		move_pp_current = []
+	move_pp_current = move_pp_current.duplicate()
+	while move_pp_current.size() < move_ids.size():
+		move_pp_current.append(-1)
+
+	var applied_any := false
+	for move_index in range(move_ids.size()):
+		if move_index >= max_pp_values.size():
+			break
+		var max_pp = int(max_pp_values[move_index])
+		if max_pp < 0:
+			continue
+		var current_pp = int(move_pp_current[move_index])
+		if current_pp < 0 or current_pp >= max_pp:
+			continue
+		move_pp_current[move_index] = max_pp if amount < 0 else int(min(max_pp, current_pp + max(0, amount)))
+		applied_any = true
+		if not restore_all:
+			break
+
+	if not applied_any:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "pp-full"}
+
+	# Persist the resolved move_ids too, since bench members may not have had a stored moveset yet.
+	party.update_member_at(slot_index, {"move_ids": move_ids, "move_pp_current": move_pp_current})
+	set_battle_text("Used %s on %s. Restored PP." % [item_label, species_label])
+	return {"applied": true, "reason": "ok"}
+
+func _resolve_party_member_effective_move_ids(member: Dictionary) -> Array:
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) == TYPE_ARRAY and not move_ids.empty():
+		return move_ids
+	var data = _build_party_member_catalog_data(member)
+	if data == null:
+		return []
+	var moves = data.moves if typeof(data) != TYPE_DICTIONARY else data.get("moves", [])
+	if typeof(moves) != TYPE_ARRAY:
+		return []
+	var resolved_ids := []
+	for move in moves:
+		if move != null:
+			resolved_ids.append(String(move.move_id))
+	return resolved_ids
+
+func _resolve_party_member_move_max_pp(member: Dictionary) -> Array:
+	var data = _build_party_member_catalog_data(member)
+	if data == null:
+		return []
+	var moves = data.moves if typeof(data) != TYPE_DICTIONARY else data.get("moves", [])
+	if typeof(moves) != TYPE_ARRAY:
+		return []
+	var max_pp_values := []
+	for move in moves:
+		max_pp_values.append(int(move.max_pp) if move != null else -1)
+	return max_pp_values
+
+func _build_party_member_catalog_data(member: Dictionary):
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	if species_id.empty():
+		return null
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return null
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) != TYPE_ARRAY:
+		move_ids = []
+	return catalog_loader.build_pokemon_data(species_id, max(1, int(member.get("level", 1))), move_ids)
+
+func _resolve_party_member_max_hp(member: Dictionary) -> int:
+	var data = _build_party_member_catalog_data(member)
+	if data == null or not data.has_method("get_base_stat"):
+		return 1
+	return int(max(1, int(data.get_base_stat("hp"))))
+
+# Duplicate entries in held_item_ids represent upstream stackCount.
+func _count_held_item_stacks(held_item_ids, item_id: String) -> int:
+	if typeof(held_item_ids) != TYPE_ARRAY:
+		return 0
+	var normalized_item_id = item_id.strip_edges().to_lower()
+	if normalized_item_id.empty():
+		return 0
+	var stack_count := 0
+	for held_item_id in held_item_ids:
+		if String(held_item_id).strip_edges().to_lower() == normalized_item_id:
+			stack_count += 1
+	return stack_count
+
+func _attach_held_item_to_party_slot(item_entry: Dictionary, slot_index: int, effect: Dictionary) -> Dictionary:
+	if runtime_state_script == null:
+		return {"applied": false, "reason": "runtime-state-missing"}
+
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return {"applied": false, "reason": "party-missing"}
+	if slot_index < 0:
+		return {"applied": false, "reason": "no-target-member"}
+
+	var member = party.get_member_at(slot_index)
+	if member.empty():
+		return {"applied": false, "reason": "member-missing"}
+
+	var held_item_ids = member.get("held_item_ids", [])
+	if typeof(held_item_ids) != TYPE_ARRAY:
+		held_item_ids = []
+	held_item_ids = held_item_ids.duplicate()
+
+	var item_id = String(item_entry.get("id", "")).strip_edges().to_lower()
+	if item_id.empty():
+		return {"applied": false, "reason": "invalid-item-id"}
+
+	var species_label = String(member.get("species_id", "Pokemon"))
+	var max_stack = int(max(1, int(effect.get("max_stack", 1))))
+	var stack_count = _count_held_item_stacks(held_item_ids, item_id)
+	if stack_count >= max_stack:
+		set_battle_text("%s cannot hold any more %s." % [species_label, _title_case_item_id(item_id)])
+		return {"applied": false, "reason": "max-stack-reached"}
+
+	held_item_ids.append(item_id)
+	party.update_member_at(slot_index, {
+		"held_item_ids": held_item_ids,
+	})
+	var new_stack_count = stack_count + 1
+	_log_item_effect_checkpoint("held item attached", {
+		"item_id": item_id,
+		"slot_index": slot_index,
+		"species": species_label,
+		"stack_before": stack_count,
+		"stack_after": new_stack_count,
+		"max_stack": max_stack,
+	})
+	if new_stack_count > 1:
+		set_battle_text("Attached %s to %s. (x%d)" % [_title_case_item_id(item_id), species_label, new_stack_count])
+	else:
+		set_battle_text("Attached %s to %s." % [_title_case_item_id(item_id), species_label])
+	return {"applied": true, "reason": "ok", "stack_count": new_stack_count}
+
+func _ensure_item_effects_catalog_loaded() -> void:
+	if item_effects_catalog_loaded:
+		return
+	item_effects_catalog_loaded = true
+	item_effects_catalog_by_key = {}
+
+	var file = File.new()
+	if file.open(item_effects_catalog_path, File.READ) != OK:
+		return
+	var parsed = JSON.parse(file.get_as_text())
+	file.close()
+	if parsed.error != OK or typeof(parsed.result) != TYPE_DICTIONARY:
+		return
+
+	var items = parsed.result.get("items", [])
+	if typeof(items) != TYPE_ARRAY:
+		return
+
+	for item in items:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var effect_key = String(item.get("effect_key", "")).strip_edges()
+		if effect_key.empty():
+			continue
+		item_effects_catalog_by_key[effect_key] = item.duplicate(true)
+
+func _resolve_item_effect_definition(item_entry: Dictionary) -> Dictionary:
+	_ensure_item_effects_catalog_loaded()
+	var effect_key = String(item_entry.get("effect_key", "")).strip_edges()
+	var catalog_entry = item_effects_catalog_by_key.get(effect_key, {})
+	if typeof(catalog_entry) != TYPE_DICTIONARY:
+		catalog_entry = {}
+
+	var effect_type = String(catalog_entry.get("effect_type", item_entry.get("effect_type", ""))).strip_edges().to_lower()
+	var target_hint = String(catalog_entry.get("target_hint", item_entry.get("target_hint", "self_party_single"))).strip_edges().to_lower()
+	var trigger_hint = String(catalog_entry.get("trigger_hint", item_entry.get("trigger_hint", "on_use"))).strip_edges().to_lower()
+	var params = catalog_entry.get("params", item_entry.get("effect_params", {}))
+	if typeof(params) != TYPE_DICTIONARY:
+		params = {}
+
+	return {
+		"effect_key": effect_key,
+		"effect_type": effect_type,
+		"target_hint": target_hint,
+		"trigger_hint": trigger_hint,
+		"params": params,
+		"max_stack": int(max(1, int(catalog_entry.get("max_stack", item_entry.get("max_stack", 1))))),
+	}
+
+func _apply_consumable_item_effect(item_entry: Dictionary) -> Dictionary:
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return {"applied": false, "reason": "player-missing"}
+
+	var player_data = battle_data["player"]
+	if not player_data.has_method("get_base_stat"):
+		return {"applied": false, "reason": "invalid-player"}
+
+	var effect = _resolve_item_effect_definition(item_entry)
+	var effect_type = String(effect.get("effect_type", "")).strip_edges().to_lower()
+	var params = effect.get("params", {})
+	var item_label = String(item_entry.get("label", _title_case_item_id(String(item_entry.get("id", "item")))))
+
+	match effect_type:
+		"heal_hp_flat":
+			var heal_amount = max(0, int(params.get("amount", 0)))
+			return _apply_active_player_hp_restore(player_data, heal_amount, item_label)
+		"heal_hp_percent", "heal_hp_and_status":
+			var percent = max(0.0, float(params.get("percent", 100.0)))
+			var max_hp = max(1, int(player_data.get_base_stat("hp")))
+			var heal_value = int(round((percent / 100.0) * float(max_hp)))
+			return _apply_active_player_hp_restore(player_data, heal_value, item_label)
+		"restore_pp_single":
+			return _apply_active_player_pp_restore_single(player_data, int(params.get("amount", 0)), item_label)
+		"restore_pp_all":
+			return _apply_active_player_pp_restore_all(player_data, int(params.get("amount", 0)), item_label)
+		"heal_status":
+			set_battle_text("Used %s. Status-clearing effects await FEATURE-02C status conditions." % item_label)
+			return {"applied": true, "reason": "status-placeholder"}
+		"revive":
+			return _apply_party_revive_effect(item_label, float(params.get("percent", 50.0)), false)
+		"party_revive":
+			return _apply_party_revive_effect(item_label, float(params.get("percent", 100.0)), true)
+		_:
+			set_battle_text("%s has no mapped effect yet." % item_label)
+			return {"applied": false, "reason": "effect-unmapped"}
+
+func _apply_party_revive_effect(item_label: String, revive_percent: float, revive_all: bool) -> Dictionary:
+	if runtime_state_script == null:
+		return {"applied": false, "reason": "runtime-state-missing"}
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return {"applied": false, "reason": "party-missing"}
+
+	var members = party.get_members_copy()
+	if members.empty():
+		return {"applied": false, "reason": "party-empty"}
+
+	var revived_count := 0
+	var active_index = int(party.get_active_slot_index())
+	var revived_active_slot := false
+	var revived_active_hp := 0
+	for slot_index in range(members.size()):
+		var member = members[slot_index]
+		if typeof(member) != TYPE_DICTIONARY or member.empty():
+			continue
+		var current_hp = int(member.get("current_hp", -1))
+		if current_hp != 0:
+			continue
+		var revive_hp = _resolve_party_member_revive_hp(member, revive_percent)
+		party.update_member_at(slot_index, {
+			"current_hp": revive_hp,
+		})
+		if slot_index == active_index:
+			revived_active_slot = true
+			revived_active_hp = revive_hp
+		revived_count += 1
+		if not revive_all:
+			break
+
+	if revived_count <= 0:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "no-fainted-party-member"}
+
+	if revived_active_slot and battle_data != null and battle_data.has("player") and battle_data["player"] != null:
+		battle_data["player"].current_hp = revived_active_hp
+		refresh_hp_ui(battle_data["player"], player_hp_bar, player_hp_value_label)
+	set_battle_text("Used %s. Revived %d Pokemon." % [item_label, revived_count])
+	return {"applied": true, "reason": "ok", "revived_count": revived_count}
+
+func _resolve_party_member_revive_hp(member: Dictionary, revive_percent: float) -> int:
+	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
+	var level = max(1, int(member.get("level", 1)))
+	if species_id.empty():
+		return 1
+
+	if catalog_loader == null:
+		catalog_loader = catalog_loader_script.new()
+	if catalog_loader == null or not catalog_loader.load_catalogs():
+		return 1
+
+	var move_ids = member.get("move_ids", [])
+	if typeof(move_ids) != TYPE_ARRAY:
+		move_ids = []
+	var data = catalog_loader.build_pokemon_data(species_id, level, move_ids)
+	if data == null or not data.has_method("get_base_stat"):
+		return 1
+	var max_hp = max(1, int(data.get_base_stat("hp")))
+	var restored_hp = int(round(float(max_hp) * max(0.0, revive_percent) / 100.0))
+	return int(max(1, min(max_hp, restored_hp)))
+
+func _apply_active_player_hp_restore(player_data, heal_amount: int, item_label: String) -> Dictionary:
+	var max_hp = max(1, int(player_data.get_base_stat("hp")))
+	var current_hp = int(player_data.current_hp)
+	if current_hp >= max_hp:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "hp-full"}
+
+	var applied_heal = min(max(0, heal_amount), max_hp - current_hp)
+	if applied_heal <= 0:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "zero-heal"}
+
+	player_data.current_hp = min(max_hp, current_hp + applied_heal)
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	var healed_species = String(player_data.species_id)
+	set_battle_text("Used %s on %s. Restored %d HP." % [item_label, healed_species, applied_heal])
+	return {"applied": true, "reason": "ok"}
+
+func _apply_active_player_pp_restore_single(player_data, amount: int, item_label: String) -> Dictionary:
+	var moves = []
+	if typeof(player_data) == TYPE_DICTIONARY:
+		moves = player_data.get("moves", [])
+	elif player_data != null and player_data.has_method("get"):
+		moves = player_data.get("moves")
+	if typeof(moves) != TYPE_ARRAY:
+		return {"applied": false, "reason": "moves-missing"}
+
+	for move in moves:
+		if move == null:
+			continue
+		var max_pp = int(move.max_pp)
+		if max_pp < 0:
+			continue
+		var current_pp = int(move.current_pp)
+		if current_pp >= max_pp:
+			continue
+		if amount < 0:
+			move.restore_pp_full()
+		else:
+			move.set_current_pp(min(max_pp, current_pp + max(0, amount)))
+		set_battle_text("Used %s. Restored PP for %s." % [item_label, String(move.move_id)])
+		return {"applied": true, "reason": "ok"}
+
+	set_battle_text("%s had no effect." % item_label)
+	return {"applied": false, "reason": "pp-full"}
+
+func _apply_active_player_pp_restore_all(player_data, amount: int, item_label: String) -> Dictionary:
+	var moves = []
+	if typeof(player_data) == TYPE_DICTIONARY:
+		moves = player_data.get("moves", [])
+	elif player_data != null and player_data.has_method("get"):
+		moves = player_data.get("moves")
+	if typeof(moves) != TYPE_ARRAY:
+		return {"applied": false, "reason": "moves-missing"}
+
+	var applied_any := false
+	for move in moves:
+		if move == null:
+			continue
+		var max_pp = int(move.max_pp)
+		if max_pp < 0:
+			continue
+		var current_pp = int(move.current_pp)
+		if current_pp >= max_pp:
+			continue
+		if amount < 0:
+			move.restore_pp_full()
+		else:
+			move.set_current_pp(min(max_pp, current_pp + max(0, amount)))
+		applied_any = true
+
+	if not applied_any:
+		set_battle_text("%s had no effect." % item_label)
+		return {"applied": false, "reason": "pp-full"}
+
+	set_battle_text("Used %s. Restored PP for all moves." % item_label)
+	return {"applied": true, "reason": "ok"}
+
+func _get_active_party_held_item_ids() -> Array:
+	if runtime_state_script == null:
+		return []
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return []
+	var active_index = int(party.get_active_slot_index())
+	if active_index < 0:
+		return []
+	var active_member = party.get_member_at(active_index)
+	if active_member.empty():
+		return []
+	var held_item_ids = active_member.get("held_item_ids", [])
+	if typeof(held_item_ids) != TYPE_ARRAY:
+		return []
+	return held_item_ids.duplicate(true)
+
+func _remove_active_party_held_item(item_id: String) -> void:
+	if runtime_state_script == null:
+		return
+	var party = runtime_state_script.get_party(get_tree())
+	if party == null:
+		return
+	var active_index = int(party.get_active_slot_index())
+	if active_index < 0:
+		return
+	var active_member = party.get_member_at(active_index)
+	if active_member.empty():
+		return
+	var held_item_ids = active_member.get("held_item_ids", [])
+	if typeof(held_item_ids) != TYPE_ARRAY:
+		return
+	var normalized_item_id = item_id.strip_edges().to_lower()
+	if normalized_item_id.empty():
+		return
+	if held_item_ids.has(normalized_item_id):
+		held_item_ids.erase(normalized_item_id)
+		party.update_member_at(active_index, {
+			"held_item_ids": held_item_ids,
+		})
+
+func _apply_active_player_held_on_hit_heal_trigger(damage_dealt: int) -> int:
+	if damage_dealt <= 0:
+		return 0
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return 0
+	var held_item_ids = _get_active_party_held_item_ids()
+	if held_item_ids.empty():
+		return 0
+	var stack_count = _count_held_item_stacks(held_item_ids, "shell_bell")
+	if stack_count <= 0:
+		return 0
+
+	var player_data = battle_data["player"]
+	if not player_data.has_method("get_base_stat"):
+		return 0
+	var max_hp = max(1, int(player_data.get_base_stat("hp")))
+	var current_hp = int(player_data.current_hp)
+	if current_hp >= max_hp:
+		return 0
+
+	var heal_amount = max(1, int(floor(float(max(0, damage_dealt)) / 8.0))) * stack_count
+	var applied_heal = min(heal_amount, max_hp - current_hp)
+	_log_item_effect_checkpoint("held trigger on_hit", {
+		"item_id": "shell_bell",
+		"stack_count": stack_count,
+		"damage_dealt": damage_dealt,
+		"heal_per_stack": max(1, int(floor(float(max(0, damage_dealt)) / 8.0))),
+		"heal_total": heal_amount,
+		"heal_applied": applied_heal,
+	})
+	if applied_heal <= 0:
+		return 0
+	player_data.current_hp = min(max_hp, current_hp + applied_heal)
+	return applied_heal
+
+func _apply_active_player_turn_end_held_heal_trigger() -> void:
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return
+	var held_item_ids = _get_active_party_held_item_ids()
+	if held_item_ids.empty():
+		return
+	var stack_count = _count_held_item_stacks(held_item_ids, "leftovers")
+	if stack_count <= 0:
+		return
+
+	var player_data = battle_data["player"]
+	if not player_data.has_method("get_base_stat"):
+		return
+	var max_hp = max(1, int(player_data.get_base_stat("hp")))
+	var current_hp = int(player_data.current_hp)
+	if current_hp <= 0 or current_hp >= max_hp:
+		return
+
+	var heal_amount = max(1, int(floor(float(max_hp) / 16.0))) * stack_count
+	var applied_heal = min(heal_amount, max_hp - current_hp)
+	_log_item_effect_checkpoint("held trigger turn_end", {
+		"item_id": "leftovers",
+		"stack_count": stack_count,
+		"max_hp": max_hp,
+		"heal_per_stack": max(1, int(floor(float(max_hp) / 16.0))),
+		"heal_total": heal_amount,
+		"heal_applied": applied_heal,
+	})
+	if applied_heal <= 0:
+		return
+	player_data.current_hp = min(max_hp, current_hp + applied_heal)
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
+	set_battle_text("Leftovers restored %d HP." % applied_heal)
+
+func _apply_active_player_low_hp_held_trigger() -> void:
+	if berry_trigger_used_this_turn:
+		return
+	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
+		return
+	var held_item_ids = _get_active_party_held_item_ids()
+	if held_item_ids.empty():
+		return
+	if not held_item_ids.has("oran_berry"):
+		return
+
+	var player_data = battle_data["player"]
+	if not player_data.has_method("get_base_stat"):
+		return
+	var max_hp = max(1, int(player_data.get_base_stat("hp")))
+	var current_hp = int(player_data.current_hp)
+	if current_hp <= 0:
+		return
+	var threshold_hp = int(floor(float(max_hp) / 2.0))
+	if current_hp > max(1, threshold_hp):
+		return
+
+	var heal_amount = min(10, max_hp - current_hp)
+	if heal_amount <= 0:
+		return
+	player_data.current_hp = min(max_hp, current_hp + heal_amount)
+	berry_trigger_used_this_turn = true
+	_log_item_effect_checkpoint("held trigger on_low_hp", {
+		"item_id": "oran_berry",
+		"stack_before": _count_held_item_stacks(held_item_ids, "oran_berry"),
+		"threshold_hp": threshold_hp,
+		"hp_before": current_hp,
+		"heal_applied": heal_amount,
+	})
+	_remove_active_party_held_item("oran_berry")
+	refresh_hp_ui(player_data, player_hp_bar, player_hp_value_label)
+	sync_active_party_member_from_battle()
+	set_battle_text("Oran Berry restored %d HP." % heal_amount)
+
+func _consume_post_battle_free_item_inventory(item_entry: Dictionary) -> void:
+	var inventory_key = String(item_entry.get("inventory_key", item_entry.get("id", ""))).strip_edges().to_lower()
+	if inventory_key.empty():
+		return
+	if not post_battle_item_inventory.has(inventory_key):
+		return
+	post_battle_item_inventory[inventory_key] = max(0, int(post_battle_item_inventory.get(inventory_key, 0)) - 1)
+
+func _title_case_item_id(item_id: String) -> String:
+	var words = item_id.strip_edges().replace("-", "_").split("_", false)
+	for i in range(words.size()):
+		var word = String(words[i])
+		if word.empty():
+			continue
+		words[i] = word.substr(0, 1).to_upper() + word.substr(1).to_lower()
+	return " ".join(words)
 
 func _apply_post_battle_potion_to_active_player_mon() -> void:
 	if battle_data == null or not battle_data.has("player") or battle_data["player"] == null:
@@ -7843,7 +8845,7 @@ func refresh_ball_menu_layout() -> void:
 	var container_height = window_min_height + 4.0
 	ball_menu_container.margin_top = ball_menu_container.margin_bottom - container_height
 
-func open_party_menu(skip_fade: bool = false):
+func open_party_menu(skip_fade: bool = false, menu_mode: int = PARTY_MENU_MODE_FIELD, menu_context: Dictionary = {}):
 	if party_menu_overlay == null:
 		set_battle_text("Party menu scene is missing.")
 		return
@@ -7860,7 +8862,7 @@ func open_party_menu(skip_fade: bool = false):
 
 	hide_all_command_menus()
 	_stop_party_menu_fade_tween()
-	party_menu_overlay.open_menu(members, active_index)
+	party_menu_overlay.open_menu(members, active_index, menu_mode, menu_context)
 	if skip_fade:
 		_set_party_menu_overlay_alpha(1.0)
 		party_menu_visible = true
@@ -8318,10 +9320,27 @@ func close_pokedex_overlay() -> void:
 	ensure_button_focus()
 
 func _on_PartyMenu_close_requested():
+	if item_target_selection_pending:
+		item_target_selection_pending = false
+		item_target_selected_slot_index = -1
+		return
 	if forced_switch_pending:
 		set_battle_text("Choose a Pokemon to continue the battle.")
 		return
 	close_party_menu()
+
+func _on_PartyMenu_apply_slot_requested(slot_index: int) -> void:
+	if not item_target_selection_pending:
+		return
+	item_target_selected_slot_index = slot_index
+	item_target_selection_pending = false
+
+func _on_PartyMenu_apply_move_slot_requested(slot_index: int, move_index: int) -> void:
+	if not item_target_selection_pending:
+		return
+	item_target_selected_slot_index = slot_index
+	item_target_selected_move_index = move_index
+	item_target_selection_pending = false
 
 func _on_PartyMenu_pokedex_entry_requested(species_id: String) -> void:
 	if battle_ended:

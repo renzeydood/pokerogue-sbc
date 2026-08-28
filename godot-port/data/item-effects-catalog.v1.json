@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "generated_from": "godot-port/data/item-model-catalog.v1.json",
-  "generated_at": "2026-08-03T16:49:46.601221+00:00",
+  "generated_at": "2026-08-21T13:46:05.371681+00:00",
   "items": [
     {
       "effect_key": "effect.heal.hp_flat_20",
@@ -12,6 +12,7 @@
       "params": {
         "amount": 20
       },
+      "max_stack": 1,
       "source_item_ids": [
         "potion"
       ]
@@ -25,6 +26,7 @@
       "params": {
         "amount": 200
       },
+      "max_stack": 1,
       "source_item_ids": [
         "hyper_potion"
       ]
@@ -38,6 +40,7 @@
       "params": {
         "amount": 50
       },
+      "max_stack": 1,
       "source_item_ids": [
         "super_potion"
       ]
@@ -51,6 +54,7 @@
       "params": {
         "percent": 100
       },
+      "max_stack": 1,
       "source_item_ids": [
         "max_potion"
       ]
@@ -65,6 +69,7 @@
         "percent": 100,
         "heal_status": true
       },
+      "max_stack": 1,
       "source_item_ids": [
         "full_restore"
       ]
@@ -76,6 +81,7 @@
       "target_hint": "self_party_single",
       "trigger_hint": "on_use",
       "params": {},
+      "max_stack": 1,
       "source_item_ids": [
         "full_heal"
       ]
@@ -89,6 +95,7 @@
       "params": {
         "fraction": "1/8"
       },
+      "max_stack": 4,
       "source_item_ids": [
         "shell_bell"
       ]
@@ -102,6 +109,7 @@
       "params": {
         "amount": 10
       },
+      "max_stack": 2,
       "source_item_ids": [
         "oran_berry"
       ]
@@ -115,6 +123,7 @@
       "params": {
         "fraction": "1/16"
       },
+      "max_stack": 4,
       "source_item_ids": [
         "leftovers"
       ]
@@ -128,6 +137,7 @@
       "params": {
         "amount": 10
       },
+      "max_stack": 1,
       "source_item_ids": [
         "elixir"
       ]
@@ -141,6 +151,7 @@
       "params": {
         "amount": -1
       },
+      "max_stack": 1,
       "source_item_ids": [
         "max_elixir"
       ]
@@ -154,6 +165,7 @@
       "params": {
         "amount": 10
       },
+      "max_stack": 1,
       "source_item_ids": [
         "ether"
       ]
@@ -167,6 +179,7 @@
       "params": {
         "amount": -1
       },
+      "max_stack": 1,
       "source_item_ids": [
         "max_ether"
       ]
@@ -180,6 +193,7 @@
       "params": {
         "percent": 100
       },
+      "max_stack": 1,
       "source_item_ids": [
         "max_revive"
       ]
@@ -193,6 +207,7 @@
       "params": {
         "percent": 50
       },
+      "max_stack": 1,
       "source_item_ids": [
         "revive"
       ]
@@ -206,6 +221,7 @@
       "params": {
         "percent": 100
       },
+      "max_stack": 1,
       "source_item_ids": [
         "sacred_ash"
       ]
