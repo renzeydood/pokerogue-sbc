@@ -29,6 +29,7 @@ anchor_bottom = 1.0
 mouse_filter = 1
 theme = ExtResource( 12 )
 script = ExtResource( 1 )
+action_menu_horizontal_gap_px = 4.0
 
 [node name="Backdrop" type="TextureRect" parent="."]
 anchor_right = 1.0
@@ -104,7 +105,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot1"]
-position = Vector2( -7.5833, -1.33333 )
+position = Vector2( -7.5833, -5.33333 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -169,7 +170,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot2"]
-position = Vector2( -16.5833, -5.33334 )
+position = Vector2( -16.5833, -9.33334 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -233,7 +234,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot3"]
-position = Vector2( -7.5833, -0.33331 )
+position = Vector2( -7.5833, -4.33331 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -298,7 +299,7 @@ position = Vector2( 78.75, 7.08334 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot4"]
-position = Vector2( -8.5833, -4.33334 )
+position = Vector2( -8.5833, -8.33334 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -362,7 +363,7 @@ position = Vector2( 78.75, 7.08333 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/RightSlotsAnchor/RightSlot5"]
-position = Vector2( -18.5833, -8.33335 )
+position = Vector2( -18.5833, -12.3334 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -427,7 +428,7 @@ position = Vector2( 35.4167, 30 )
 texture = ExtResource( 10 )
 
 [node name="PokemonIconSprite" type="Sprite" parent="Backdrop/Panel/UiScaleRoot/SlotList/LeftSlot"]
-position = Vector2( 88.0833, -13.4167 )
+position = Vector2( 88.0833, -21.4167 )
 texture = ExtResource( 8 )
 centered = false
 region_enabled = true
@@ -471,7 +472,7 @@ margin_top = -38.0
 margin_left = 1.0
 margin_right = 251.0
 margin_bottom = 38.0
-rect_min_size = Vector2( 230, 38 )
+rect_min_size = Vector2( 150, 38 )
 theme = ExtResource( 14 )
 texture = ExtResource( 3 )
 patch_margin_left = 8
@@ -528,12 +529,13 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_top = -38.0
+margin_right = -92.0
 
 [node name="MessageActionWindowSprite" type="NinePatchRect" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer"]
 margin_left = 1.0
-margin_right = 227.0
+margin_right = 215.0
 margin_bottom = 38.0
-rect_min_size = Vector2( 220, 38 )
+rect_min_size = Vector2( 214, 38 )
 theme = ExtResource( 14 )
 texture = ExtResource( 3 )
 patch_margin_left = 8
@@ -586,6 +588,51 @@ text = "Switch In"
 flat = true
 align = 0
 
+[node name="ApplyButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+text = "Apply"
+flat = true
+align = 0
+
+[node name="Move1Button" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+text = "Move1"
+flat = true
+align = 0
+
+[node name="Move2Button" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+text = "Move2"
+flat = true
+align = 0
+
+[node name="Move3Button" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+text = "Move3"
+flat = true
+align = 0
+
+[node name="Move4Button" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 22.0
+margin_right = 69.0
+margin_bottom = 42.0
+text = "Move4"
+flat = true
+align = 0
+
 [node name="SummaryButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
 margin_top = 22.0
 margin_right = 69.0
@@ -610,6 +657,15 @@ margin_right = 69.0
 margin_bottom = 64.0
 disabled = true
 text = "Rename"
+flat = true
+align = 0
+
+[node name="PauseEvolutionButton" type="Button" parent="Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList"]
+visible = false
+margin_top = 88.0
+margin_right = 124.0
+margin_bottom = 108.0
+text = "PauseEvolutionButton"
 flat = true
 align = 0
 

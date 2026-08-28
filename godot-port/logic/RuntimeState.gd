@@ -363,7 +363,7 @@ static func ensure_party_with_starter(tree, starter_species_id: String, level: i
 	if normalized_species_id.empty():
 		return get_party(tree)
 
-	add_caught_species(tree, normalized_species_id)
+	var _caught_result = add_caught_species(tree, normalized_species_id)
 
 	var starter_party = PartyModel.new()
 	starter_party.add_member({

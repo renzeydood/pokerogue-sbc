@@ -4,11 +4,16 @@ extends Control
 signal close_requested
 signal switch_slot_requested
 signal pokedex_entry_requested
+signal apply_slot_requested
+signal apply_move_slot_requested
+
+enum { MODE_FIELD = 0, MODE_ITEM_TARGET = 1, MODE_ITEM_MOVE_TARGET = 2 }
 
 export(int) var slot_count := 6
 export(bool) var editor_preview_enabled := true
 export(bool) var use_runtime_layout_overrides := false
 export(float) var ui_scale := 2.0
+export(float) var action_menu_horizontal_gap_px := 0.0
 export(float) var slot_list_margin_left := -32.0
 export(float) var slot_list_margin_top := 16.0
 export(float) var slot_list_margin_right := 0.0
@@ -68,6 +73,13 @@ onready var action_window_sprite = $Backdrop/Panel/UiScaleRoot/ActionMenuContain
 onready var action_content_margin = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin
 onready var action_button_list = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList
 onready var action_switch_in_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/SwitchInButton
+onready var action_apply_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/ApplyButton
+onready var action_move_buttons = [
+	$Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/Move1Button,
+	$Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/Move2Button,
+	$Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/Move3Button,
+	$Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/Move4Button,
+]
 onready var action_summary_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/SummaryButton
 onready var action_pokedex_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/PokedexButton
 onready var action_rename_button = $Backdrop/Panel/UiScaleRoot/ActionMenuContainer/ActionWindowSprite/ActionContentMargin/ActionButtonList/RenameButton
@@ -93,8 +105,17 @@ var _icon_bob_elapsed := 0.0
 var _icon_bob_toggled := false
 var action_menu_visible := false
 var action_menu_slot_index := -1
+var menu_mode := MODE_FIELD
+var menu_context: Dictionary = {}
+var eligible_slot_indexes: Array = []
 var _action_window_base_bottom := 0.0
 var _message_action_window_base_bottom := 0.0
+var _action_window_base_right := 0.0
+var _action_window_base_width := 0.0
+var _action_content_margin_right_padding := 0.0
+var _action_content_base_width := 0.0
+var _message_action_window_base_right := 0.0
+var _action_message_window_gap := 0.0
 
 func _ready():
 	visible = Engine.editor_hint and editor_preview_enabled
@@ -118,6 +139,12 @@ func _ready():
 		back_button.connect("focus_exited", self, "_on_back_button_focus_exited")
 	if action_switch_in_button != null and not action_switch_in_button.is_connected("pressed", self, "_on_action_switch_in_button_pressed"):
 		action_switch_in_button.connect("pressed", self, "_on_action_switch_in_button_pressed")
+	if action_apply_button != null and not action_apply_button.is_connected("pressed", self, "_on_action_apply_button_pressed"):
+		action_apply_button.connect("pressed", self, "_on_action_apply_button_pressed")
+	for move_index in range(action_move_buttons.size()):
+		var move_button = action_move_buttons[move_index]
+		if move_button != null and not move_button.is_connected("pressed", self, "_on_action_move_button_pressed"):
+			move_button.connect("pressed", self, "_on_action_move_button_pressed", [move_index])
 	if action_pokedex_button != null and not action_pokedex_button.is_connected("pressed", self, "_on_action_pokedex_button_pressed"):
 		action_pokedex_button.connect("pressed", self, "_on_action_pokedex_button_pressed")
 	if action_cancel_button != null and not action_cancel_button.is_connected("pressed", self, "_on_action_cancel_button_pressed"):
@@ -176,18 +203,45 @@ func _process(_delta: float) -> void:
 	_icon_bob_toggled = not _icon_bob_toggled
 	_apply_icon_bob_offsets()
 
-func open_menu(members: Array, active_index: int) -> void:
+func open_menu(members: Array, active_index: int, mode: int = MODE_FIELD, context: Dictionary = {}) -> void:
 	party_members = members.duplicate(true)
 	active_slot_index = active_index
+	menu_mode = mode
+	menu_context = context.duplicate(true) if typeof(context) == TYPE_DICTIONARY else {}
+	var raw_eligible_slots = menu_context.get("eligible_slots", null)
+	eligible_slot_indexes = raw_eligible_slots.duplicate() if typeof(raw_eligible_slots) == TYPE_ARRAY else []
 	selected_slot_index = _find_initial_selected_index()
 	_refresh_slot_buttons()
 	_close_action_menu()
 	_update_cancel_sprite(false)
+	_update_footer_prompt()
 	visible = true
 	focus_default()
 
+func _update_footer_prompt() -> void:
+	if footer_text_label == null:
+		return
+	footer_text_label.text = String(menu_context.get("prompt", "Choose a Pokemon."))
+
+func _is_slot_eligible(slot_index: int) -> bool:
+	if eligible_slot_indexes.empty():
+		return menu_mode == MODE_FIELD
+	return eligible_slot_indexes.has(slot_index)
+
+func _get_move_options_for_slot(slot_index: int) -> Array:
+	var move_options_by_slot = menu_context.get("move_options", {})
+	if typeof(move_options_by_slot) != TYPE_DICTIONARY:
+		return []
+	var move_options = move_options_by_slot.get(slot_index, move_options_by_slot.get(String(slot_index), []))
+	if typeof(move_options) != TYPE_ARRAY:
+		return []
+	return move_options
+
 func close_menu() -> void:
 	visible = false
+	menu_mode = MODE_FIELD
+	menu_context = {}
+	eligible_slot_indexes = []
 	_close_action_menu()
 	_update_cancel_sprite(false)
 
@@ -345,10 +399,24 @@ func _setup_action_menu_controls() -> void:
 		action_menu_container.visible = false
 	if action_window_sprite != null:
 		_action_window_base_bottom = action_window_sprite.margin_bottom
+		_action_window_base_right = action_window_sprite.margin_right
+		_action_window_base_width = action_window_sprite.margin_right - action_window_sprite.margin_left
 	if message_action_window_sprite != null:
 		_message_action_window_base_bottom = message_action_window_sprite.margin_bottom
+		_message_action_window_base_right = message_action_window_sprite.margin_right
+	if action_content_margin != null:
+		_action_content_base_width = action_content_margin.margin_right - action_content_margin.margin_left
+		_action_content_margin_right_padding = _action_window_base_width - action_content_margin.margin_right
+	if action_window_sprite != null and message_action_window_sprite != null:
+		_action_message_window_gap = action_window_sprite.margin_left - message_action_window_sprite.margin_right
 	if action_text_label != null:
 		action_text_label.text = "What to do with this Pokemon?"
+	if action_apply_button != null:
+		action_apply_button.text = "Apply"
+		action_apply_button.visible = false
+	for move_button in action_move_buttons:
+		if move_button != null:
+			move_button.visible = false
 	if action_summary_button != null:
 		action_summary_button.text = "Summary"
 		action_summary_button.disabled = true
@@ -468,7 +536,6 @@ func _clear_slot_hp_ui(slot_index: int) -> void:
 
 func _get_member_hp_state(member: Dictionary) -> Dictionary:
 	var species_id = String(member.get("species_id", "")).strip_edges().to_upper()
-	var level = max(1, int(member.get("level", 1)))
 	var current_hp = int(member.get("current_hp", -1))
 	var max_hp = -1
 
@@ -655,7 +722,7 @@ func _reset_icon_bob_state() -> void:
 		icon_sprite.position = slot_icon_base_positions[i]
 
 func _set_fallback_icon(icon_sprite: Sprite) -> void:
-	_set_icon_sprite_frame(icon_sprite, ICON_FALLBACK_ATLAS_INDEX, ICON_DEFAULT_FRAME)
+	var _frame_applied = _set_icon_sprite_frame(icon_sprite, ICON_FALLBACK_ATLAS_INDEX, ICON_DEFAULT_FRAME)
 
 func _set_icon_sprite_frame(icon_sprite: Sprite, atlas_index: int, frame_name: String) -> bool:
 	if icon_sprite == null:
@@ -856,16 +923,41 @@ func _open_action_menu_for_slot(slot_index: int) -> void:
 	if action_menu_container != null:
 		action_menu_container.visible = true
 
+	var is_item_target_mode = menu_mode == MODE_ITEM_TARGET
+	var is_item_move_target_mode = menu_mode == MODE_ITEM_MOVE_TARGET
 	if action_switch_in_button != null:
-		var can_switch_in = slot_index != active_slot_index and not _is_slot_member_fainted(slot_index)
+		var can_switch_in = menu_mode == MODE_FIELD and slot_index != active_slot_index and not _is_slot_member_fainted(slot_index)
 		action_switch_in_button.visible = can_switch_in
 		action_switch_in_button.disabled = not can_switch_in
 
-	if action_text_label != null:
-		action_text_label.text = "Do what with this Pokemon?"
+	if action_apply_button != null:
+		var can_apply = is_item_target_mode and _is_slot_eligible(slot_index)
+		action_apply_button.visible = is_item_target_mode
+		action_apply_button.disabled = not can_apply
 
-	_refresh_action_menu_layout()
-	_focus_first_action_button()
+	var move_options = _get_move_options_for_slot(slot_index) if is_item_move_target_mode else []
+	for move_index in range(action_move_buttons.size()):
+		var move_button = action_move_buttons[move_index]
+		if move_button == null:
+			continue
+		var has_move = is_item_move_target_mode and move_index < move_options.size()
+		move_button.visible = has_move
+		move_button.disabled = not has_move
+		if has_move:
+			move_button.text = String(move_options[move_index])
+
+	if action_summary_button != null:
+		action_summary_button.visible = not is_item_move_target_mode
+	if action_pokedex_button != null:
+		action_pokedex_button.visible = not is_item_move_target_mode
+
+	if action_text_label != null:
+		action_text_label.text = "Select a move." if is_item_move_target_mode else "Do what with this Pokemon?"
+
+	# Two deferral hops: the first lets newly-visible buttons register their minimum size,
+	# the second measures content width only after that settles.
+	call_deferred("_defer_refresh_action_menu_layout")
+	call_deferred("_focus_first_action_button")
 
 func _close_action_menu() -> void:
 	action_menu_visible = false
@@ -874,6 +966,9 @@ func _close_action_menu() -> void:
 		action_menu_container.visible = false
 	if footer_container != null:
 		footer_container.visible = true
+
+func _defer_refresh_action_menu_layout() -> void:
+	call_deferred("_refresh_action_menu_layout")
 
 func _refresh_action_menu_layout() -> void:
 	if action_window_sprite == null or action_content_margin == null or action_button_list == null:
@@ -888,6 +983,22 @@ func _refresh_action_menu_layout() -> void:
 	action_window_sprite.rect_min_size.y = window_height
 	action_window_sprite.margin_bottom = _action_window_base_bottom
 	action_window_sprite.margin_top = _action_window_base_bottom - window_height
+
+	# Grow the window (and its content box) to the left when button labels need more room.
+	var content_width = max(_action_content_base_width, content_min_size.x)
+	action_content_margin.margin_right = action_content_margin.margin_left + content_width
+	var window_width = max(_action_window_base_width, action_content_margin.margin_left + content_width + _action_content_margin_right_padding)
+	action_window_sprite.rect_min_size.x = window_width
+	action_window_sprite.margin_right = _action_window_base_right
+	action_window_sprite.margin_left = _action_window_base_right - window_width
+
+	# Shrink the footer/message window so it never overlaps the widened action window.
+	if message_action_window_sprite != null:
+		var total_gap = _action_message_window_gap + max(0.0, action_menu_horizontal_gap_px)
+		var available_message_right = action_window_sprite.margin_left - total_gap
+		message_action_window_sprite.margin_right = min(_message_action_window_base_right, available_message_right)
+		# Control clamps rect size up to rect_min_size on every resize, so it must shrink too or the margin change above is silently ignored.
+		message_action_window_sprite.rect_min_size.x = message_action_window_sprite.margin_right - message_action_window_sprite.margin_left
 
 func _focus_first_action_button() -> void:
 	for button in _get_action_menu_buttons():
@@ -916,7 +1027,12 @@ func _move_action_menu_focus(action_name: String) -> void:
 
 func _get_action_menu_buttons() -> Array:
 	var result := []
-	var candidates = [action_switch_in_button, action_summary_button, action_pokedex_button, action_cancel_button]
+	var candidates = [action_switch_in_button, action_apply_button]
+	for move_button in action_move_buttons:
+		candidates.append(move_button)
+	candidates.append(action_summary_button)
+	candidates.append(action_pokedex_button)
+	candidates.append(action_cancel_button)
 	for button in candidates:
 		if button == null or not button.visible or button.disabled:
 			continue
@@ -928,6 +1044,22 @@ func _on_action_switch_in_button_pressed() -> void:
 		return
 	emit_signal("switch_slot_requested", action_menu_slot_index)
 	_close_action_menu()
+
+func _on_action_apply_button_pressed() -> void:
+	if action_menu_slot_index < 0 or not _is_slot_eligible(action_menu_slot_index):
+		return
+	var target_slot_index = action_menu_slot_index
+	_close_action_menu()
+	emit_signal("apply_slot_requested", target_slot_index)
+
+func _on_action_move_button_pressed(move_index: int) -> void:
+	if action_menu_slot_index < 0 or menu_mode != MODE_ITEM_MOVE_TARGET:
+		return
+	if move_index < 0 or move_index >= _get_move_options_for_slot(action_menu_slot_index).size():
+		return
+	var target_slot_index = action_menu_slot_index
+	_close_action_menu()
+	emit_signal("apply_move_slot_requested", target_slot_index, move_index)
 
 func _on_action_cancel_button_pressed() -> void:
 	_close_action_menu()

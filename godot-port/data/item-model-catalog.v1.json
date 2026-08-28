@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "generated_from": "dependency/pokerogue/src/modifier/modifier-type.ts#getPlayerShopModifierTypeOptionsForWave",
-  "generated_at": "2026-08-03T16:49:46.601221+00:00",
+  "generated_at": "2026-08-21T13:46:05.371681+00:00",
   "free_reward_defaults": [
     {
       "modifier_id": "POTION",
@@ -17,7 +17,8 @@
       "effect_type": "heal_hp_flat",
       "effect_params": {
         "amount": 20
-      }
+      },
+      "max_stack": 1
     }
   ],
   "shop_progression_tiers": [
@@ -35,7 +36,8 @@
         "effect_type": "heal_hp_flat",
         "effect_params": {
           "amount": 20
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "ETHER",
@@ -50,7 +52,8 @@
         "effect_type": "restore_pp_single",
         "effect_params": {
           "amount": 10
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "REVIVE",
@@ -65,7 +68,8 @@
         "effect_type": "revive",
         "effect_params": {
           "percent": 50
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "ORAN_BERRY",
@@ -80,7 +84,8 @@
         "effect_type": "held_low_hp_heal",
         "effect_params": {
           "amount": 10
-        }
+        },
+        "max_stack": 2
       }
     ],
     [
@@ -97,7 +102,8 @@
         "effect_type": "heal_hp_flat",
         "effect_params": {
           "amount": 50
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "FULL_HEAL",
@@ -110,7 +116,8 @@
         "target_hint": "self_party_single",
         "trigger_hint": "on_use",
         "effect_type": "heal_status",
-        "effect_params": {}
+        "effect_params": {},
+        "max_stack": 1
       }
     ],
     [
@@ -127,7 +134,8 @@
         "effect_type": "restore_pp_all",
         "effect_params": {
           "amount": 10
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "MAX_ETHER",
@@ -142,7 +150,8 @@
         "effect_type": "restore_pp_single",
         "effect_params": {
           "amount": -1
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "SHELL_BELL",
@@ -157,7 +166,8 @@
         "effect_type": "held_on_hit_heal",
         "effect_params": {
           "fraction": "1/8"
-        }
+        },
+        "max_stack": 4
       }
     ],
     [
@@ -174,7 +184,8 @@
         "effect_type": "heal_hp_flat",
         "effect_params": {
           "amount": 200
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "MAX_REVIVE",
@@ -189,7 +200,8 @@
         "effect_type": "revive",
         "effect_params": {
           "percent": 100
-        }
+        },
+        "max_stack": 1
       }
     ],
     [
@@ -206,7 +218,8 @@
         "effect_type": "heal_hp_percent",
         "effect_params": {
           "percent": 100
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "MAX_ELIXIR",
@@ -221,7 +234,8 @@
         "effect_type": "restore_pp_all",
         "effect_params": {
           "amount": -1
-        }
+        },
+        "max_stack": 1
       },
       {
         "modifier_id": "LEFTOVERS",
@@ -236,7 +250,8 @@
         "effect_type": "held_turn_heal",
         "effect_params": {
           "fraction": "1/16"
-        }
+        },
+        "max_stack": 4
       }
     ],
     [
@@ -254,7 +269,8 @@
         "effect_params": {
           "percent": 100,
           "heal_status": true
-        }
+        },
+        "max_stack": 1
       }
     ],
     [
@@ -271,7 +287,8 @@
         "effect_type": "party_revive",
         "effect_params": {
           "percent": 100
-        }
+        },
+        "max_stack": 1
       }
     ]
   ]

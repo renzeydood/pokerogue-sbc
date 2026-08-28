@@ -168,6 +168,7 @@ func _normalize_member(member_data: Dictionary) -> Dictionary:
 	var current_hp = int(member_data.get("current_hp", -1))
 	var move_ids = _normalize_move_ids(member_data.get("move_ids", []))
 	var move_pp_current = _normalize_move_pp_current(member_data.get("move_pp_current", []), move_ids.size())
+	var held_item_ids = _normalize_held_item_ids(member_data.get("held_item_ids", []))
 
 	return {
 		"species_id": species_id,
@@ -176,6 +177,7 @@ func _normalize_member(member_data: Dictionary) -> Dictionary:
 		"current_hp": current_hp,
 		"move_ids": move_ids,
 		"move_pp_current": move_pp_current,
+		"held_item_ids": held_item_ids,
 	}
 
 func _normalize_move_ids(move_ids_payload) -> Array:
@@ -205,3 +207,17 @@ func _normalize_move_pp_current(pp_payload, move_count: int) -> Array:
 			normalized_pp.append(-1)
 
 	return normalized_pp
+
+func _normalize_held_item_ids(held_item_ids_payload) -> Array:
+	if typeof(held_item_ids_payload) != TYPE_ARRAY:
+		return []
+
+	var normalized_held_item_ids := []
+	for raw_item_id in held_item_ids_payload:
+		var item_id = String(raw_item_id).strip_edges().to_lower()
+		if item_id.empty():
+			continue
+		# Duplicates are preserved: each entry is one held-item stack.
+		normalized_held_item_ids.append(item_id)
+
+	return normalized_held_item_ids

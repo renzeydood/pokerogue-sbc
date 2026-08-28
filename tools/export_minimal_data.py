@@ -349,6 +349,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
             "trigger_hint": "on_low_hp",
             "effect_type": "held_low_hp_heal",
             "params": {"amount": 10},
+            "max_stack": 2,
         },
         "SHELL_BELL": {
             "effect_key": "effect.held.hit_heal_fraction",
@@ -356,6 +357,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
             "trigger_hint": "on_hit",
             "effect_type": "held_on_hit_heal",
             "params": {"fraction": "1/8"},
+            "max_stack": 4,
         },
         "LEFTOVERS": {
             "effect_key": "effect.held.turn_heal_fraction",
@@ -363,6 +365,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
             "trigger_hint": "turn_end",
             "effect_type": "held_turn_heal",
             "params": {"fraction": "1/16"},
+            "max_stack": 4,
         },
     }
 
@@ -376,6 +379,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
             "trigger_hint": base["trigger_hint"],
             "effect_type": base["effect_type"],
             "effect_params": base["params"],
+            "max_stack": int(base.get("max_stack", 1)),
         }
 
     if usage == "held":
@@ -386,6 +390,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
             "trigger_hint": "passive",
             "effect_type": "todo_held_effect",
             "effect_params": {},
+            "max_stack": 1,
         }
 
     return {
@@ -395,6 +400,7 @@ def _build_item_effect_metadata(modifier_id: str, item_id: str, usage: str) -> d
         "trigger_hint": "on_use",
         "effect_type": "todo_use_effect",
         "effect_params": {},
+        "max_stack": 1,
     }
 
 
@@ -414,6 +420,7 @@ def _annotate_item_contract_entries(entries: list[dict[str, Any]], default_usage
         enriched["trigger_hint"] = metadata["trigger_hint"]
         enriched["effect_type"] = metadata["effect_type"]
         enriched["effect_params"] = metadata["effect_params"]
+        enriched["max_stack"] = metadata["max_stack"]
         annotated.append(enriched)
     return annotated
 
@@ -438,6 +445,7 @@ def _build_item_effects_catalog(generated_at: str, item_model_catalog: dict[str,
                     "target_hint": str(entry.get("target_hint", "self_party_single")),
                     "trigger_hint": str(entry.get("trigger_hint", "on_use")),
                     "params": entry.get("effect_params", {}),
+                    "max_stack": int(entry.get("max_stack", 1)),
                     "source_item_ids": [],
                 },
             )
@@ -465,6 +473,7 @@ def _build_item_effects_catalog(generated_at: str, item_model_catalog: dict[str,
                         "target_hint": str(entry.get("target_hint", "self_party_single")),
                         "trigger_hint": str(entry.get("trigger_hint", "on_use")),
                         "params": entry.get("effect_params", {}),
+                        "max_stack": int(entry.get("max_stack", 1)),
                         "source_item_ids": [],
                     },
                 )

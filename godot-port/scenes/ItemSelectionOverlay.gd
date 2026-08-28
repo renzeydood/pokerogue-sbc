@@ -40,18 +40,30 @@ export(NodePath) var title_label_path = NodePath("Backdrop/Panel/UiScaleRoot/Mod
 export(NodePath) var content_root_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/ContentRoot")
 export(NodePath) var footer_root_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/FooterRoot")
 export(NodePath) var back_button_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/FooterRoot/BackButton")
+export(NodePath) var skip_confirm_panel_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/ActionWindowSprite")
+export(NodePath) var skip_confirm_yes_button_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/ActionWindowSprite/ActionContentMargin/ActionButtonList/YesButton")
+export(NodePath) var skip_confirm_no_button_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/ActionWindowSprite/ActionContentMargin/ActionButtonList/NoButton")
+export(NodePath) var battle_text_label_path = NodePath("Backdrop/Panel/UiScaleRoot/ModalRoot/MessagePanel/MessageMargin/BattleTextLabel")
+export(String) var skip_confirm_prompt_text := "Are you sure you want to skip taking an item?"
 
 onready var ui_scale_root = get_node_or_null(ui_scale_root_path)
 onready var title_label = get_node_or_null(title_label_path)
 onready var content_root = get_node_or_null(content_root_path)
 onready var footer_root = get_node_or_null(footer_root_path)
 onready var back_button = get_node_or_null(back_button_path)
+onready var skip_confirm_panel = get_node_or_null(skip_confirm_panel_path)
+onready var skip_confirm_yes_button = get_node_or_null(skip_confirm_yes_button_path)
+onready var skip_confirm_no_button = get_node_or_null(skip_confirm_no_button_path)
+onready var battle_text_label = get_node_or_null(battle_text_label_path)
 
 var editor_preview_seeded := false
 var modal_context = null
 var is_modal_open := false
 var item_atlas_texture: Texture = null
 var item_icon_regions := {}
+var skip_confirmation_pending := false
+var skip_confirm_restore_text := ""
+var skip_confirm_text_captured := false
 
 func _ready() -> void:
 	set_process(true)
@@ -64,6 +76,10 @@ func _ready() -> void:
 		title_label.text = default_title
 	if back_button != null and not back_button.is_connected("pressed", self, "_on_BackButton_pressed"):
 		back_button.connect("pressed", self, "_on_BackButton_pressed")
+	if skip_confirm_yes_button != null and not skip_confirm_yes_button.is_connected("pressed", self, "_on_SkipConfirmYesButton_pressed"):
+		skip_confirm_yes_button.connect("pressed", self, "_on_SkipConfirmYesButton_pressed")
+	if skip_confirm_no_button != null and not skip_confirm_no_button.is_connected("pressed", self, "_on_SkipConfirmNoButton_pressed"):
+		skip_confirm_no_button.connect("pressed", self, "_on_SkipConfirmNoButton_pressed")
 
 func set_ui_scale(value: float) -> void:
 	ui_scale = value
@@ -72,6 +88,8 @@ func set_ui_scale(value: float) -> void:
 func open_menu(context = null) -> void:
 	modal_context = context
 	is_modal_open = true
+	skip_confirmation_pending = false
+	_set_skip_confirmation_visible(false)
 	show()
 	if use_runtime_layout_overrides and not Engine.editor_hint:
 		_apply_runtime_layout_overrides(context)
@@ -89,8 +107,65 @@ func handle_back_action() -> bool:
 		return false
 	if not visible and not is_modal_open:
 		return false
-	close_menu(true)
+	if skip_confirmation_pending:
+		skip_confirmation_pending = false
+		_set_skip_confirmation_visible(false)
+		return true
+	skip_confirmation_pending = true
+	_set_skip_confirmation_visible(true)
 	return true
+
+func is_skip_confirmation_pending() -> bool:
+	return skip_confirmation_pending
+
+func move_skip_confirmation_focus() -> void:
+	if not skip_confirmation_pending:
+		return
+	if skip_confirm_yes_button == null or skip_confirm_no_button == null:
+		return
+	if skip_confirm_yes_button.has_focus():
+		skip_confirm_no_button.grab_focus()
+	else:
+		skip_confirm_yes_button.grab_focus()
+
+func _set_skip_confirmation_visible(is_visible: bool) -> void:
+	if skip_confirm_panel != null:
+		skip_confirm_panel.visible = is_visible
+	_set_item_buttons_disabled_for_confirmation(is_visible)
+	if battle_text_label != null:
+		if is_visible:
+			skip_confirm_restore_text = battle_text_label.text
+			skip_confirm_text_captured = true
+			battle_text_label.text = skip_confirm_prompt_text
+		elif skip_confirm_text_captured:
+			battle_text_label.text = skip_confirm_restore_text
+			skip_confirm_text_captured = false
+	if is_visible and skip_confirm_no_button != null:
+		skip_confirm_no_button.grab_focus()
+
+func _set_item_buttons_disabled_for_confirmation(is_disabled: bool) -> void:
+	if content_root == null:
+		return
+	for container_name in ["FreeItemSlots", "ShopItemSlots"]:
+		var container = content_root.find_node(container_name, true, false)
+		for button in _get_item_slot_buttons_in_container(container):
+			if is_disabled:
+				button.set_meta("skip_confirm_was_disabled", button.disabled)
+				button.disabled = true
+			elif button.has_meta("skip_confirm_was_disabled"):
+				button.disabled = bool(button.get_meta("skip_confirm_was_disabled"))
+				button.remove_meta("skip_confirm_was_disabled")
+
+func _on_SkipConfirmYesButton_pressed() -> void:
+	if not skip_confirmation_pending:
+		return
+	close_menu(true)
+
+func _on_SkipConfirmNoButton_pressed() -> void:
+	if not skip_confirmation_pending:
+		return
+	skip_confirmation_pending = false
+	_set_skip_confirmation_visible(false)
 
 func set_modal_title(value: String) -> void:
 	default_title = value
@@ -212,8 +287,8 @@ func _build_item_slot_button(entry: Dictionary, slot_scale: float = 1.0, pressed
 	cost_label.rect_scale = Vector2(compact_text_scale, compact_text_scale)
 	button.add_child(cost_label)
 
-	if String(entry.get("kind", "free")) == "free" and pressed_owner != null and not pressed_method.empty() and pressed_owner.has_method(pressed_method):
-		button.connect("pressed", pressed_owner, pressed_method, [String(entry.get("id", ""))])
+	if pressed_owner != null and not pressed_method.empty() and pressed_owner.has_method(pressed_method):
+		button.connect("pressed", pressed_owner, pressed_method, [String(entry.get("id", "")), String(entry.get("kind", "free"))])
 	return button
 
 func _resolve_item_slot_icon_key(item_id: String) -> String:
@@ -372,6 +447,25 @@ func _get_item_slot_buttons_in_container(container: Node) -> Array:
 				if button is Button:
 					buttons.append(button)
 	return buttons
+
+# Used when reopening the same post-battle menu (e.g. after a shop purchase) so items
+# that were already revealed don't replay their fade/drop/reveal animation.
+func show_post_battle_item_menu_immediate() -> void:
+	if not visible:
+		return
+	var overlay_ui_scale_root = get_node_or_null("Backdrop/Panel/UiScaleRoot")
+	if overlay_ui_scale_root != null:
+		overlay_ui_scale_root.modulate = Color(1, 1, 1, 1)
+	if content_root == null:
+		return
+	var free_slots_container = content_root.find_node("FreeItemSlots", true, false)
+	var shop_slots_container = content_root.find_node("ShopItemSlots", true, false)
+	for button in _get_item_slot_buttons_in_container(free_slots_container):
+		if button != null:
+			button.modulate = Color(1, 1, 1, 1)
+	for button in _get_item_slot_buttons_in_container(shop_slots_container):
+		if button != null:
+			button.modulate = Color(1, 1, 1, 1)
 
 func _get_post_battle_item_icon_rect(item_button: Button) -> TextureRect:
 	if item_button == null or not is_instance_valid(item_button):
