@@ -3,13 +3,17 @@ name: Create branch from Notion ticket
 on:
   workflow_dispatch:
     inputs:
-      ticket_number:
-        description: 'Notion Ticket ID number (e.g. 12 for PKR-12)'
+      page_id:
+        description: 'Notion page ID (passed by Cloudflare Worker)'
         required: true
         type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: notion-branch-${{ inputs.page_id }}
+  cancel-in-progress: false
 
 jobs:
   create-branch:
@@ -21,12 +25,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Create branch and link Notion ticket
+      - name: Create branch and update Notion
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          TICKET_NUMBER: ${{ inputs.ticket_number }}
+          PAGE_ID: ${{ inputs.page_id }}
           NOTION_DATABASE_ID: '38ab2fceca5c80e4ae4affdfda4e4187'
           BRANCH_PREFIX: 'PKR'
         run: python scripts/create_notion_branch.py
