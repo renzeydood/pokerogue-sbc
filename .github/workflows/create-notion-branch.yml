@@ -32,5 +32,4 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PAGE_ID: ${{ inputs.page_id }}
           NOTION_DATABASE_ID: '38ab2fceca5c80e4ae4affdfda4e4187'
-          BRANCH_PREFIX: 'PKR'
         run: python scripts/create_notion_branch.py

@@ -38,15 +38,15 @@ def norm(value):
 
 def slugify(value):
     value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode().lower()
-    return re.sub(r'[^a-z0-9]+', '-', value).strip('-')[:55].rstrip('-') or 'task'
+    return re.sub(r'[^a-z0-9]+', '_', value).strip('_')[:55].rstrip('_') or 'task'
 
 
 def update_notion(page_id, token, **props):
     properties = {}
     if 'status' in props:
-        properties['Branch Request'] = {'select': {'name': props['status']}}
+        properties['GitHub Lifecycle'] = {'select': {'name': props['status']}}
     if 'url' in props:
-        properties['GitHub Branch'] = {'url': props['url']}
+        properties['GitHub Link'] = {'url': props['url']}
     return api('PATCH', f'https://api.notion.com/v1/pages/{page_id}', token,
                {'properties': properties}, notion=True)
 
@@ -57,7 +57,6 @@ def main():
     repo = os.environ['GITHUB_REPOSITORY']
     page_id = os.environ['PAGE_ID'].strip()
     database_id = os.environ['NOTION_DATABASE_ID']
-    prefix = os.getenv('BRANCH_PREFIX', 'PKR')
     if not re.fullmatch(r'[0-9a-fA-F-]{32,36}', page_id):
         raise ValueError('Invalid Notion page ID')
 
@@ -68,16 +67,17 @@ def main():
     if norm(parent.get('database_id') or parent.get('data_source_id')) != norm(database_id):
         raise ValueError('Notion page is not in the configured database')
     props = ticket.get('properties') or {}
-    state = ((props.get('Branch Request') or {}).get('select') or {}).get('name')
+    state = ((props.get('GitHub Lifecycle') or {}).get('select') or {}).get('name')
     if state != 'Pending':
-        print(f'Ignoring ticket: Branch Request is {state!r}, not Pending.')
+        print(f'Ignoring ticket: GitHub Lifecycle is {state!r}, not Pending.')
         return
     number = ((props.get('Ticket ID') or {}).get('unique_id') or {}).get('number')
+    prefix = ((props.get('Ticket ID') or {}).get('unique_id') or {}).get('prefix')
     title = ''.join(x.get('plain_text', '') for x in (props.get('Name') or {}).get('title', []))
-    if not isinstance(number, int) or number <= 0 or not title.strip():
+    if not isinstance(number, int) or number <= 0 or not title.strip() or not prefix or not re.fullmatch(r'[A-Za-z0-9]+', prefix):
         raise ValueError('Ticket requires a valid Ticket ID and nonempty Name')
 
-    branch = f'feature/{prefix}-{number}-{slugify(title)}'
+    branch = f'feature/{prefix}-{number}_{slugify(title)}'
     encoded = urllib.parse.quote(branch, safe='')
     branch_url = f'https://github.com/{repo}/tree/{encoded}'
     print(f'Processing ticket {prefix}-{number}: {title}; branch {branch}')
