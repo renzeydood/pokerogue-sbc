@@ -68,7 +68,7 @@ def main():
     else:
         print('Ignoring event')
         return
-    match = re.fullmatch(r'feature/([A-Za-z0-9]+)-(\d+)_[A-Za-z0-9_]+', branch)
+    match = re.fullmatch(r'[a-z0-9_]+/([A-Za-z0-9]+)-(\d+)_[A-Za-z0-9_]+', branch)
     if not match:
         print('Ignoring branch outside Notion naming convention')
         return
@@ -95,8 +95,8 @@ def main():
     update = {'GitHub Lifecycle': {'select': {'name': new_status}}}
     if link:
         update['GitHub Link'] = {'url': link}
-    elif new_status == 'Deleted':
-        update['GitHub Link'] = {'url': None}
+    # Keep the old branch URL as a durable identity marker after deletion.
+    # The URL may no longer resolve, but prevents accidental recreation on repeat clicks.
     notion('PATCH', f'/pages/{page_id}', {'properties': update})
     print(f'Updated {prefix}-{number}: {new_status}')
 
