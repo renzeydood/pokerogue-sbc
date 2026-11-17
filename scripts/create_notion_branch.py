@@ -86,6 +86,23 @@ def update_ticket(page_id, state, link=None):
     notion('PATCH', '/pages/' + page_id, {'properties': props})
 
 
+def find_ticket_branches(repo, ticket_id):
+    """Find branches for the exact ticket ID, independent of phase/title."""
+    matches = []
+    page_number = 1
+    pattern = re.compile(r'^[^/]+/' + re.escape(ticket_id) + r'_(?:.+)$')
+    while True:
+        refs = github('GET', f'/repos/{repo}/branches?per_page=100&page={page_number}')
+        for item in refs:
+            name = item.get('name', '')
+            if pattern.fullmatch(name):
+                matches.append(name)
+        if len(refs) < 100:
+            break
+        page_number += 1
+    return matches
+
+
 def main():
     page_id = os.environ.get('NOTION_PAGE_ID') or os.environ.get('PAGE_ID')
     if not page_id:
@@ -116,36 +133,24 @@ def main():
         raise RuntimeError('Generated branch name contains unsupported characters')
 
     print('Target branch:', branch)
-    encoded_branch = urllib.parse.quote(branch, safe='')
-    try:
-        existing = github('GET', f'/repos/{repo}/git/ref/heads/{encoded_branch}')
-    except RuntimeError as exc:
-        if 'HTTP 404:' not in str(exc):
-            raise
-        existing = None
-
-    branch_url = f'https://github.com/{repo}/tree/{encoded_branch}'
-    if existing:
-        print('Branch already exists; not creating duplicate')
-        # Do not downgrade PR or Merged states on repeated button clicks.
+    ticket_id = f'{prefix}-{number}'
+    # Search *all* branches, not just the newly generated branch name.
+    # This prevents duplicates when the ticket Phase or title changes.
+    matches = find_ticket_branches(repo, ticket_id)
+    if len(matches) > 1:
+        raise RuntimeError(f'Multiple branches already exist for {ticket_id}: {matches}')
+    if matches:
+        existing_branch = matches[0]
+        existing_url = f'https://github.com/{repo}/tree/{urllib.parse.quote(existing_branch, safe="")}'
+        print('Existing ticket branch:', existing_branch, '; not creating duplicate')
+        # Do not downgrade an active PR or merged lifecycle just because
+        # the user clicked the button again.
         lifecycle = ((page.get('properties') or {}).get('GitHub Lifecycle') or {}).get('select') or {}
-        state = lifecycle.get('name', '')
-        link = ((page.get('properties') or {}).get('GitHub Link') or {}).get('url')
-        if state in ('PR', 'Merged'):
-            print('Keeping existing PR/Merged lifecycle')
-            return
-        if link and '/pull/' in link:
-            print('Keeping existing PR link')
-            return
-        update_ticket(page_id, 'Created', branch_url)
+        if lifecycle.get('name') not in ('PR', 'Merged'):
+            update_ticket(page_id, 'Created', existing_url)
         return
 
-    # If the ticket already references a PR, do not create a second branch.
-    existing_link = ((page.get('properties') or {}).get('GitHub Link') or {}).get('url')
-    if existing_link and '/pull/' in existing_link:
-        print('Ticket already links to a PR; skipping branch creation')
-        return
-
+    branch_url = f'https://github.com/{repo}/tree/{urllib.parse.quote(branch, safe="")}'
     update_ticket(page_id, 'Processing')
     base = github('GET', f'/repos/{repo}/git/ref/heads/{urllib.parse.quote(base_branch, safe="")}')
     sha = base['object']['sha']
