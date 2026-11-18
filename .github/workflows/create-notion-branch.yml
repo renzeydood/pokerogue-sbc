@@ -17,4 +17,3 @@ jobs:
       data_source_id: ${{ vars.NOTION_DATA_SOURCE_ID }}
     secrets:
       notion_token: ${{ secrets.NOTION_TOKEN }}
-      automation_repo_token: ${{ secrets.AUTOMATION_REPO_TOKEN }}
