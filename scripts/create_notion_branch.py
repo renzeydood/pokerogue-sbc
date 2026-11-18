@@ -1,120 +1,162 @@
 #!/usr/bin/env python3
-"""Create a GitHub branch for a Pending Notion ticket and write back its URL."""
+"""Create a GitHub branch from a Notion ticket (Select or Relation Phase).
+
+Requires: NOTION_TOKEN, NOTION_DATABASE_ID, GITHUB_TOKEN, GITHUB_REPOSITORY,
+          and NOTION_PAGE_ID (or PAGE_ID). Optional: DEFAULT_BRANCH (main).
+Compatible with Notion API 2025-09-03.
+"""
 import json
 import os
 import re
 import sys
-import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 
-NOTION_VERSION = '2022-06-28'
+NOTION_BASE = 'https://api.notion.com/v1'
+GITHUB_BASE = 'https://api.github.com'
+NOTION_VERSION = '2025-09-03'
 
 
-def api(method, url, token, data=None, notion=False):
-    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/json'}
-    if notion:
-        headers['Notion-Version'] = NOTION_VERSION
-    else:
-        headers['X-GitHub-Api-Version'] = '2022-11-28'
-        headers['User-Agent'] = 'notion-github-bridge'
-    if data is not None:
-        headers['Content-Type'] = 'application/json'
-    req = urllib.request.Request(url, data=json.dumps(data).encode() if data is not None else None,
-                                 headers=headers, method=method)
+def request(method, url, headers, payload=None):
+    data = json.dumps(payload).encode('utf-8') if payload is not None else None
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as res:
-            body = res.read()
-            return json.loads(body) if body else {}
+        with urllib.request.urlopen(req, timeout=30) as response:
+            raw = response.read()
+            return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode('utf-8', errors='replace')[:800]
-        raise RuntimeError(f'{method} {url} failed HTTP {exc.code}: {detail}') from exc
+        detail = exc.read().decode('utf-8', errors='replace')[:1000]
+        raise RuntimeError(f'{method} {url}: HTTP {exc.code}: {detail}') from exc
 
 
-def norm(value):
-    return re.sub(r'-', '', str(value or '')).lower()
+def notion(method, path, payload=None):
+    return request(method, NOTION_BASE + path, {
+        'Authorization': 'Bearer ' + os.environ['NOTION_TOKEN'],
+        'Notion-Version': NOTION_VERSION,
+        'Content-Type': 'application/json',
+    }, payload)
 
 
-def slugify(value):
-    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode().lower()
-    return re.sub(r'[^a-z0-9]+', '_', value).strip('_')[:55].rstrip('_') or 'task'
+def github(method, path, payload=None):
+    return request(method, GITHUB_BASE + path, {
+        'Authorization': 'Bearer ' + os.environ['GITHUB_TOKEN'],
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'notion-github-bridge',
+        'Content-Type': 'application/json',
+    }, payload)
 
 
-def update_notion(page_id, token, **props):
-    properties = {}
-    if 'status' in props:
-        properties['GitHub Lifecycle'] = {'select': {'name': props['status']}}
-    if 'url' in props:
-        properties['GitHub Link'] = {'url': props['url']}
-    return api('PATCH', f'https://api.notion.com/v1/pages/{page_id}', token,
-               {'properties': properties}, notion=True)
+def slug(text):
+    text = re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
+    return text
+
+
+def page_title(page):
+    for prop in (page.get('properties') or {}).values():
+        if prop.get('type') == 'title':
+            return ''.join(part.get('plain_text', '') for part in prop.get('title', []))
+    return ''
+
+
+def phase_name(page):
+    prop = (page.get('properties') or {}).get('Phase') or {}
+    if prop.get('type') == 'select':
+        return (prop.get('select') or {}).get('name', '')
+    if prop.get('type') == 'relation':
+        links = prop.get('relation') or []
+        if not links:
+            return ''
+        if len(links) != 1:
+            raise RuntimeError('Phase must link to exactly one phase page')
+        if prop.get('has_more'):
+            raise RuntimeError('Phase relation is truncated')
+        related = notion('GET', '/pages/' + links[0]['id'])
+        return page_title(related)
+    if prop.get('type') in (None,):
+        return ''
+    raise RuntimeError(f'Unsupported Phase property type: {prop.get("type")}')
+
+
+def update_ticket(page_id, state, link=None):
+    props = {'GitHub Lifecycle': {'select': {'name': state}}}
+    if link is not None:
+        props['GitHub Link'] = {'url': link}
+    notion('PATCH', '/pages/' + page_id, {'properties': props})
+
+
+def find_ticket_branches(repo, ticket_id):
+    """Find branches for the exact ticket ID, independent of phase/title."""
+    matches = []
+    page_number = 1
+    pattern = re.compile(r'^[^/]+/' + re.escape(ticket_id) + r'_(?:.+)$')
+    while True:
+        refs = github('GET', f'/repos/{repo}/branches?per_page=100&page={page_number}')
+        for item in refs:
+            name = item.get('name', '')
+            if pattern.fullmatch(name):
+                matches.append(name)
+        if len(refs) < 100:
+            break
+        page_number += 1
+    return matches
 
 
 def main():
-    notion_token = os.environ['NOTION_TOKEN']
-    github_token = os.environ['GITHUB_TOKEN']
+    page_id = os.environ.get('NOTION_PAGE_ID') or os.environ.get('PAGE_ID')
+    if not page_id:
+        raise RuntimeError('Set NOTION_PAGE_ID (or PAGE_ID) in workflow env')
     repo = os.environ['GITHUB_REPOSITORY']
-    page_id = os.environ['PAGE_ID'].strip()
-    database_id = os.environ['NOTION_DATABASE_ID']
-    if not re.fullmatch(r'[0-9a-fA-F-]{32,36}', page_id):
-        raise ValueError('Invalid Notion page ID')
+    database_id = os.environ['NOTION_DATABASE_ID'].replace('-', '').lower()
+    base_branch = os.environ.get('DEFAULT_BRANCH', 'main')
 
-    notion_base = 'https://api.notion.com/v1'
-    github_base = f'https://api.github.com/repos/{repo}'
-    ticket = api('GET', f'{notion_base}/pages/{page_id}', notion_token, notion=True)
-    parent = ticket.get('parent') or {}
-    if norm(parent.get('database_id') or parent.get('data_source_id')) != norm(database_id):
-        raise ValueError('Notion page is not in the configured database')
-    props = ticket.get('properties') or {}
-    state = ((props.get('GitHub Lifecycle') or {}).get('select') or {}).get('name')
-    if state != 'Pending':
-        print(f'Ignoring ticket: GitHub Lifecycle is {state!r}, not Pending.')
+    page = notion('GET', '/pages/' + page_id)
+    parent = page.get('parent') or {}
+    # Notion 2025-09-03 database rows are parented by data_source_id.
+    parent_id = (parent.get('database_id') or parent.get('data_source_id') or '').replace('-', '').lower()
+    expected_source = os.environ.get('NOTION_DATA_SOURCE_ID', '').replace('-', '').lower()
+    if parent_id not in {database_id, expected_source} or not parent_id:
+        raise RuntimeError('Ticket does not belong to configured Notion database/data source')
+
+    uid = ((page.get('properties') or {}).get('Ticket ID') or {}).get('unique_id') or {}
+    prefix, number = uid.get('prefix'), uid.get('number')
+    if not prefix or number is None:
+        raise RuntimeError('Ticket ID must have a prefix and number')
+    title = page_title(page)
+    title_slug = slug(title)
+    if not title_slug:
+        raise RuntimeError('Ticket has an empty or unsupported title')
+    phase_slug = slug(phase_name(page)) or 'feature'
+    branch = f'{phase_slug}/{prefix}-{number}_{title_slug}'
+    if not re.fullmatch(r'[a-z0-9_]+/[A-Za-z0-9-]+_[a-z0-9_]+', branch):
+        raise RuntimeError('Generated branch name contains unsupported characters')
+
+    print('Target branch:', branch)
+    ticket_id = f'{prefix}-{number}'
+    # Search *all* branches, not just the newly generated branch name.
+    # This prevents duplicates when the ticket Phase or title changes.
+    matches = find_ticket_branches(repo, ticket_id)
+    if len(matches) > 1:
+        raise RuntimeError(f'Multiple branches already exist for {ticket_id}: {matches}')
+    if matches:
+        existing_branch = matches[0]
+        existing_url = f'https://github.com/{repo}/tree/{urllib.parse.quote(existing_branch, safe="")}'
+        print('Existing ticket branch:', existing_branch, '; not creating duplicate')
+        # Do not downgrade an active PR or merged lifecycle just because
+        # the user clicked the button again.
+        lifecycle = ((page.get('properties') or {}).get('GitHub Lifecycle') or {}).get('select') or {}
+        if lifecycle.get('name') not in ('PR', 'Merged'):
+            update_ticket(page_id, 'Created', existing_url)
         return
-    number = ((props.get('Ticket ID') or {}).get('unique_id') or {}).get('number')
-    prefix = ((props.get('Ticket ID') or {}).get('unique_id') or {}).get('prefix')
-    title = ''.join(x.get('plain_text', '') for x in (props.get('Name') or {}).get('title', []))
-    if not isinstance(number, int) or number <= 0 or not title.strip() or not prefix or not re.fullmatch(r'[A-Za-z0-9]+', prefix):
-        raise ValueError('Ticket requires a valid Ticket ID and nonempty Name')
 
-    branch = f'feature/{prefix}-{number}_{slugify(title)}'
-    encoded = urllib.parse.quote(branch, safe='')
-    branch_url = f'https://github.com/{repo}/tree/{encoded}'
-    print(f'Processing ticket {prefix}-{number}: {title}; branch {branch}')
-    update_notion(page_id, notion_token, status='Processing')
-    try:
-        repo_info = api('GET', github_base, github_token)
-        default = repo_info['default_branch']
-        default_ref = api('GET', f'{github_base}/git/ref/heads/{urllib.parse.quote(default, safe="")}', github_token)
-        sha = default_ref['object']['sha']
-        try:
-            api('GET', f'{github_base}/git/ref/heads/{encoded}', github_token)
-            print('Branch already exists; reusing it.')
-        except RuntimeError as exc:
-            if 'HTTP 404:' not in str(exc):
-                raise
-            try:
-                api('POST', f'{github_base}/git/refs', github_token,
-                    {'ref': f'refs/heads/{branch}', 'sha': sha})
-                print('Branch created.')
-            except RuntimeError as create_exc:
-                # A concurrent run may have created the exact branch.
-                if 'HTTP 422:' not in str(create_exc):
-                    raise
-                api('GET', f'{github_base}/git/ref/heads/{encoded}', github_token)
-                print('Branch already created by another run.')
-        update_notion(page_id, notion_token, url=branch_url, status='Created')
-        print(f'Success: {branch_url}')
-        summary = os.getenv('GITHUB_STEP_SUMMARY')
-        if summary:
-            with open(summary, 'a', encoding='utf-8') as f:
-                f.write(f'### Notion branch\n\n- Ticket: {prefix}-{number}\n- Branch: [{branch}]({branch_url})\n')
-    except Exception:
-        try:
-            update_notion(page_id, notion_token, status='Failed')
-        except Exception as update_exc:
-            print(f'Could not mark ticket Failed: {update_exc}', file=sys.stderr)
-        raise
+    branch_url = f'https://github.com/{repo}/tree/{urllib.parse.quote(branch, safe="")}'
+    update_ticket(page_id, 'Processing')
+    base = github('GET', f'/repos/{repo}/git/ref/heads/{urllib.parse.quote(base_branch, safe="")}')
+    sha = base['object']['sha']
+    github('POST', f'/repos/{repo}/git/refs', {'ref': 'refs/heads/' + branch, 'sha': sha})
+    update_ticket(page_id, 'Created', branch_url)
+    print('Created:', branch_url)
 
 
 if __name__ == '__main__':
