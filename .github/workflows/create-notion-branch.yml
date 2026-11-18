@@ -1,35 +1,20 @@
 name: Create branch from Notion ticket
-
 on:
   workflow_dispatch:
     inputs:
-      page_id:
-        description: 'Notion page ID (passed by Cloudflare Worker)'
-        required: true
-        type: string
-
+      page_id: {description: Notion page ID from Cloudflare, required: true, type: string}
 permissions:
   contents: write
-
 concurrency:
   group: notion-branch-${{ inputs.page_id }}
   cancel-in-progress: false
-
 jobs:
-  create-branch:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Create branch and update Notion
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PAGE_ID: ${{ inputs.page_id }}
-          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
-        run: python scripts/create_notion_branch.py
+  create:
+    uses: renzeydood/notion-github-automation/.github/workflows/reusable-create-branch.yml@main
+    with:
+      page_id: ${{ inputs.page_id }}
+      database_id: ${{ vars.NOTION_DATABASE_ID }}
+      data_source_id: ${{ vars.NOTION_DATA_SOURCE_ID }}
+    secrets:
+      notion_token: ${{ secrets.NOTION_TOKEN }}
+      automation_repo_token: ${{ secrets.AUTOMATION_REPO_TOKEN }}

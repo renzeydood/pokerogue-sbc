@@ -1,33 +1,22 @@
 name: Sync Notion GitHub lifecycle
-
 on:
   pull_request:
     types: [opened, reopened, closed]
   delete:
-
 permissions:
   contents: read
-
 concurrency:
   group: notion-lifecycle-${{ github.event.pull_request.head.ref || github.event.ref || github.run_id }}
   cancel-in-progress: false
-
 jobs:
-  sync-notion:
-    # Only use secrets on trusted branches/PRs originating in this repository.
+  sync:
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
       || (github.event_name == 'delete' && github.event.ref_type == 'branch')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Update Notion lifecycle
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
-        run: python scripts/sync_github_lifecycle.py
+    uses: renzeydood/notion-github-automation/.github/workflows/reusable-sync-lifecycle.yml@main
+    with:
+      database_id: ${{ vars.NOTION_DATABASE_ID }}
+      data_source_id: ${{ vars.NOTION_DATA_SOURCE_ID }}
+    secrets:
+      notion_token: ${{ secrets.NOTION_TOKEN }}
+      automation_repo_token: ${{ secrets.AUTOMATION_REPO_TOKEN }}
