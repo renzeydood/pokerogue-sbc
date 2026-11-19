@@ -221,5 +221,3 @@ When changes are intentional, refresh fixtures:
 ```powershell
 py tools\asset_pipeline.py --export-data --validate-data --refresh-fixtures
 ```
-
-#delete this line later on. Just for testing.
